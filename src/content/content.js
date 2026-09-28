@@ -250,7 +250,7 @@
   }
   function showPillError(text) {
     const p = ensurePill();
-    p.innerHTML = 'Comic Translate — error: ' + esc(text) +
+    p.innerHTML = 'comic-translate-4-free — error: ' + esc(text) +
       ' <a href="#" id="ct-pill-x" style="color:#8ab4f8;margin-left:8px">dismiss</a>';
     p.style.display = 'block';
     p.style.borderColor = '#a33';
@@ -263,7 +263,7 @@
     inpaint: 'Inpainting', render: 'Rendering',
   };
   function pillProgress(stage, progress) {
-    showPill('Comic Translate — ' + esc(PILL_STAGE[stage] || stage) +
+    showPill('comic-translate-4-free — ' + esc(PILL_STAGE[stage] || stage) +
       '… ' + Math.round((progress || 0) * 100) + '%');
   }
 
@@ -288,7 +288,7 @@
       return b;
     };
     const title = document.createElement('span');
-    title.textContent = 'Comic Translate';
+    title.textContent = 'comic-translate-4-free';
     title.style.cssText = 'font-weight:600;margin-right:8px;';
     bar.appendChild(title);
     const dbgBtnEl = mkBtn('Debug: off', () => {
@@ -398,8 +398,8 @@
       if (!msg.direct) return false; // broadcasts are for the popup; the pill takes targeted copies
       const st = msg.stage;
       if (st === 'error') showPillError(msg.error || 'unknown error');
-      else if (st === 'done') showPill('Comic Translate — done ✓');
-      else if (st === 'cancelled') showPill('Comic Translate — cancelled');
+      else if (st === 'done') showPill('comic-translate-4-free — done ✓');
+      else if (st === 'cancelled') showPill('comic-translate-4-free — cancelled');
       else if (st && st !== 'idle') pillProgress(st, msg.progress);
       return false;
     }

@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-This file lists the third-party software used by the comic-translate browser
+This file lists the third-party software used by comic-translate-4-free
 extension: libraries bundled with it, code it was ported from, and ML models it
 downloads at runtime. The extension's own code is separate from these components.
 

@@ -30,7 +30,7 @@
     "48": "icons/icon48.png"
   },
   "manifest_version": 3,
-  "name": "Comic Translate",
+  "name": "comic-translate-4-free",
   "options_page": "src/ui/options.html",
   "optional_host_permissions": [
     "<all_urls>"

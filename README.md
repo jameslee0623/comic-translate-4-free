@@ -1,4 +1,4 @@
-# Comic Translate — browser extension
+# comic-translate-4-free
 
 Translate manga/comic pages in-browser. The full pipeline runs locally:
 bubble/text detection (RT-DETR-v2), Japanese OCR (manga-ocr), text removal
