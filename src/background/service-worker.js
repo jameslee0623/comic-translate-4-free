@@ -48,7 +48,12 @@ function isWhitelisted(host, list) {
 // as the page is concerned (nothing can be injected to show an error).
 async function hasHostAccess(host) {
   try {
-    return await chrome.permissions.contains({ origins: [`*://${host}/*`] });
+    // permissions.contains needs a granted SUPERSET of the queried pattern:
+    // a manifest-baked `http://127.0.0.1/*` grant does NOT satisfy a
+    // `*://127.0.0.1/*` query, so also accept the scheme-specific grants.
+    if (await chrome.permissions.contains({ origins: [`*://${host}/*`] })) return true;
+    if (await chrome.permissions.contains({ origins: [`http://${host}/*`] })) return true;
+    return await chrome.permissions.contains({ origins: [`https://${host}/*`] });
   } catch { return true; } // check unavailable: let the injection attempt decide
 }
 
@@ -507,11 +512,19 @@ async function runPipeline(tabId) {
     // Same tick as the send below: a cancellation can never slip in between
     // and let a stale render reach the tab.
     checkCancelled(runId);
-    await chrome.tabs.sendMessage(tabId, {
+    const renderRes = await chrome.tabs.sendMessage(tabId, {
       type: MSG.RENDER, runId, mode,
       imageDataUrl: finalDataUrl, width: w, height: h,
       blocks, timings, debug: settings.debugMode,
     });
+    // Surface a content-side render failure instead of silently reporting
+    // "done" while the original image is still on the page.
+    if (!renderRes || renderRes.ok === false) {
+      throw new Error('render failed: ' + String((renderRes && renderRes.error) || 'no response from page'));
+    }
+    if (renderRes.replaced === false) {
+      throw new Error('render failed: could not find the page image to replace');
+    }
     setProgress(runId, 'done', 1);
     result = { runId, ok: true };
   } catch (e) {

@@ -277,9 +277,13 @@
     if (overlay) return;
     overlay = document.createElement('div');
     overlay.id = 'ct-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(10,10,12,0.92);display:none;flex-direction:column;align-items:center;justify-content:center;';
+    // Debug UI floats over the page WITHOUT dimming it: the backdrop is
+    // transparent and click-through, so the original picture stays fully
+    // visible (and the page stays usable) while stages are inspected.
+    // pointer-events are re-enabled on the bar and the debug panel only.
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:transparent;pointer-events:none;display:none;flex-direction:column;align-items:flex-end;justify-content:flex-start;';
     const bar = document.createElement('div');
-    bar.style.cssText = 'display:flex;gap:8px;padding:8px;align-items:center;color:#eee;font:13px sans-serif;';
+    bar.style.cssText = 'display:flex;gap:8px;padding:8px;align-items:center;color:#eee;font:13px sans-serif;pointer-events:auto;background:rgba(10,10,12,0.85);border-radius:0 0 0 8px;';
     const mkBtn = (label, fn) => {
       const b = document.createElement('button');
       b.textContent = label;
@@ -301,12 +305,14 @@
     bar.appendChild(mkBtn('✕ Close', closeOverlay));
     overlay.appendChild(bar);
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'flex:1;display:flex;min-height:0;width:100%;justify-content:center;';
+    wrap.style.cssText = 'flex:1;display:flex;min-height:0;width:100%;justify-content:flex-end;';
     canvas = document.createElement('canvas');
-    canvas.style.cssText = 'max-width:70vw;max-height:calc(100vh - 60px);object-fit:contain;';
+    // Vestigial: nothing ever paints into the overlay canvas (the translated
+    // page replaces the <img> in place). Kept hidden so it takes no space.
+    canvas.style.cssText = 'display:none;';
     wrap.appendChild(canvas);
     debugPanel = document.createElement('div');
-    debugPanel.style.cssText = 'display:none;width:340px;max-height:calc(100vh - 60px);overflow:auto;background:#16161a;color:#ddd;font:12px sans-serif;border-left:1px solid #333;flex-direction:column;';
+    debugPanel.style.cssText = 'display:none;pointer-events:auto;width:340px;max-height:calc(100vh - 60px);overflow:auto;background:rgba(18,18,24,0.96);color:#ddd;font:12px sans-serif;border-left:1px solid #333;flex-direction:column;';
     const tabBar = document.createElement('div');
     tabBar.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;padding:8px;position:sticky;top:0;background:#16161a;';
     debugPanel.appendChild(tabBar);
