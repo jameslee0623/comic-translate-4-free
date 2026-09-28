@@ -409,13 +409,14 @@ async function runPipeline(tabId) {
       await pixelPut(pxKey, c.data.buffer);
       crops.push({ id: i, key: pxKey, data: c.data, width: c.w, height: c.h, x: c.x, y: c.y, bw: b.xyxy[2] - b.xyxy[0], bh: b.xyxy[3] - b.xyxy[1] });
     }
-    let ocrMs = 0;
+    let ocrMs = 0, ocrEngineLabel = '';
     if (crops.length) {
       const r = await callMlChecked(runId, {
-        type: MSG.ML_OCR, runId,
+        type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
         crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
       });
       ocrMs = r.ms;
+      ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
       for (const res of r.results) blocks[res.id].text = res.text;
     }
     timings.ocr = ocrMs;
@@ -428,7 +429,7 @@ async function runPipeline(tabId) {
       });
     }
     await emitDebug(runId, tabId, settings, 'ocr', {
-      title: `OCR — ${crops.length} crops`, crops: ocrThumbs, ms: ocrMs,
+      title: `OCR — ${crops.length} crops${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}`, crops: ocrThumbs, ms: ocrMs,
     });
 
     // ---- 5. mask

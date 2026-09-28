@@ -1,7 +1,7 @@
 // Firefox entry point (loaded by background.html).
 // Firefox MV3 has no chrome.offscreen API, but a background page has full DOM
 // access — so the ML sessions live here, in-process. Importing offscreen.js
-// constructs the Detector/MangaOCR/Inpainter singletons; we publish their
+// constructs the Detector/OCR/Inpainter singletons; we publish their
 // message handlers on globalThis so ml-bridge.js calls them directly instead
 // of going through the offscreen document. service-worker.js then runs the
 // whole pipeline unchanged in this page.

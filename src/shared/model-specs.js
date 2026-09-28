@@ -30,7 +30,73 @@ export const MODEL_GROUPS = [
         url: hf('ogkalu/lama-manga-onnx-dynamic', 'lama-manga-dynamic.onnx') },
     ],
   },
+  {
+    id: 'ocr-pororo', label: 'Pororo Korean OCR (brainocr)',
+    files: [
+      { id: 'ocr-pororo', file: 'brainocr.onnx', bytes: 76907335,
+        url: hf('ogkalu/pororo', 'brainocr.onnx') },
+    ],
+  },
+  {
+    id: 'ocr-ppocr-en', label: 'PP-OCRv5 OCR (English)',
+    files: [
+      { id: 'ocr-ppocr-en', file: 'rec.onnx', bytes: 7830888,
+        url: hf('monkt/paddleocr-onnx', 'languages/english/rec.onnx') },
+    ],
+  },
+  {
+    id: 'ocr-ppocr-latin', label: 'PP-OCRv5 OCR (French/German/Spanish/Italian/Portuguese/Dutch)',
+    files: [
+      { id: 'ocr-ppocr-latin', file: 'rec.onnx', bytes: 7862832,
+        url: hf('monkt/paddleocr-onnx', 'languages/latin/rec.onnx') },
+    ],
+  },
+  {
+    id: 'ocr-ppocr-eslav', label: 'PP-OCRv5 OCR (Russian)',
+    files: [
+      { id: 'ocr-ppocr-eslav', file: 'rec.onnx', bytes: 7870092,
+        url: hf('monkt/paddleocr-onnx', 'languages/eslav/rec.onnx') },
+    ],
+  },
+  {
+    id: 'ocr-ppocr-chinese', label: 'PP-OCRv5 OCR (Chinese Simplified/Traditional)',
+    files: [
+      { id: 'ocr-ppocr-chinese', file: 'rec.onnx', bytes: 84468836,
+        url: hf('monkt/paddleocr-onnx', 'languages/chinese/rec.onnx') },
+    ],
+  },
 ];
+
+// OCR engine routing by source language (LANGS in shared/settings.js):
+//   ja          -> manga-ocr ('ocr' group; manga-specialized, kept for Japanese)
+//   ko          -> Pororo brainocr ('ocr-pororo' group)
+//   zh-CN/zh-TW -> PP-OCRv5 chinese ('ocr-ppocr-chinese' group)
+//   ru          -> PP-OCRv5 eslav ('ocr-ppocr-eslav' group)
+//   everything else (en/fr/de/es/it/pt/nl) -> PP-OCRv5 latin ('ocr-ppocr-latin' group)
+export function ocrEngineForLang(lang) {
+  if (lang === 'ko') return 'ocr-pororo';
+  if (lang === 'ja') return 'ocr';
+  if (lang === 'zh-CN' || lang === 'zh-TW') return 'ocr-ppocr-chinese';
+  if (lang === 'ru') return 'ocr-ppocr-eslav';
+  return 'ocr-ppocr-latin';
+}
+
+// PP-OCRv5 character dictionaries, bundled (one char per line, UTF-8).
+// These are the exact dict.txt files shipped with the monkt/paddleocr-onnx
+// rec.onnx exports (verified byte-identical in order and content against the
+// official PaddlePaddle PP-OCRv5 character_dict for English on 2026-09-28).
+export const PPOCR_DICT_ASSET = {
+  'ocr-ppocr-en': 'src/offscreen/ml/dicts/ppocr-english.txt',
+  'ocr-ppocr-latin': 'src/offscreen/ml/dicts/ppocr-latin.txt',
+  'ocr-ppocr-eslav': 'src/offscreen/ml/dicts/ppocr-eslav.txt',
+  'ocr-ppocr-chinese': 'src/offscreen/ml/dicts/ppocr-chinese.txt',
+};
+
+// Pororo brainocr charset, bundled (one char per line, UTF-8).
+// Extracted from the `character` field of ocr-opt.txt next to brainocr.onnx
+// in ogkalu/pororo (2588 chars; model class c>0 maps to line c-1, class 0 is
+// the CTC blank — see pororo's build_vocab which prepends '[blank]').
+export const PORORO_CHARSET_ASSET = 'src/offscreen/ml/pororo-charset.txt';
 
 export const ALL_FILES = MODEL_GROUPS.flatMap(g =>
   g.files.map(f => ({ ...f, group: g.id, groupLabel: g.label })));

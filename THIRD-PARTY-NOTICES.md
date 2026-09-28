@@ -64,10 +64,19 @@ licenses belong to their publishers:
 | Bubble/text detector (`detector-v4-s_int8.onnx`) | `ogkalu/comic-text-and-bubble-detector` — RT-DETR-v2 r50vd fine-tuned on ~11k manga/webtoon/manhua/western-comic images | No license tag on the model card; upstream RT-DETRv2 (lyuwenyu/RT-DETR, PekingU) is **Apache-2.0** |
 | Japanese OCR (`encoder.onnx`, `decoder_init.onnx`, `decoder_step.onnx`) | `ogkalu/manga-ocr-mobile` — ONNX export of manga-ocr | No license tag on the model card; upstream kha-white/manga-ocr code and weights are **Apache-2.0** |
 | Manga inpainter (`lama-manga-dynamic.onnx`) | `ogkalu/lama-manga-onnx-dynamic` — ONNX export of dreMaz/AnimeMangaInpainting | No license tag on the model card; lineage: dreMaz/AnimeMangaInpainting (MIT-tagged card) ← advimman/lama (**Apache-2.0**) |
+| Korean OCR (`brainocr.onnx`, used when the source language is Korean) | `ogkalu/pororo` — ONNX export of pororo's brainocr recognizer | No license tag on the model card; upstream kakaobrain/pororo is **Apache-2.0** |
+| Multilingual OCR (`rec.onnx` per language group, used for every source language except Japanese and Korean) | `monkt/paddleocr-onnx` (`languages/{english,latin,eslav,chinese}/rec.onnx`) — ONNX exports of PaddlePaddle PP-OCRv5 rec models | Repo is **Apache-2.0**-tagged; upstream PaddlePaddle/PaddleOCR is **Apache-2.0** |
 
 ### OCR vocabulary
 - `src/offscreen/vocab.txt` (9,415 tokens) is the manga-ocr tokenizer
   vocabulary from kha-white/manga-ocr — **Apache-2.0**.
+- `src/offscreen/ml/pororo-charset.txt` (2,588 chars) is the `character`
+  field of `ocr-opt.txt` shipped next to `brainocr.onnx` in
+  `ogkalu/pororo` — upstream kakaobrain/pororo is **Apache-2.0**.
+- `src/offscreen/ml/dicts/ppocr-{english,latin,eslav,chinese}.txt` are the
+  `dict.txt` files shipped with the matching `rec.onnx` in
+  `monkt/paddleocr-onnx` (**Apache-2.0**; the English dict was verified
+  entry-for-entry against PaddlePaddle's official PP-OCRv5 character dict).
 
 ## 4. Not used
 
