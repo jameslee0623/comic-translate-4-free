@@ -1,5 +1,5 @@
 // Popup: trigger runs, show progress, backend + language quick-switch, whitelist.
-const BUILD = '20260928i'; // bump on every shipped build; shown in the footer
+const BUILD = '20260928j'; // bump on every shipped build; shown in the footer
 const $ = id => document.getElementById(id);
 const STAGE_LABEL = {
   idle: 'idle', capture: 'Capturing page…', detect: 'Detecting bubbles & text…',
@@ -71,29 +71,34 @@ function isWhitelisted(host, list) {
 }
 
 // The picture often lives on a CDN host different from the page host; without
-// permission for it the extension can't download the picture's pixels. Ask the
-// active tab for its main picture (best effort — the content script may not be
-// injected yet) and include the picture's host in the access request.
-async function requestSiteAccess(host) {
+// permission for it the extension can't download the picture's pixels.
+// cachedImageHost is filled in (best effort) when the popup opens, so the
+// click handler below can build the full origin list SYNCHRONOUSLY — Firefox
+// expires the click's user gesture across awaits, and permissions.request()
+// called after an await silently does nothing.
+let cachedImageHost = null;
+function requestSiteAccessNow(host) {
   const origins = [`*://${host}/*`, `*://*.${host}/*`];
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab && tab.id != null) {
-      const r = await chrome.tabs.sendMessage(tab.id, { type: 'ct/find-image' }).catch(() => null);
-      const src = r && r.image && r.image.src;
-      if (src && /^https?:\/\//i.test(src)) {
-        const ih = new URL(src).hostname.toLowerCase();
-        if (ih && ih !== host) origins.push(`*://${ih}/*`);
-      }
-    }
-  } catch { /* page-host origins are enough to try */ }
+  if (cachedImageHost && cachedImageHost !== host) origins.push(`*://${cachedImageHost}/*`);
   if (chrome.permissions && chrome.permissions.request) {
-    await chrome.permissions.request({ origins }).catch(() => false);
+    return chrome.permissions.request({ origins }).catch(() => false);
   }
+  return Promise.resolve(false);
 }
 
 async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => [null]);
   currentHost = tab ? hostOfUrl(tab.url) : null;
+  // Best-effort: learn the page picture's host now (not on click) so the
+  // grant click can request it without any awaits first. Fire and forget.
+  cachedImageHost = null;
+  if (tab && tab.id != null) {
+    chrome.tabs.sendMessage(tab.id, { type: 'ct/find-image' }).catch(() => null).then(r => {
+      const src = r && r.image && r.image.src;
+      if (src && /^https?:\/\//i.test(src)) {
+        cachedImageHost = new URL(src).hostname.toLowerCase();
+      }
+    });
+  }
   const list = settings.siteWhitelist || [];
   const btn = $('whitelistBtn');
   if (!currentHost) {
@@ -112,12 +117,20 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
   const grantRow = $('grantRow');
   grantRow.style.display = 'none';
   if (ok && currentHost && chrome.permissions && chrome.permissions.contains) {
-    const has = await chrome.permissions.contains({ origins: [`*://${currentHost}/*`] }).catch(() => true);
+    // A granted `*://host/*` satisfies the query, but be lenient like
+    // hasHostAccess: scheme-specific grants count too.
+    const has = await (async () => {
+      for (const p of [`*://${currentHost}/*`, `http://${currentHost}/*`, `https://${currentHost}/*`]) {
+        if (await chrome.permissions.contains({ origins: [p] }).catch(() => false)) return true;
+      }
+      return false;
+    })();
     if (!has) {
       grantRow.style.display = '';
-      $('grantBtn').onclick = async () => {
-        await requestSiteAccess(currentHost);
-        refreshSite(settings);
+      $('grantBtn').onclick = () => {
+        // Request synchronously in the click: no awaits before
+        // permissions.request() or Firefox drops the user gesture.
+        requestSiteAccessNow(currentHost).then(() => refreshSite(settings));
       };
     }
   }
@@ -134,7 +147,9 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
     } else {
       // Granting host access here (a user gesture) lets auto-translate and
       // full-resolution image fetch work on this site without further clicks.
-      await requestSiteAccess(currentHost);
+      // Request synchronously in the click — no awaits before
+      // permissions.request() or Firefox drops the user gesture.
+      await requestSiteAccessNow(currentHost);
       wl.add(currentHost);
     }
     cur.siteWhitelist = [...wl];
