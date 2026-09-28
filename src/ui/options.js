@@ -1,5 +1,5 @@
 // Options page: read/write settings + model management + connection checks.
-const BUILD = '20260928f'; // keep in sync with popup.js; shown in the footer
+const BUILD = '20260928g'; // keep in sync with popup.js; shown in the footer
 const $ = id => document.getElementById(id);
 const LANGS = [
   ['ja', 'Japanese'], ['en', 'English'], ['ko', 'Korean'], ['zh-CN', 'Chinese (Simplified)'],
@@ -272,7 +272,7 @@ async function refreshModels() {
         : '<span style="color:#f0b429">not downloaded</span>';
     const dlErr = g.files.map(f => dlErrors[f.id]).filter(Boolean)[0];
     if (dlErr) status += `<br><span style="color:#f85149">✗ ${escapeHtml(dlErr)}</span>`;
-    div.innerHTML = `<div><b>${g.label}</b><div id="model-status-${g.id}" style="color:#9a9aa0;font-size:12px">${status}</div></div>`;
+    div.innerHTML = `<div><b>${g.label}</b>${g.required ? ' <span style="color:#f0b429;font-size:11px;border:1px solid #f0b429;border-radius:4px;padding:0 5px">required</span>' : ''}<div id="model-status-${g.id}" style="color:#9a9aa0;font-size:12px">${status}</div></div>`;
     const btnBox = document.createElement('div');
     if (!g.downloaded || g.sizeMismatch) {
       const dl = document.createElement('button');

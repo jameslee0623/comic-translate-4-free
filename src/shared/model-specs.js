@@ -6,7 +6,7 @@ const hf = (repo, file) => `https://huggingface.co/${repo}/resolve/main/${file}`
 
 export const MODEL_GROUPS = [
   {
-    id: 'detector', label: 'Bubble/text detector (RT-DETR-v2)',
+    id: 'detector', label: 'Bubble/text detector (RT-DETR-v2)', required: true,
     files: [
       { id: 'detector', file: 'detector-v4-s_int8.onnx', bytes: 11120765,
         url: hf('ogkalu/comic-text-and-bubble-detector', 'detector-v4-s_int8.onnx') },
@@ -24,7 +24,7 @@ export const MODEL_GROUPS = [
     ],
   },
   {
-    id: 'inpaint', label: 'LaMa manga inpainter',
+    id: 'inpaint', label: 'LaMa manga inpainter', required: true,
     files: [
       { id: 'inpaint', file: 'lama-manga-dynamic.onnx', bytes: 206291843,
         url: hf('ogkalu/lama-manga-onnx-dynamic', 'lama-manga-dynamic.onnx') },
@@ -117,7 +117,7 @@ export async function getModelStatus() {
       if (!rec) { done = false; continue; }
       if (!bytesOk) { done = false; sizeMismatch = true; }
     }
-    out.push({ id: g.id, label: g.label, downloaded: done, sizeMismatch, files });
+    out.push({ id: g.id, label: g.label, required: !!g.required, downloaded: done, sizeMismatch, files });
   }
   return out;
 }
