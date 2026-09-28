@@ -10,6 +10,7 @@ import { MangaOCR } from './ml/ocr.js';
 import { PororoOCR } from './ml/pororo.js';
 import { PPOCRV5 } from './ml/ppocr.js';
 import { meanBrightness } from './ml/image-ops.js';
+import { Inpainter } from './ml/inpaint.js';
 import { pixelPut, pixelTake } from '../shared/pixel-bus.js';
 
 ort.env.wasm.wasmPaths = chrome.runtime.getURL('src/offscreen/vendor/');

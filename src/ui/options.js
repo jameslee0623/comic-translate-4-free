@@ -1,5 +1,5 @@
 // Options page: read/write settings + model management + connection checks.
-const BUILD = '20260928e'; // keep in sync with popup.js; shown in the footer
+const BUILD = '20260928f'; // keep in sync with popup.js; shown in the footer
 const $ = id => document.getElementById(id);
 const LANGS = [
   ['ja', 'Japanese'], ['en', 'English'], ['ko', 'Korean'], ['zh-CN', 'Chinese (Simplified)'],
@@ -238,15 +238,11 @@ async function refreshModels() {
   }
   const missing = r.models.filter(g => !g.downloaded);
   for (const g of r.models) for (const f of g.files) fileToGroup[f.id] = g.id;
-  // One button downloads everything that's missing.
-  dlAll.disabled = !missing.length || dlAll.dataset.busy === '1';
-  dlAll.textContent = dlAll.dataset.busy === '1' ? dlAll.textContent
-    : missing.length ? `Download all models (${missing.length} remaining)`
-    : 'All models downloaded ✓';
-  dlAll.onclick = () => {
+  // Download one or more groups; progress arrives via ct/model-progress.
+  const downloadGroups = groups => {
     dlAll.dataset.busy = '1'; dlAll.disabled = true;
     dlAll.textContent = 'Downloading…';
-    for (const g of missing) for (const f of g.files) {
+    for (const g of groups) for (const f of g.files) {
       dlInFlight.add(f.id);
       delete dlErrors[f.id];
       chrome.runtime.sendMessage({ type: 'ct/download-model', fileId: f.id }).catch(e => {
@@ -258,19 +254,32 @@ async function refreshModels() {
     }
     // done/error broadcasts drive dlDoneCheck -> refreshModels per file.
   };
+  // One button downloads everything that's missing.
+  dlAll.disabled = !missing.length || dlAll.dataset.busy === '1';
+  dlAll.textContent = dlAll.dataset.busy === '1' ? dlAll.textContent
+    : missing.length ? `Download all models (${missing.length} remaining)`
+    : 'All models downloaded ✓';
+  dlAll.onclick = () => downloadGroups(missing);
   for (const g of r.models) {
     const div = document.createElement('div');
     div.className = 'model';
     const bytes = g.files.reduce((a, f) => a + (f.bytes || 0), 0);
     const bad = g.files.filter(f => f.downloaded && !f.bytesOk);
     let status = g.sizeMismatch
-      ? `<span style="color:#f0b429">⚠ wrong file cached (${bad.map(f => f.file).join(', ')}) — press "Download all models" to fetch the correct one</span>`
+      ? `<span style="color:#f0b429">⚠ wrong file cached (${bad.map(f => f.file).join(', ')}) — press Download below to fetch the correct one</span>`
       : g.downloaded
         ? `<span style="color:#7ee787">✓ downloaded${bytes ? ' (' + (bytes / 1048576).toFixed(0) + ' MB)' : ''}</span>`
         : '<span style="color:#f0b429">not downloaded</span>';
     const dlErr = g.files.map(f => dlErrors[f.id]).filter(Boolean)[0];
     if (dlErr) status += `<br><span style="color:#f85149">✗ ${escapeHtml(dlErr)}</span>`;
     div.innerHTML = `<div><b>${g.label}</b><div id="model-status-${g.id}" style="color:#9a9aa0;font-size:12px">${status}</div></div>`;
+    const btnBox = document.createElement('div');
+    if (!g.downloaded || g.sizeMismatch) {
+      const dl = document.createElement('button');
+      dl.textContent = g.sizeMismatch ? 'Re-download' : 'Download';
+      dl.onclick = () => { downloadGroups([g]); refreshModels(); };
+      btnBox.appendChild(dl);
+    }
     if (g.downloaded) {
       const b = document.createElement('button');
       b.textContent = 'Delete';
@@ -278,8 +287,9 @@ async function refreshModels() {
         await chrome.runtime.sendMessage({ type: 'ct/delete-model', id: g.id });
         refreshModels();
       };
-      div.appendChild(b);
+      btnBox.appendChild(b);
     }
+    div.appendChild(btnBox);
     box.appendChild(div);
   }
 }
