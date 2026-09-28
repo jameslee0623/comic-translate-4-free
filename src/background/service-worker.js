@@ -32,7 +32,7 @@ function hostOf(url) {
   } catch { return null; }
 }
 
-// Exact hostname or parent-domain match: 'nhentai.net' covers 'i.nhentai.net'.
+// Exact hostname or parent-domain match: 'example.com' covers 'img.example.com'.
 function isWhitelisted(host, list) {
   const h = (host || '').toLowerCase();
   return (list || []).some(e => {
