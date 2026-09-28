@@ -7,7 +7,9 @@ VERSION="$(python3 -c "import json;print(json.load(open('$SRC/manifest.json'))['
 BUILD="$(grep -o "const BUILD = '[^']*'" "$SRC/src/ui/options.js" | cut -d"'" -f2)"
 NAME="comic-translate-ext-v${VERSION}-${BUILD}"
 DIST="$SRC/dist"
-OUT="$HOME/workspace/your_files/${NAME}.zip"
+OUT="$DIST/${NAME}.zip"
+# Convenience copy for local dev (ignored by git); CI uploads from $DIST.
+LOCAL_OUT="$HOME/workspace/your_files/${NAME}.zip"
 
 rm -rf "$DIST" "$OUT"
 mkdir -p "$DIST/chrome" "$DIST/firefox"
@@ -51,3 +53,7 @@ cd "$SRC"
 zip -q "$OUT" README.md
 echo "wrote $OUT ($(du -h "$OUT" | cut -f1))"
 unzip -l "$OUT" | tail -3
+# Local convenience copy (same bytes, gitignored).
+mkdir -p "$(dirname "$LOCAL_OUT")"
+cp "$OUT" "$LOCAL_OUT"
+echo "copied to $LOCAL_OUT"

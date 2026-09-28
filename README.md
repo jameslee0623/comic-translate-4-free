@@ -8,7 +8,15 @@ re-rendering into the original speech bubbles.
 Ported from [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate)
 to Manifest V3 + ONNX Runtime Web (WASM).
 
-## Install (developer mode)
+## Download (no build needed)
+
+Grab the latest ready-to-install zip from the
+[**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
+page — every release is built automatically by CI and carries `chrome/` and
+`firefox/` side by side. Unzip it, then follow "Install" below. You never need
+to clone the repo or run `build.sh` yourself.
+
+## Install
 
 The zip contains two builds: `chrome/` and `firefox/`.
 

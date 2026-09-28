@@ -1,0 +1,30 @@
+name: Build release zips
+
+# On every version tag push (e.g. v0.3.0-20260928c): build chrome/ + firefox/
+# and attach the ready-to-install zip to the GitHub Release, so users can
+# download and install without building anything themselves.
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build chrome + firefox zips
+        run: ./build.sh
+
+      - name: Attach zips to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
