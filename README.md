@@ -120,3 +120,8 @@ processed in overlapping vertical slices.
 - OCR is Japanese-optimized (manga-ocr).
 - Vertical text is rendered for tall CJK blocks; SFX / text outside bubbles
   uses its own text box.
+
+## Third-party notices
+
+Bundled libraries, ported code, and runtime-downloaded models are listed with
+their licenses in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

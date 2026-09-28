@@ -8,7 +8,8 @@
   const FONT_STACK = '"Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Noto Sans",sans-serif';
 
   // ------------------------------------------------------------ text utils
-  // Port of ogkalu2's shrink_bbox: `pct` is the TOTAL shrink, applied
+  // Port of ogkalu2/comic-translate's shrink_bbox (Apache License 2.0,
+  // https://github.com/ogkalu2/comic-translate): `pct` is the TOTAL shrink, applied
   // centered, i.e. pct/2 inset per side. shrink_bbox(b, 0.3) leaves 70% of
   // the bubble's width/height (15% per side), NOT 40% (30% per side).
   function shrinkBbox(xyxy, pct) {

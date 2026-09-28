@@ -209,7 +209,8 @@ function extractFgColor(rgba, w, xyxy) {
 }
 
 // Crop bounds for OCR: text box expanded 5%, bubble fallback (port of the
-// Python adjust_text_line_coordinates usage in the OCR stage).
+// Python adjust_text_line_coordinates usage in the OCR stage of
+// ogkalu2/comic-translate, Apache License 2.0).
 function cropForBlock(rgba, pw, ph, xyxy, bubbleXyxy) {
   const box = xyxy || bubbleXyxy;
   if (!box) return null;

@@ -1,3 +1,5 @@
+// Inference logic ported from ogkalu2/comic-translate
+// (Apache License 2.0, https://github.com/ogkalu2/comic-translate).
 // LaMa-based manga inpainting. Verified contract (spike 3):
 //   in:  image [1,3,h,w] float32 (/255 RGB), mask [1,1,h,w] float32 (0/1)
 //   out: inpainted [1,3,h,w] float32

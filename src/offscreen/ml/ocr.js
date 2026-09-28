@@ -1,3 +1,5 @@
+// Inference logic ported from ogkalu2/comic-translate
+// (Apache License 2.0, https://github.com/ogkalu2/comic-translate).
 // manga-ocr (Japanese) via the KV-cache ONNX split from ogkalu/manga-ocr-mobile.
 // Faithful port of comic-translate's modules/ocr/manga_ocr/mobile/onnx_engine.py,
 // verified against the repo's own test set (spike 2).

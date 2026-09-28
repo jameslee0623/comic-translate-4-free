@@ -232,7 +232,8 @@ async function lmStudioV1(texts, settings, ep, headers) {
   return parseLmStudioBody(await resp.text(), n);
 }
 
-// --- LM Studio reply parsing (ported from ComicTranslate's lensLocalEngine.js)
+// --- LM Studio reply parsing (ported from lensLocalEngine.js in the author's own
+// project jameslee0623/ComicTranslate — no third-party license obligation)
 // Index alignment is the whole contract: entry i translates region i. A length
 // mismatch is an error, never a zip — silently pairing the wrong strings
 // paints plausible nonsense into speech bubbles.

@@ -1,3 +1,5 @@
+// Inference logic ported from ogkalu2/comic-translate
+// (Apache License 2.0, https://github.com/ogkalu2/comic-translate).
 // TextBlock: the unit of translation. Port of modules/utils/textblock.py (fields that
 // the extension pipeline actually uses). Plain JSON-serializable objects.
 

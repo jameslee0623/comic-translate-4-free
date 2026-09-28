@@ -1,3 +1,5 @@
+// Inference logic ported from ogkalu2/comic-translate
+// (Apache License 2.0, https://github.com/ogkalu2/comic-translate).
 // Text-removal mask generation. Faithful port of the comic-translate algorithm:
 //   modules/detection/utils/content.py  (detect_content_mask_in_bbox)
 //   modules/utils/image_utils.py        (build_block_mask_data, _select_text_like_components,
