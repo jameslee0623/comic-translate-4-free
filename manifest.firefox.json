@@ -1,0 +1,54 @@
+{
+  "action": {
+    "default_icon": {
+      "128": "icons/icon128.png",
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png"
+    },
+    "default_popup": "src/ui/popup.html"
+  },
+  "background": {
+    "page": "src/background/background.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "comic-translate@local",
+      "strict_min_version": "115.0"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "description": "Translate manga/comic pages in-browser: bubble detection, OCR, inpainting, translation, re-rendering. All ML runs locally via ONNX Runtime Web.",
+  "host_permissions": [
+    "https://huggingface.co/*",
+    "https://cdn-lfs.huggingface.co/*",
+    "https://*.hf.co/*",
+    "https://translate.googleapis.com/*",
+    "https://api.cognitive.microsofttranslator.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "icons": {
+    "128": "icons/icon128.png",
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png"
+  },
+  "manifest_version": 3,
+  "name": "Comic Translate",
+  "optional_host_permissions": [
+    "<all_urls>"
+  ],
+  "options_ui": {
+    "open_in_tab": true,
+    "page": "src/ui/options.html"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs",
+    "unlimitedStorage"
+  ],
+  "version": "0.3.0"
+}

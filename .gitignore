@@ -1,0 +1,7 @@
+# build outputs
+dist/
+*.zip
+*.xpi
+# dependencies / OS
+node_modules/
+.DS_Store

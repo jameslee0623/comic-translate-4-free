@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Comic Translate background</title></head>
+<body>
+<!-- Firefox has no offscreen documents: this background page hosts the ONNX
+     sessions in-process. ORT UMD first (exposes global `ort`), then the
+     module entry which registers the ML handlers and starts the pipeline. -->
+<script src="../offscreen/vendor/ort.min.js"></script>
+<script type="module" src="./background-ff.js"></script>
+</body>
+</html>

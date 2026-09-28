@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<style>
+  :root { color-scheme: dark; }
+  body { width: 340px; margin: 0; padding: 12px; font: 13px system-ui, sans-serif; background: #141417; color: #e8e8ea; }
+  h1 { font-size: 15px; margin: 0 0 10px; color: #fff; }
+  h2 { font-size: 11px; margin: 14px 0 6px; color: #9a9aa0; text-transform: uppercase; letter-spacing: .06em; }
+  button { padding: 8px 12px; border: 1px solid #3a3a40; border-radius: 6px; background: #232327; color: #e8e8ea; cursor: pointer; font-size: 13px; }
+  button:hover:not(:disabled) { background: #2c2c31; }
+  button.primary { background: #1a73e8; color: #fff; border-color: #1a73e8; width: 100%; font-weight: 600; }
+  button.primary:hover:not(:disabled) { background: #2b7de9; }
+  button:disabled { opacity: .45; cursor: default; }
+  .row { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+  .bar { height: 6px; background: #2a2a2e; border-radius: 3px; overflow: hidden; margin: 6px 0; }
+  .bar > div { height: 100%; background: #1a73e8; width: 0%; transition: width .2s; }
+  .model { border: 1px solid #2e2e33; border-radius: 8px; padding: 8px; margin: 6px 0; background: #1b1b1f; }
+  .model .name { font-weight: 600; color: #fff; }
+  .model .sub { color: #9a9aa0; font-size: 11px; margin-top: 2px; }
+  .model .actions { margin-top: 6px; display: flex; gap: 6px; }
+  .model button { padding: 4px 10px; font-size: 12px; }
+  #status { color: #b9b9bf; font-size: 12px; min-height: 18px; margin: 6px 0; }
+  #error { color: #ff7b72; font-size: 12px; margin: 6px 0; white-space: pre-wrap; }
+  select { padding: 6px; border-radius: 6px; border: 1px solid #3a3a40; background: #232327; color: #e8e8ea; }
+  .foot { margin-top: 10px; text-align: right; }
+  .foot a { color: #8ab4f8; font-size: 12px; text-decoration: none; }
+  #site { font-size: 12px; color: #b9b9bf; }
+  #site b { color: #fff; font-weight: 600; }
+  .ok { color: #7ee787; } .warn { color: #f0b429; }
+  .sitebox { border: 1px solid #2e2e33; border-radius: 8px; padding: 8px; background: #1b1b1f; }
+</style>
+</head>
+<body>
+  <h1>Comic Translate</h1>
+
+  <div class="sitebox">
+    <div class="row" style="margin:0">
+      <span id="site">…</span>
+    </div>
+    <div class="row">
+      <button id="whitelistBtn">Add this site to whitelist</button>
+    </div>
+    <div class="row" id="grantRow" style="display:none;margin-top:6px">
+      <span class="warn" style="font-size:12px">whitelisted, but the extension has no access to this site — translation can't start.</span>
+      <button id="grantBtn">Grant access</button>
+    </div>
+  </div>
+
+  <div style="margin-top:10px"><button id="translate" class="primary">Translate this page</button></div>
+  <div class="row">
+    <button id="cancel" disabled>Cancel</button>
+    <span id="status"></span>
+  </div>
+  <div class="bar"><div id="progress"></div></div>
+  <div id="error"></div>
+
+  <h2>Languages</h2>
+  <div class="row">
+    <select id="sourceLang" title="Source language"></select>
+    <span style="color:#9a9aa0">→</span>
+    <select id="targetLang" title="Target language"></select>
+  </div>
+
+  <h2>Translation backend</h2>
+  <div class="row"><select id="backend">
+    <option value="google">Google (free)</option>
+    <option value="azure">Azure Translator</option>
+    <option value="lmstudio">LM Studio (local)</option>
+    <option value="local-llm">Local LLM (experimental)</option>
+  </select></div>
+
+  <div class="foot"><a href="#" id="options">Options &amp; settings</a> <span id="build" style="color:#666"></span></div>
+  <script src="popup.js"></script>
+</body>
+</html>
