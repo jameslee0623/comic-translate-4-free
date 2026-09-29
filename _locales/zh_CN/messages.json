@@ -154,7 +154,7 @@
     "message": "最小图片尺寸（px）"
   },
   "model_baberu": {
-    "message": "Baberu OCR（英语＋简体中文，漫画训练）"
+    "message": "Baberu OCR（日语＋英语＋简体中文，漫画训练）"
   },
   "model_detector": {
     "message": "文本检测（RT-DETR-v2）"
@@ -164,9 +164,6 @@
   },
   "model_ko": {
     "message": "PP-OCRv5 OCR（韩语，2025 官方模型）"
-  },
-  "model_ocr_ja": {
-    "message": "manga-ocr（日语）"
   },
   "model_zh_tw": {
     "message": "PP-OCRv6 OCR（繁体中文）"

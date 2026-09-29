@@ -13,17 +13,6 @@ export const MODEL_GROUPS = [
     ],
   },
   {
-    id: 'ocr', labelKey: 'model_ocr_ja', label: 'manga-ocr Japanese OCR (KV split)',
-    files: [
-      { id: 'ocr-encoder', file: 'encoder.onnx', bytes: 17070003,
-        url: hf('ogkalu/manga-ocr-mobile', 'encoder.onnx') },
-      { id: 'ocr-decoder-init', file: 'decoder_init.onnx', bytes: 24875052,
-        url: hf('ogkalu/manga-ocr-mobile', 'decoder_init.onnx') },
-      { id: 'ocr-decoder-step', file: 'decoder_step.onnx', bytes: 22776797,
-        url: hf('ogkalu/manga-ocr-mobile', 'decoder_step.onnx') },
-    ],
-  },
-  {
     id: 'inpaint', labelKey: 'model_inpaint', label: 'LaMa manga inpainter', required: true,
     files: [
       { id: 'inpaint', file: 'lama-manga-dynamic.onnx', bytes: 206291843,
@@ -38,7 +27,7 @@ export const MODEL_GROUPS = [
     ],
   },
   {
-    id: 'ocr-baberu', labelKey: 'model_baberu', label: 'Baberu OCR (English + Chinese Simplified, manga-trained)',
+    id: 'ocr-baberu', labelKey: 'model_baberu', label: 'Baberu OCR (Japanese + English + Chinese Simplified, manga-trained)',
     files: [
       { id: 'ocr-baberu-vision', file: 'vision_int4.onnx', bytes: 52293486,
         url: hf('genshiai-daichi/baberu-ocr', 'onnx/vision_int4.onnx') },
@@ -58,16 +47,18 @@ export const MODEL_GROUPS = [
 ];
 
 // OCR engine routing by source language (LANGS in shared/settings.js):
-//   ja      -> manga-ocr ('ocr' group; manga-specialized, kept for Japanese)
+//   ja      -> Baberu ('ocr-baberu' group; trilingual, manga-trained,
+//              beats manga-ocr on Manga109)
 //   ko      -> PP-OCRv5 Korean ('ocr-ppocr-ko' group; official 2025 model)
 //   en      -> Baberu ('ocr-baberu' group; trained on manga bubbles)
 //   zh-CN   -> Baberu ('ocr-baberu' group)
 //   zh-TW   -> PP-OCRv6 small ('ocr-ppocrv6' group; first line with explicit
 //              Traditional Chinese support)
-// (Pororo + PP-OCRv5 en/chinese models removed 2026-09-28: superseded.)
+// (manga-ocr removed 2026-09-29: superseded by Baberu for Japanese.
+// Pororo + PP-OCRv5 en/chinese models removed 2026-09-28: superseded.)
 export function ocrEngineForLang(lang) {
   if (lang === 'ko') return 'ocr-ppocr-ko';
-  if (lang === 'ja') return 'ocr';
+  if (lang === 'ja') return 'ocr-baberu';
   if (lang === 'en') return 'ocr-baberu';
   if (lang === 'zh-CN') return 'ocr-baberu';
   if (lang === 'zh-TW') return 'ocr-ppocrv6';
@@ -123,9 +114,10 @@ export async function deleteModelGroup(groupId) {
 
 // One-time cleanup for model files whose groups were removed from
 // MODEL_GROUPS (Latin/Russian PP-OCRv5, 2026-09-28; Pororo + PP-OCRv5
-// en/chinese, superseded 2026-09-28): with no group row left in the UI
+// en/chinese, superseded 2026-09-28; manga-ocr encoder/decoder, superseded
+// 2026-09-29 by Baberu): with no group row left in the UI
 // there'd be no way to delete them otherwise.
-const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav', 'ocr-pororo', 'ocr-ppocr-en', 'ocr-ppocr-chinese'];
+const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav', 'ocr-pororo', 'ocr-ppocr-en', 'ocr-ppocr-chinese', 'ocr-encoder', 'ocr-decoder-init', 'ocr-decoder-step'];
 export async function pruneRemovedModels() {
   const db = await openDb();
   for (const id of PRUNED_MODEL_IDS) {

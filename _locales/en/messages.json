@@ -154,7 +154,7 @@
     "message": "Minimum image size (px)"
   },
   "model_baberu": {
-    "message": "Baberu OCR (English + Chinese Simplified, manga-trained)"
+    "message": "Baberu OCR (Japanese + English + Chinese Simplified, manga-trained)"
   },
   "model_detector": {
     "message": "Text detector (RT-DETR-v2)"
@@ -164,9 +164,6 @@
   },
   "model_ko": {
     "message": "PP-OCRv5 OCR (Korean, official 2025 model)"
-  },
-  "model_ocr_ja": {
-    "message": "manga-ocr (Japanese)"
   },
   "model_zh_tw": {
     "message": "PP-OCRv6 OCR (Chinese Traditional)"
