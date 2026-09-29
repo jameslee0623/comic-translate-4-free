@@ -1,9 +1,129 @@
 // Options page: read/write settings + model management + connection checks.
-const BUILD = '20260928m-uilang'; // keep in sync with popup.js; shown in the footer
+const BUILD = '20260928n'; // keep in sync with popup.js; shown in the footer
 const $ = id => document.getElementById(id);
 const LANGS = [
   ['ja', '日本語'], ['en', 'English'], ['ko', '한국어'], ['zh-CN', '简体中文'],
   ['zh-TW', '繁體中文'],
+];
+
+// Every language both Google Translate and Azure Translator support
+// (intersection verified 2026-09-28). English names; Google-style codes.
+const TARGET_LANGS = [
+
+  ['en', 'English'],
+  ['af', 'Afrikaans'],
+  ['sq', 'Albanian'],
+  ['am', 'Amharic'],
+  ['ar', 'Arabic'],
+  ['hy', 'Armenian'],
+  ['as', 'Assamese'],
+  ['az', 'Azerbaijani'],
+  ['ba', 'Bashkir'],
+  ['eu', 'Basque'],
+  ['bn', 'Bengali'],
+  ['bho', 'Bhojpuri'],
+  ['bs', 'Bosnian'],
+  ['bg', 'Bulgarian'],
+  ['yue', 'Cantonese'],
+  ['ca', 'Catalan'],
+  ['ny', 'Chichewa'],
+  ['zh-CN', 'Chinese (Simplified)'],
+  ['zh-TW', 'Chinese (Traditional)'],
+  ['hr', 'Croatian'],
+  ['cs', 'Czech'],
+  ['da', 'Danish'],
+  ['dv', 'Divehi'],
+  ['doi', 'Dogri'],
+  ['nl', 'Dutch'],
+  ['et', 'Estonian'],
+  ['fj', 'Fijian'],
+  ['fil', 'Filipino'],
+  ['fi', 'Finnish'],
+  ['fr', 'French'],
+  ['fr-CA', 'French (Canada)'],
+  ['gl', 'Galician'],
+  ['ka', 'Georgian'],
+  ['de', 'German'],
+  ['el', 'Greek'],
+  ['gu', 'Gujarati'],
+  ['ht', 'Haitian Creole'],
+  ['ha', 'Hausa'],
+  ['he', 'Hebrew'],
+  ['hi', 'Hindi'],
+  ['hu', 'Hungarian'],
+  ['is', 'Icelandic'],
+  ['ig', 'Igbo'],
+  ['id', 'Indonesian'],
+  ['ga', 'Irish'],
+  ['it', 'Italian'],
+  ['ja', 'Japanese'],
+  ['kn', 'Kannada'],
+  ['kk', 'Kazakh'],
+  ['km', 'Khmer'],
+  ['rw', 'Kinyarwanda'],
+  ['gom', 'Konkani'],
+  ['ko', 'Korean'],
+  ['ku', 'Kurdish (Kurmanji)'],
+  ['ckb', 'Kurdish (Sorani)'],
+  ['ky', 'Kyrgyz'],
+  ['lo', 'Lao'],
+  ['lv', 'Latvian'],
+  ['lt', 'Lithuanian'],
+  ['ln', 'Lingala'],
+  ['lg', 'Luganda'],
+  ['mk', 'Macedonian'],
+  ['mai', 'Maithili'],
+  ['mg', 'Malagasy'],
+  ['ms', 'Malay'],
+  ['ml', 'Malayalam'],
+  ['mt', 'Maltese'],
+  ['mi', 'Maori'],
+  ['mr', 'Marathi'],
+  ['mn', 'Mongolian'],
+  ['my', 'Myanmar (Burmese)'],
+  ['ne', 'Nepali'],
+  ['nso', 'Northern Sotho'],
+  ['nb', 'Norwegian'],
+  ['or', 'Odia'],
+  ['ps', 'Pashto'],
+  ['fa', 'Persian'],
+  ['pl', 'Polish'],
+  ['pt', 'Portuguese'],
+  ['pt-BR', 'Portuguese (Brazil)'],
+  ['pt-PT', 'Portuguese (Portugal)'],
+  ['pa', 'Punjabi'],
+  ['ro', 'Romanian'],
+  ['rn', 'Rundi'],
+  ['ru', 'Russian'],
+  ['sm', 'Samoan'],
+  ['sr', 'Serbian'],
+  ['st', 'Sesotho'],
+  ['sn', 'Shona'],
+  ['sd', 'Sindhi'],
+  ['si', 'Sinhala'],
+  ['sk', 'Slovak'],
+  ['sl', 'Slovenian'],
+  ['so', 'Somali'],
+  ['es', 'Spanish'],
+  ['sw', 'Swahili'],
+  ['sv', 'Swedish'],
+  ['ta', 'Tamil'],
+  ['tt', 'Tatar'],
+  ['te', 'Telugu'],
+  ['th', 'Thai'],
+  ['ti', 'Tigrinya'],
+  ['tn', 'Tswana'],
+  ['tr', 'Turkish'],
+  ['tk', 'Turkmen'],
+  ['uk', 'Ukrainian'],
+  ['ur', 'Urdu'],
+  ['ug', 'Uyghur'],
+  ['uz', 'Uzbek'],
+  ['vi', 'Vietnamese'],
+  ['cy', 'Welsh'],
+  ['xh', 'Xhosa'],
+  ['yo', 'Yoruba'],
+  ['zu', 'Zulu'],
 ];
 const DEFAULTS = {
   sourceLang: 'ja', targetLang: 'en', translationBackend: 'google',
@@ -16,9 +136,9 @@ const DEFAULTS = {
   siteWhitelist: [], autoTranslateOnLoad: true,
 };
 
-function fillLangs(sel, val) {
-  sel.innerHTML = LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
-  sel.value = val;
+function fillLangs(sel, list, val) {
+  sel.innerHTML = list.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
+  sel.value = list.some(([c]) => c === val) ? val : list[0][0];
 }
 
 let whitelist = [];
@@ -113,8 +233,8 @@ async function load() {
   const { settings } = await chrome.storage.local.get('settings');
   const s = { ...DEFAULTS, ...(settings || {}) };
   lastSettings = s;
-  fillLangs($('sourceLang'), s.sourceLang);
-  fillLangs($('targetLang'), s.targetLang);
+  fillLangs($('sourceLang'), LANGS, s.sourceLang);
+  fillLangs($('targetLang'), TARGET_LANGS, s.targetLang);
   $('backend').value = s.translationBackend;
   $('azureKey').value = s.azureKey;
   $('azureRegion').value = s.azureRegion;

@@ -1,11 +1,11 @@
 // Translation backends. translateBlocks(blocks, settings) -> aligned [string].
 // Empty source texts map to empty translations. Throws with a human message.
-import { LANGS } from '../shared/settings.js';
+import { LANGS, TARGET_LANGS } from '../shared/settings.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function langName(code) {
-  const hit = LANGS.find(([c]) => c === code);
+  const hit = LANGS.find(([c]) => c === code) || TARGET_LANGS.find(([c]) => c === code);
   return hit ? hit[1] : code;
 }
 
@@ -47,7 +47,16 @@ async function googleFree(texts, src, dst) {
 }
 
 function azureLang(code) {
-  const m = { 'zh-CN': 'zh-Hans', 'zh-TW': 'zh-Hant', pt: 'pt-pt', 'pt-br': 'pt' };
+  // Same language, different code per backend (Google-style -> Azure).
+  // ku is a semantic trap: Google's ku is Kurmanji, Azure's ku is Central
+  // Kurdish (Sorani) — the mapping is mandatory, not cosmetic.
+  const m = {
+    'zh-CN': 'zh-Hans', 'zh-TW': 'zh-Hant',
+    pt: 'pt-pt', 'pt-BR': 'pt', 'pt-PT': 'pt-pt', 'fr-CA': 'fr-ca',
+    sr: 'sr-Cyrl', mn: 'mn-Cyrl',
+    ny: 'nya', lg: 'lug', rn: 'run',
+    ku: 'kmr', ckb: 'ku',
+  };
   return m[code] || code;
 }
 

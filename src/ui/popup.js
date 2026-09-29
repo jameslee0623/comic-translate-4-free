@@ -1,5 +1,5 @@
 // Popup: trigger runs, show progress, backend + language quick-switch, whitelist.
-const BUILD = '20260928m-uilang'; // bump on every shipped build; shown in the footer
+const BUILD = '20260928n'; // bump on every shipped build; shown in the footer
 const $ = id => document.getElementById(id);
 // Stage labels come from i18n (stage_* keys), English fallback if missing.
 const STAGE_LABEL = {
@@ -18,6 +18,126 @@ const LANGS = [
   ['zh-TW', '繁體中文'],
 ];
 
+// Every language both Google Translate and Azure Translator support
+// (intersection verified 2026-09-28). English names; Google-style codes.
+const TARGET_LANGS = [
+
+  ['en', 'English'],
+  ['af', 'Afrikaans'],
+  ['sq', 'Albanian'],
+  ['am', 'Amharic'],
+  ['ar', 'Arabic'],
+  ['hy', 'Armenian'],
+  ['as', 'Assamese'],
+  ['az', 'Azerbaijani'],
+  ['ba', 'Bashkir'],
+  ['eu', 'Basque'],
+  ['bn', 'Bengali'],
+  ['bho', 'Bhojpuri'],
+  ['bs', 'Bosnian'],
+  ['bg', 'Bulgarian'],
+  ['yue', 'Cantonese'],
+  ['ca', 'Catalan'],
+  ['ny', 'Chichewa'],
+  ['zh-CN', 'Chinese (Simplified)'],
+  ['zh-TW', 'Chinese (Traditional)'],
+  ['hr', 'Croatian'],
+  ['cs', 'Czech'],
+  ['da', 'Danish'],
+  ['dv', 'Divehi'],
+  ['doi', 'Dogri'],
+  ['nl', 'Dutch'],
+  ['et', 'Estonian'],
+  ['fj', 'Fijian'],
+  ['fil', 'Filipino'],
+  ['fi', 'Finnish'],
+  ['fr', 'French'],
+  ['fr-CA', 'French (Canada)'],
+  ['gl', 'Galician'],
+  ['ka', 'Georgian'],
+  ['de', 'German'],
+  ['el', 'Greek'],
+  ['gu', 'Gujarati'],
+  ['ht', 'Haitian Creole'],
+  ['ha', 'Hausa'],
+  ['he', 'Hebrew'],
+  ['hi', 'Hindi'],
+  ['hu', 'Hungarian'],
+  ['is', 'Icelandic'],
+  ['ig', 'Igbo'],
+  ['id', 'Indonesian'],
+  ['ga', 'Irish'],
+  ['it', 'Italian'],
+  ['ja', 'Japanese'],
+  ['kn', 'Kannada'],
+  ['kk', 'Kazakh'],
+  ['km', 'Khmer'],
+  ['rw', 'Kinyarwanda'],
+  ['gom', 'Konkani'],
+  ['ko', 'Korean'],
+  ['ku', 'Kurdish (Kurmanji)'],
+  ['ckb', 'Kurdish (Sorani)'],
+  ['ky', 'Kyrgyz'],
+  ['lo', 'Lao'],
+  ['lv', 'Latvian'],
+  ['lt', 'Lithuanian'],
+  ['ln', 'Lingala'],
+  ['lg', 'Luganda'],
+  ['mk', 'Macedonian'],
+  ['mai', 'Maithili'],
+  ['mg', 'Malagasy'],
+  ['ms', 'Malay'],
+  ['ml', 'Malayalam'],
+  ['mt', 'Maltese'],
+  ['mi', 'Maori'],
+  ['mr', 'Marathi'],
+  ['mn', 'Mongolian'],
+  ['my', 'Myanmar (Burmese)'],
+  ['ne', 'Nepali'],
+  ['nso', 'Northern Sotho'],
+  ['nb', 'Norwegian'],
+  ['or', 'Odia'],
+  ['ps', 'Pashto'],
+  ['fa', 'Persian'],
+  ['pl', 'Polish'],
+  ['pt', 'Portuguese'],
+  ['pt-BR', 'Portuguese (Brazil)'],
+  ['pt-PT', 'Portuguese (Portugal)'],
+  ['pa', 'Punjabi'],
+  ['ro', 'Romanian'],
+  ['rn', 'Rundi'],
+  ['ru', 'Russian'],
+  ['sm', 'Samoan'],
+  ['sr', 'Serbian'],
+  ['st', 'Sesotho'],
+  ['sn', 'Shona'],
+  ['sd', 'Sindhi'],
+  ['si', 'Sinhala'],
+  ['sk', 'Slovak'],
+  ['sl', 'Slovenian'],
+  ['so', 'Somali'],
+  ['es', 'Spanish'],
+  ['sw', 'Swahili'],
+  ['sv', 'Swedish'],
+  ['ta', 'Tamil'],
+  ['tt', 'Tatar'],
+  ['te', 'Telugu'],
+  ['th', 'Thai'],
+  ['ti', 'Tigrinya'],
+  ['tn', 'Tswana'],
+  ['tr', 'Turkish'],
+  ['tk', 'Turkmen'],
+  ['uk', 'Ukrainian'],
+  ['ur', 'Urdu'],
+  ['ug', 'Uyghur'],
+  ['uz', 'Uzbek'],
+  ['vi', 'Vietnamese'],
+  ['cy', 'Welsh'],
+  ['xh', 'Xhosa'],
+  ['yo', 'Yoruba'],
+  ['zu', 'Zulu'],
+];
+
 let currentHost = null;
 
 function setStatus(s) {
@@ -29,9 +149,8 @@ function setProgress(p) {
 }
 
 function fillLangs() {
-  for (const id of ['sourceLang', 'targetLang']) {
-    $(id).innerHTML = LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
-  }
+  $('sourceLang').innerHTML = LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
+  $('targetLang').innerHTML = TARGET_LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
 }
 
 async function saveLang(key, value) {
@@ -55,7 +174,8 @@ async function refresh() {
   if (settings) {
     if (settings.translationBackend) $('backend').value = settings.translationBackend;
     if (settings.sourceLang) $('sourceLang').value = settings.sourceLang;
-    if (settings.targetLang) $('targetLang').value = settings.targetLang;
+    if (settings.targetLang && TARGET_LANGS.some(([c]) => c === settings.targetLang)) $('targetLang').value = settings.targetLang;
+    else $('targetLang').value = 'en';
   }
   await refreshSite(settings || {});
 }
