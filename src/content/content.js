@@ -347,6 +347,10 @@
     const p = stageTabs[stage];
     if (!p) { debugBody.innerHTML = `<p style="color:#888">no data for "${esc(stage)}" yet</p>`; return; }
     let html = `<h3 style="margin:0 0 8px">${esc(p.title || stage)}</h3>`;
+    if (p.totalMs != null) {
+      html += `<p style="color:#eee;font-size:14px;margin:0 0 4px">total: <b>${p.totalMs}ms</b></p>`;
+      if (p.breakdown) html += `<p style="color:#888;margin:0 0 8px">${esc(p.breakdown)}</p>`;
+    }
     if (p.ms != null) html += `<p style="color:#888">${p.ms} ms</p>`;
     if (p.error) html += `<p style="color:#f66">${esc(p.error)}</p>`;
     if (p.image) html += `<img src="${p.image}" style="max-width:100%;border:1px solid #444">`;
@@ -465,11 +469,6 @@
               renderInfo.push({ text: b.text, size: info.render_font_size, auto: info.auto_font_size, vertical: info.vertical });
             }
           }
-          stageTabs['render'] = {
-            title: 'Render',
-            ms: Math.round(performance.now() - renderT0),
-            rows: renderInfo.map(r => ({ text: r.text, translation: `${r.size}px (auto ${r.auto}px)${r.vertical ? ' vertical' : ''}` })),
-          };
           let replaced = false;
           if (mode === 'replace') {
             // In-place: swap the page's original <img> for the translated one.
@@ -488,10 +487,13 @@
           const totalMs = allTimings.total != null
             ? allTimings.total
             : Object.entries(allTimings).filter(([k]) => k !== 'total').reduce((a, [, v]) => a + (v || 0), 0);
-          const ms = '<p style="color:#eee;font-size:14px">total: <b>' + totalMs + 'ms</b></p>' +
-            '<p style="color:#888">' +
-            Object.entries(allTimings).filter(([k]) => k !== 'total').map(([k, v]) => `${k} ${v}ms`).join(' · ') + '</p>';
-          if (debugBody) debugBody.insertAdjacentHTML('afterbegin', ms);
+          stageTabs['render'] = {
+            title: 'Render',
+            ms: allTimings.render,
+            rows: renderInfo.map(r => ({ text: r.text, translation: `${r.size}px (auto ${r.auto}px)${r.vertical ? ' vertical' : ''}` })),
+            totalMs,
+            breakdown: Object.entries(allTimings).filter(([k]) => k !== 'total').map(([k, v]) => `${k} ${v}ms`).join(' · '),
+          };
           if (debug) {
             ensureOverlay();
             overlay.style.display = 'flex';

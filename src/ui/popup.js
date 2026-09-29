@@ -1,5 +1,5 @@
 // Popup: trigger runs, show progress, backend + language quick-switch, whitelist.
-const BUILD = '20260929g'; // bump on every shipped build; shown in the footer
+const BUILD = '20260929h'; // bump on every shipped build; shown in the footer
 const $ = id => document.getElementById(id);
 // Stage labels come from i18n (stage_* keys), English fallback if missing.
 const STAGE_LABEL = {
