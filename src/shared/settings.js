@@ -23,8 +23,7 @@ export const DEFAULT_SETTINGS = {
 
 export const LANGS = [
   ['ja', 'Japanese'], ['en', 'English'], ['ko', 'Korean'], ['zh-CN', 'Chinese (Simplified)'],
-  ['zh-TW', 'Chinese (Traditional)'], ['fr', 'French'], ['de', 'German'], ['es', 'Spanish'],
-  ['it', 'Italian'], ['ru', 'Russian'], ['pt', 'Portuguese'], ['nl', 'Dutch'],
+  ['zh-TW', 'Chinese (Traditional)'],
 ];
 
 export async function getSettings() {
@@ -36,6 +35,22 @@ export async function getSettings() {
   if (stored.settings && stored.settings.minImageSize === 600) {
     s.minImageSize = 500;
     chrome.storage.local.set({ settings: s }).catch(() => {});
+  }
+  // One-time migration (2026-09-28): Latin/Russian source languages were
+  // removed. A stored sourceLang that's no longer offered falls back to
+  // Japanese (the default); the orphaned OCR models are deleted.
+  const offered = new Set(LANGS.map(([code]) => code));
+  if (s.sourceLang && !offered.has(s.sourceLang)) {
+    s.sourceLang = DEFAULT_SETTINGS.sourceLang;
+    chrome.storage.local.set({ settings: s }).catch(() => {});
+  }
+  if (!s._prunedLatinRuModels) {
+    s._prunedLatinRuModels = true;
+    chrome.storage.local.set({ settings: s }).catch(() => {});
+    try {
+      const { pruneRemovedModels } = await import('./model-specs.js');
+      await pruneRemovedModels();
+    } catch { /* best effort */ }
   }
   return s;
 }

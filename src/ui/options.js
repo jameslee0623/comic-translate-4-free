@@ -3,8 +3,7 @@ const BUILD = '20260928l'; // keep in sync with popup.js; shown in the footer
 const $ = id => document.getElementById(id);
 const LANGS = [
   ['ja', 'Japanese'], ['en', 'English'], ['ko', 'Korean'], ['zh-CN', 'Chinese (Simplified)'],
-  ['zh-TW', 'Chinese (Traditional)'], ['fr', 'French'], ['de', 'German'],
-  ['es', 'Spanish'], ['it', 'Italian'], ['ru', 'Russian'], ['pt', 'Portuguese'], ['nl', 'Dutch'],
+  ['zh-TW', 'Chinese (Traditional)'],
 ];
 const DEFAULTS = {
   sourceLang: 'ja', targetLang: 'en', translationBackend: 'google',

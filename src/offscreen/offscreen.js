@@ -23,8 +23,6 @@ const pororo = new PororoOCR();
 // created lazily and loaded on first use for that language.
 const ppocr = {
   'ocr-ppocr-en': new PPOCRV5(),
-  'ocr-ppocr-latin': new PPOCRV5(),
-  'ocr-ppocr-eslav': new PPOCRV5(),
   'ocr-ppocr-chinese': new PPOCRV5(),
 };
 const inpainter = new Inpainter();
@@ -71,8 +69,6 @@ const MODEL_FILES = {
   ocr: ['ocr-encoder', 'ocr-decoder-init', 'ocr-decoder-step'],
   'ocr-pororo': ['ocr-pororo'],
   'ocr-ppocr-en': ['ocr-ppocr-en'],
-  'ocr-ppocr-latin': ['ocr-ppocr-latin'],
-  'ocr-ppocr-eslav': ['ocr-ppocr-eslav'],
   'ocr-ppocr-chinese': ['ocr-ppocr-chinese'],
   inpaint: ['inpaint'],
 };

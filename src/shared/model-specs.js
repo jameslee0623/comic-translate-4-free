@@ -45,20 +45,6 @@ export const MODEL_GROUPS = [
     ],
   },
   {
-    id: 'ocr-ppocr-latin', label: 'PP-OCRv5 OCR (French/German/Spanish/Italian/Portuguese/Dutch)',
-    files: [
-      { id: 'ocr-ppocr-latin', file: 'rec.onnx', bytes: 7862832,
-        url: hf('monkt/paddleocr-onnx', 'languages/latin/rec.onnx') },
-    ],
-  },
-  {
-    id: 'ocr-ppocr-eslav', label: 'PP-OCRv5 OCR (Russian)',
-    files: [
-      { id: 'ocr-ppocr-eslav', file: 'rec.onnx', bytes: 7870092,
-        url: hf('monkt/paddleocr-onnx', 'languages/eslav/rec.onnx') },
-    ],
-  },
-  {
     id: 'ocr-ppocr-chinese', label: 'PP-OCRv5 OCR (Chinese Simplified/Traditional)',
     files: [
       { id: 'ocr-ppocr-chinese', file: 'rec.onnx', bytes: 84468836,
@@ -70,17 +56,15 @@ export const MODEL_GROUPS = [
 // OCR engine routing by source language (LANGS in shared/settings.js):
 //   ja          -> manga-ocr ('ocr' group; manga-specialized, kept for Japanese)
 //   ko          -> Pororo brainocr ('ocr-pororo' group)
-//   zh-CN/zh-TW -> PP-OCRv5 chinese ('ocr-ppocr-chinese' group)
-//   ru          -> PP-OCRv5 eslav ('ocr-ppocr-eslav' group)
 //   en          -> PP-OCRv5 english ('ocr-ppocr-en' group)
-//   everything else (fr/de/es/it/pt/nl) -> PP-OCRv5 latin ('ocr-ppocr-latin' group)
+//   zh-CN/zh-TW -> PP-OCRv5 chinese ('ocr-ppocr-chinese' group)
+// (Latin/Russian models removed 2026-09-28: not needed.)
 export function ocrEngineForLang(lang) {
   if (lang === 'ko') return 'ocr-pororo';
   if (lang === 'ja') return 'ocr';
   if (lang === 'en') return 'ocr-ppocr-en';
   if (lang === 'zh-CN' || lang === 'zh-TW') return 'ocr-ppocr-chinese';
-  if (lang === 'ru') return 'ocr-ppocr-eslav';
-  return 'ocr-ppocr-latin';
+  return 'ocr-ppocr-en'; // fallback: only ja/en/ko/zh are offered as source languages
 }
 
 // PP-OCRv5 character dictionaries, bundled (one char per line, UTF-8).
@@ -89,8 +73,6 @@ export function ocrEngineForLang(lang) {
 // official PaddlePaddle PP-OCRv5 character_dict for English on 2026-09-28).
 export const PPOCR_DICT_ASSET = {
   'ocr-ppocr-en': 'src/offscreen/ml/dicts/ppocr-english.txt',
-  'ocr-ppocr-latin': 'src/offscreen/ml/dicts/ppocr-latin.txt',
-  'ocr-ppocr-eslav': 'src/offscreen/ml/dicts/ppocr-eslav.txt',
   'ocr-ppocr-chinese': 'src/offscreen/ml/dicts/ppocr-chinese.txt',
 };
 
@@ -132,6 +114,22 @@ export async function deleteModelGroup(groupId) {
     const rec = await idbGet(db, f.id).catch(() => null);
     if (rec && rec.chunks) await deleteChunks(db, f.id, rec.chunks);
     await idbDel(db, f.id);
+  }
+}
+
+// One-time cleanup for model files whose groups were removed from
+// MODEL_GROUPS (Latin/Russian PP-OCRv5, 2026-09-28): with no group row left in
+// the UI there'd be no way to delete them otherwise.
+const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav'];
+export async function pruneRemovedModels() {
+  const db = await openDb();
+  for (const id of PRUNED_MODEL_IDS) {
+    try {
+      const rec = await idbGet(db, id).catch(() => null);
+      if (!rec) continue;
+      if (rec.chunks) await deleteChunks(db, id, rec.chunks);
+      await idbDel(db, id);
+    } catch { /* best effort */ }
   }
 }
 

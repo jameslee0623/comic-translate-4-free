@@ -9,8 +9,7 @@ const STAGE_LABEL = {
 };
 const LANGS = [
   ['ja', 'Japanese'], ['en', 'English'], ['ko', 'Korean'], ['zh-CN', 'Chinese (S)'],
-  ['zh-TW', 'Chinese (T)'], ['fr', 'French'], ['de', 'German'],
-  ['es', 'Spanish'], ['it', 'Italian'], ['ru', 'Russian'], ['pt', 'Portuguese'], ['nl', 'Dutch'],
+  ['zh-TW', 'Chinese (T)'],
 ];
 
 let currentHost = null;
