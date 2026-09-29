@@ -1,5 +1,5 @@
 // Popup: trigger runs, show progress, backend + language quick-switch, whitelist.
-const BUILD = '20260929u'; // bump on every shipped build; shown in the footer
+const BUILD = '20260929v'; // bump on every shipped build; shown in the footer
 const $ = id => document.getElementById(id);
 // Stage labels come from i18n (stage_* keys), English fallback if missing.
 const STAGE_LABEL = {
@@ -14,7 +14,7 @@ for (const k of Object.keys(STAGE_LABEL)) {
 }
 // Language names in their native form — readable in any UI language.
 const LANGS = [
-  ['ja', '日本語'], ['en', 'English'], ['ko', '한국어'], ['zh-CN', '简体中文'],
+  ['ja', '日本語'], ['en', 'English'], ['zh-CN', '简体中文'],
   ['zh-TW', '繁體中文'],
 ];
 

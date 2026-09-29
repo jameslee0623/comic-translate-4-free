@@ -162,9 +162,6 @@
   "model_inpaint": {
     "message": "LaMa 影像修補（漫畫專用）"
   },
-  "model_ko": {
-    "message": "PP-OCRv5 OCR（韓文，2025 官方模型）"
-  },
   "models": {
     "message": "模型"
   },

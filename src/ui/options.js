@@ -1,8 +1,8 @@
 // Options page: read/write settings + model management + connection checks.
-const BUILD = '20260929u'; // keep in sync with popup.js; shown in the footer
+const BUILD = '20260929v'; // keep in sync with popup.js; shown in the footer
 const $ = id => document.getElementById(id);
 const LANGS = [
-  ['ja', '日本語'], ['en', 'English'], ['ko', '한국어'], ['zh-CN', '简体中文'],
+  ['ja', '日本語'], ['en', 'English'], ['zh-CN', '简体中文'],
   ['zh-TW', '繁體中文'],
 ];
 

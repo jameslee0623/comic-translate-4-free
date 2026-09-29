@@ -162,9 +162,6 @@
   "model_inpaint": {
     "message": "LaMa 인페인터(만화용)"
   },
-  "model_ko": {
-    "message": "PP-OCRv5 OCR(한국어, 2025 공식 모델)"
-  },
   "models": {
     "message": "모델"
   },

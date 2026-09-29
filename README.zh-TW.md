@@ -3,8 +3,7 @@
 **語言：** [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
 在瀏覽器內翻譯漫畫頁面。完整處理流程在本機執行：
-對話框/文字偵測（RT-DETR-v2）、OCR（日文/英文/簡體中文用 Baberu、韓文用 PP-OCRv5、
-中文用 Baberu）、透過 LaMa 影像修補清除原文、翻譯
+對話框/文字偵測（RT-DETR-v2）、OCR（日文/英文/中文用 Baberu）、透過 LaMa 影像修補清除原文、翻譯
 （Google / Azure / 本機 LLM），以及將譯文換行重繪回原對話框。
 
 擴充功能 UI 會跟隨瀏覽器的語言設定（英文、日文、韓文、中文簡體/繁體）。
@@ -139,7 +138,6 @@ background — 編排、擷取、文字區塊、遮罩、翻譯 API、
 - `ogkalu/comic-text-and-bubble-detector` → `detector-v4-s_int8.onnx`
 - `genshiai-daichi/baberu-ocr` → `vision_int4.onnx`、`decoder_prefill_int8.onnx`、
   `decoder_step_int8.onnx`（日文、英文、簡體中文）
-- `PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx` → `inference.onnx`（韓文）
 - `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
 
 處理階段：capture → detect → blocks → OCR → mask → inpaint →
@@ -158,7 +156,7 @@ translate 順序；單一執行緒的背景頁面無法在不卡死的情況下�
 - 本機 LLM 後端為實驗性（需要 WebGPU + 數 GB 下載）。
 - Google 後端使用非官方 `translate.googleapis.com` 端點，
   可能被限速；Azure 需要您自己的金鑰。
-- OCR 引擎：Baberu（日文/英文/中文）、PP-OCRv5（韓文）。
+- OCR 引擎：Baberu（日文/英文/中文）。
 - Baberu 會將長文字截斷在約 64 個字元（ONNX 匯出的模型結構限制，不可調；
   除錯截圖中可見全文，但解碼器無法輸出更多）。
 - 直書文字針對高 CJK 文字區塊渲染；對話框外的狀聲詞等

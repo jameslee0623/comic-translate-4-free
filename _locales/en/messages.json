@@ -162,9 +162,6 @@
   "model_inpaint": {
     "message": "LaMa inpainter (manga)"
   },
-  "model_ko": {
-    "message": "PP-OCRv5 OCR (Korean, official 2025 model)"
-  },
   "models": {
     "message": "Models"
   },

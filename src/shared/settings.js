@@ -22,7 +22,7 @@ export const DEFAULT_SETTINGS = {
 };
 
 export const LANGS = [
-  ['ja', 'Japanese'], ['en', 'English'], ['ko', 'Korean'], ['zh-CN', 'Chinese (Simplified)'],
+  ['ja', 'Japanese'], ['en', 'English'], ['zh-CN', 'Chinese (Simplified)'],
   ['zh-TW', 'Chinese (Traditional)'],
 ];
 

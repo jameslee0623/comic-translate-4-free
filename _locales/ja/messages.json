@@ -162,9 +162,6 @@
   "model_inpaint": {
     "message": "LaMaインペインター（マンガ用）"
   },
-  "model_ko": {
-    "message": "PP-OCRv5 OCR（韓国語、2025年公式モデル）"
-  },
   "models": {
     "message": "モデル"
   },

@@ -3,8 +3,7 @@
 **语言：** [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
 在浏览器内翻译漫画页面。完整流水线在本地运行：
-气泡/文字检测（RT-DETR-v2）、OCR（日语/英语/简体中文用 Baberu、韩语用 PP-OCRv5、
-中文用 Baberu）、通过 LaMa 图像修复擦除原文、翻译
+气泡/文字检测（RT-DETR-v2）、OCR（日语/英语/中文用 Baberu）、通过 LaMa 图像修复擦除原文、翻译
 （Google / Azure / 本地 LLM），以及将译文换行重绘回原气泡。
 
 扩展 UI 跟随浏览器的语言设置（英语、日语、韩语、中文简体/繁体）。
@@ -139,7 +138,6 @@ background — 编排、捕获、文本块、遮罩、翻译 API、
 - `ogkalu/comic-text-and-bubble-detector` → `detector-v4-s_int8.onnx`
 - `genshiai-daichi/baberu-ocr` → `vision_int4.onnx`、`decoder_prefill_int8.onnx`、
   `decoder_step_int8.onnx`（日语、英语、简体/繁体中文）
-- `PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx` → `inference.onnx`（韩语）
 - `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
 
 流水线阶段：capture → detect → blocks → OCR → mask → inpaint →
@@ -158,7 +156,7 @@ translate 顺序；单线程的后台页面无法在不卡死的情况下运行�
 - 本地 LLM 后端为实验性（需要 WebGPU + 数 GB 下载）。
 - Google 后端使用非官方 `translate.googleapis.com` 端点，
   可能被限流；Azure 需要您自己的密钥。
-- OCR 引擎：Baberu（日语/英语/中文）、PP-OCRv5（韩语）。
+- OCR 引擎：Baberu（日语/英语/中文）。
 - Baberu 会将长文本截断在约 64 个字符（ONNX 导出的模型结构限制，不可调；
   调试截图中可见全文，但解码器无法输出更多）。
 - 竖排文字针对高 CJK 文本块渲染；气泡外的拟声词等

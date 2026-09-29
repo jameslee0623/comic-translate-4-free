@@ -63,18 +63,6 @@ Ported files in this repository:
 Changes vs. upstream: rewritten from Python/NumPy to JavaScript, adapted to
 ONNX Runtime Web tensors.
 
-### PaddlePaddle/PaddleOCR — Apache License 2.0
-https://github.com/PaddlePaddle/PaddleOCR — © the PaddlePaddle authors.
-
-Ported files in this repository:
-- `src/offscreen/ml/ppocr.js` — text-recognition preprocessing and decoding,
-  a faithful port of PaddleOCR's `RecResizeImg` + `NormalizeImage` +
-  `CTCLabelDecode` (verified against PaddlePaddle's official PP-OCRv5
-  inference config on 2026-09-28)
-
-Changes vs. upstream: rewritten from Python to JavaScript, adapted to
-ONNX Runtime Web tensors.
-
 ### jameslee0623/ComicTranslate — author's own project
 - `src/background/translators.js` — LM Studio reply parsing ported from
   `lensLocalEngine.js` in the author's own public repository
@@ -92,11 +80,7 @@ files, a few KB to ~130 KB). Their licenses belong to their publishers:
 |---|---|---|
 | Bubble/text detector (`detector-v4-s_int8.onnx`) | `ogkalu/comic-text-and-bubble-detector` — RT-DETR-v2 r50vd fine-tuned on ~11k manga/webtoon/manhua/western-comic images | **Apache-2.0** (license tag on the model card) |
 | Manga inpainter (`lama-manga-dynamic.onnx`) | `ogkalu/lama-manga-onnx-dynamic` — ONNX export of dreMaz/AnimeMangaInpainting | **Apache-2.0** (license tag on the model card); upstream dreMaz/AnimeMangaInpainting card is **MIT**-tagged (lineage: advimman/lama, Apache-2.0) |
-| Baberu OCR (`vision_int4.onnx`, `decoder_prefill_int8.onnx`, `decoder_step_int8.onnx`) — Japanese, English, Simplified Chinese | `genshiai-daichi/baberu-ocr` — manga-bubble-trained character OCR | **Apache-2.0** (license tag on the model card; LICENSE file in the repo) |
-| Korean OCR (`inference.onnx`) | `PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx` — official 2025 PP-OCRv5 Korean recognizer | **Apache-2.0** (license tag on the model card; upstream PaddlePaddle/PaddleOCR is Apache-2.0) |
-| Traditional Chinese OCR (`inference.onnx`) | `PaddlePaddle/PP-OCRv6_small_rec_onnx` — official PP-OCRv6 recognizer | **Apache-2.0** (license tag on the model card; upstream PaddlePaddle/PaddleOCR is Apache-2.0) |
-| Korean character dict (`src/offscreen/ml/dicts/ppocr-korean.txt`, bundled) | Character list from the official PaddlePaddle PP-OCRv5 Korean inference config | **Apache-2.0** (upstream PaddlePaddle/PaddleOCR) |
-| Traditional Chinese character dict (`src/offscreen/ml/dicts/ppocrv6.txt`, bundled) | Character list from the official PaddlePaddle PP-OCRv6 inference config | **Apache-2.0** (upstream PaddlePaddle/PaddleOCR) |
+| Baberu OCR (`vision_int4.onnx`, `decoder_prefill_int8.onnx`, `decoder_step_int8.onnx`) — Japanese, English, Simplified/Traditional Chinese | `genshiai-daichi/baberu-ocr` — manga-bubble-trained character OCR | **Apache-2.0** (license tag on the model card; LICENSE file in the repo) |
 | Baberu character vocab (`src/offscreen/ml/dicts/baberu-vocab.json`, bundled) | `tokenizer/vocab.json` from `genshiai-daichi/baberu-ocr` | **Apache-2.0** |
 
 ## 4. Not used
@@ -136,7 +120,7 @@ SOFTWARE.
 
 ---
 
-## 6. Apache License 2.0 (web-llm, comic-translate, baberu-ocr, PaddleOCR, RT-DETRv2, LaMa)
+## 6. Apache License 2.0 (web-llm, comic-translate, baberu-ocr, RT-DETRv2, LaMa)
 
                                  Apache License
                            Version 2.0, January 2004

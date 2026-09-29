@@ -1,13 +1,12 @@
 // Offscreen ML host: owns ALL onnxruntime-web sessions (detector,
-// Baberu OCR, PP-OCR Korean/v6 OCR, LaMa inpainter). The service worker orchestrates; this document only runs
+// Baberu OCR, LaMa inpainter). The service worker orchestrates; this document only runs
 // inference. Models are read from the shared IndexedDB ('ct-db'/'models').
 // Verified: ort 1.30 threaded WASM runs here with numThreads=1 and no COOP/COEP
 // (chrome-extension: pages get SharedArrayBuffer without crossOriginIsolated).
 import { MSG, openDb, idbGet } from '../shared/contracts.js';
-import { ALL_FILES, downloadFileToIdb, readChunked, ocrEngineForLang, PPOCR_DICT_ASSET, BABERU_VOCAB_ASSET } from '../shared/model-specs.js';
+import { ALL_FILES, downloadFileToIdb, readChunked, ocrEngineForLang, BABERU_VOCAB_ASSET } from '../shared/model-specs.js';
 import { Detector } from './ml/detector.js';
 import { BaberuOCR } from './ml/baberu.js';
-import { PPOCRV5 } from './ml/ppocr.js';
 import { meanBrightness } from './ml/image-ops.js';
 import { Inpainter } from './ml/inpaint.js';
 import { pixelPut, pixelTake } from '../shared/pixel-bus.js';
@@ -17,21 +16,13 @@ ort.env.wasm.numThreads = 1;
 
 const detector = new Detector();
 const baberu = new BaberuOCR();
-// One PP-OCR session per language group (model + dict differ per group);
-// created lazily and loaded on first use for that language.
-const ppocr = {
-  'ocr-ppocr-ko': new PPOCRV5(),
-};
 const inpainter = new Inpainter();
 
 // Drop loaded ORT sessions so the next inference re-reads model files from
-// IndexedDB. group: 'detector' | 'ocr-baberu' | 'ocr-ppocr-*' |
-// 'inpaint' | '*'.
+// IndexedDB. group: 'detector' | 'ocr-baberu' | 'inpaint' | '*'.
 function resetGroup(group) {
   if (group === 'detector' || group === '*') detector.reset();
   if (group === 'ocr-baberu' || group === '*') baberu.reset();
-  if (ppocr[group]) ppocr[group].reset();
-  if (group === '*') for (const k of Object.keys(ppocr)) ppocr[k].reset();
   if (group === 'inpaint' || group === '*') inpainter.reset();
 }
 
@@ -77,9 +68,6 @@ async function ensureModel(kind) {
         await baberu.loadStep(await modelBuffer('ocr-baberu-step'));
       } catch (e) { baberu.reset(); throw e; }
       baberu.setVocab(vocabJson);
-    } else if (ppocr[kind] && !ppocr[kind].loaded) {
-      const dictText = await assetText(PPOCR_DICT_ASSET[kind]);
-      await ppocr[kind].load(await modelBuffer(kind), dictText);
     } else if (kind === 'inpaint' && !inpainter.loaded) {
       await inpainter.load(await modelBuffer('inpaint'));
     }
@@ -99,9 +87,7 @@ function throwIfCancelled(runId) {
 
 const handlers = {
   [MSG.ML_PING]() {
-    const ppocrLoaded = {};
-    for (const k of Object.keys(ppocr)) ppocrLoaded[k] = ppocr[k].loaded;
-    return { ok: true, loaded: { detector: detector.loaded, baberu: baberu.loaded, ...ppocrLoaded, inpaint: inpainter.loaded } };
+    return { ok: true, loaded: { detector: detector.loaded, baberu: baberu.loaded, inpaint: inpainter.loaded } };
   },
 
   async [MSG.ML_ENSURE]({ model }) {
@@ -178,11 +164,10 @@ const handlers = {
 
   async [MSG.ML_OCR]({ crops, runId, sourceLang }) {
     throwIfCancelled(runId);
-    // OCR engine follows the source language: Baberu for Japanese +
-    // English + Simplified/Traditional Chinese, PP-OCRv5 Korean for Korean.
+    // OCR engine follows the source language — all languages use Baberu.
     const engine = ocrEngineForLang(sourceLang || 'ja');
     await ensureModel(engine);
-    const inst = engine === 'ocr-baberu' ? baberu : ppocr[engine];
+    const inst = baberu;
     throwIfCancelled(runId);
     const t0 = performance.now();
     const results = [];

@@ -3,7 +3,7 @@
 **言語:** [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
 マンガ・コミックのページをブラウザ内で翻訳します。全パイプラインがローカルで動作します：
-吹き出し・テキスト検出（RT-DETR-v2）、OCR（日本語・英語・中国語はBaberu、韓国語はPP-OCRv5）、
+吹き出し・テキスト検出（RT-DETR-v2）、OCR（日本語・英語・中国語はBaberu）、
 LaMaインペインティングによる文字消去、翻訳（Google / Azure / ローカルLLM）、
 そして元の吹き出しへの折り返し再描画。
 
@@ -136,7 +136,6 @@ background — オーケストレーション、キャプチャ、ブロック�
 - `ogkalu/comic-text-and-bubble-detector` → `detector-v4-s_int8.onnx`
 - `genshiai-daichi/baberu-ocr` → `vision_int4.onnx`、`decoder_prefill_int8.onnx`、
   `decoder_step_int8.onnx`（日本語、英語、中国語簡体字・繁体字）
-- `PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx` → `inference.onnx`（韓国語）
 - `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
 
 パイプラインステージ：capture → detect → blocks → OCR → mask → inpaint →
@@ -157,7 +156,7 @@ mask → inpaintはメインスレッドで実行します — WASM inpaintが�
 - ローカルLLMバックエンドは実験的です（WebGPU＋数GBのダウンロードが必要）。
 - Googleバックエンドは非公式の `translate.googleapis.com` エンドポイントを
   使用し、レート制限される場合があります；Azureは自分のキーが必要です。
-- OCRエンジン：Baberu（日本語・英語・中国語）、PP-OCRv5（韓国語）。
+- OCRエンジン：Baberu（日本語・英語・中国語）。
 - Baberuは長いテキストを約64文字で切り捨てます（ONNXエクスポートの
   モデル構造上の制限で調整不可；デバッグの切り抜きには全文が見えています
   が、デコーダはそれ以上出力できません）。

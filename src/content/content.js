@@ -22,12 +22,12 @@
 
   // Port of get_best_render_area + adjust_blks_size: bubble interior (ogkalu2's
   // shrink_bbox with 0.3 = 30% total shrink, i.e. 15% inset per side), else
-  // the text box; -5px each side except ko/zh source.
+  // the text box; -5px each side except zh source.
   function renderAreaFor(block, srcLang) {
     let area = (block.text_class === 'text_bubble' && block.bubble_xyxy)
       ? shrinkBbox(block.bubble_xyxy, 0.3)
       : block.xyxy.slice();
-    if (!['ko', 'zh-CN', 'zh-TW'].includes(srcLang)) {
+    if (!['zh-CN', 'zh-TW'].includes(srcLang)) {
       area = [area[0] + 5, area[1] + 5, area[2] - 5, area[3] - 5];
     }
     return area;

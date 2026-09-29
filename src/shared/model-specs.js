@@ -20,14 +20,7 @@ export const MODEL_GROUPS = [
     ],
   },
   {
-    id: 'ocr-ppocr-ko', labelKey: 'model_ko', label: 'PP-OCRv5 OCR (Korean, official 2025 model)',
-    files: [
-      { id: 'ocr-ppocr-ko', file: 'inference.onnx', bytes: 13418787,
-        url: hf('PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx', 'inference.onnx') },
-    ],
-  },
-  {
-    id: 'ocr-baberu', labelKey: 'model_baberu', label: 'Baberu OCR (Japanese + English + Chinese Simplified, manga-trained)',
+    id: 'ocr-baberu', labelKey: 'model_baberu', label: 'Baberu OCR (Japanese + English + Chinese Simplified/Traditional, manga-trained)',
     files: [
       { id: 'ocr-baberu-vision', file: 'vision_int4.onnx', bytes: 52293486,
         url: hf('genshiai-daichi/baberu-ocr', 'onnx/vision_int4.onnx') },
@@ -40,26 +33,14 @@ export const MODEL_GROUPS = [
 ];
 
 // OCR engine routing by source language (LANGS in shared/settings.js):
-//   ja      -> Baberu ('ocr-baberu' group; trilingual, manga-trained,
-//              beats manga-ocr on Manga109)
-//   ko      -> PP-OCRv5 Korean ('ocr-ppocr-ko' group; official 2025 model)
-//   en      -> Baberu ('ocr-baberu' group; trained on manga bubbles)
-//   zh-CN   -> Baberu ('ocr-baberu' group)
-//   zh-TW   -> Baberu ('ocr-baberu' group; handles Traditional well)
+//   ja/en/zh-CN/zh-TW -> Baberu ('ocr-baberu' group; manga-trained)
 // (manga-ocr removed 2026-09-29: superseded by Baberu for Japanese.
 // Pororo + PP-OCRv5 en/chinese models removed 2026-09-28: superseded.
-// PP-OCRv6 small removed 2026-09-29: Baberu covers Traditional Chinese.)
+// PP-OCRv6 small removed 2026-09-29: Baberu covers Traditional Chinese.
+// PP-OCRv5 Korean removed 2026-09-29: OCR quality too low for translation.)
 export function ocrEngineForLang(lang) {
-  if (lang === 'ko') return 'ocr-ppocr-ko';
-  return 'ocr-baberu'; // ja/en/zh-CN/zh-TW all use Baberu
+  return 'ocr-baberu'; // all source languages use Baberu
 }
-
-// PP-OCR character dictionaries, bundled (one char per line, UTF-8).
-// The v5 dict is the exact character_dict list from the official
-// PaddlePaddle inference.yml config (extracted 2026-09-28).
-export const PPOCR_DICT_ASSET = {
-  'ocr-ppocr-ko': 'src/offscreen/ml/dicts/ppocr-korean.txt',
-};
 
 // Baberu character vocab, bundled (JSON array; id>=4 -> charset[id-4]).
 // From genshiai-daichi/baberu-ocr tokenizer/vocab.json.
@@ -105,7 +86,7 @@ export async function deleteModelGroup(groupId) {
 // en/chinese, superseded 2026-09-28; manga-ocr encoder/decoder, superseded
 // 2026-09-29 by Baberu): with no group row left in the UI
 // there'd be no way to delete them otherwise.
-const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav', 'ocr-pororo', 'ocr-ppocr-en', 'ocr-ppocr-chinese', 'ocr-encoder', 'ocr-decoder-init', 'ocr-decoder-step'];
+const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav', 'ocr-pororo', 'ocr-ppocr-en', 'ocr-ppocr-chinese', 'ocr-ppocrv6', 'ocr-ppocr-ko', 'ocr-encoder', 'ocr-decoder-init', 'ocr-decoder-step'];
 export async function pruneRemovedModels() {
   const db = await openDb();
   for (const id of PRUNED_MODEL_IDS) {

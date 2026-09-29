@@ -16,8 +16,8 @@ export const MSG = {
   MODEL_PROGRESS: 'ct/model-progress',   // {id, loaded, total}
   RUN_PROGRESS: 'ct/run-progress',       // {runId, stage, progress}
   // SW -> offscreen
-  ML_PING: 'ml/ping',                    // {} -> {ok, loaded:{detector,baberu,ocr-ppocr-*,inpaint}}
-  ML_ENSURE: 'ml/ensure',                // {model:'detector'|'ocr'|'ocr-baberu'|'ocr-ppocr-*'|'inpaint'} -> {ok} | {ok:false,error}
+  ML_PING: 'ml/ping',                    // {} -> {ok, loaded:{detector,baberu,inpaint}}
+  ML_ENSURE: 'ml/ensure',                // {model:'detector'|'ocr-baberu'|'inpaint'} -> {ok} | {ok:false,error}
   ML_DETECT: 'ml/detect',                // {image:ArrayBuffer,width,height,threshold} -> {ok, boxes:[{xyxy,label,score}], ms}
   ML_OCR: 'ml/ocr',                      // {crops:[{id,rgba:ArrayBuffer,width,height}], sourceLang} -> {ok, results:[{id,text}], ms, engine}
   ML_INPAINT: 'ml/inpaint',              // {patches:[{id,rgba:ArrayBuffer,width,height,mask:ArrayBuffer}]} -> {ok, results:[{id,rgba:ArrayBuffer,width,height}], ms}
