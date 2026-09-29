@@ -23,7 +23,7 @@
 export const BABERU_IMG = 224;
 const BOS = 1, EOS = 2;
 const MAX_NEW_TOKENS = 256;
-const REPETITION_PENALTY = 1.2;
+const REPETITION_PENALTY = 1.05;
 const MAX_CONTENT_RUN = 12;
 const NUM_LAYERS = 6;
 
