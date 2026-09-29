@@ -72,10 +72,12 @@ export const MODEL_GROUPS = [
 //   ko          -> Pororo brainocr ('ocr-pororo' group)
 //   zh-CN/zh-TW -> PP-OCRv5 chinese ('ocr-ppocr-chinese' group)
 //   ru          -> PP-OCRv5 eslav ('ocr-ppocr-eslav' group)
-//   everything else (en/fr/de/es/it/pt/nl) -> PP-OCRv5 latin ('ocr-ppocr-latin' group)
+//   en          -> PP-OCRv5 english ('ocr-ppocr-en' group)
+//   everything else (fr/de/es/it/pt/nl) -> PP-OCRv5 latin ('ocr-ppocr-latin' group)
 export function ocrEngineForLang(lang) {
   if (lang === 'ko') return 'ocr-pororo';
   if (lang === 'ja') return 'ocr';
+  if (lang === 'en') return 'ocr-ppocr-en';
   if (lang === 'zh-CN' || lang === 'zh-TW') return 'ocr-ppocr-chinese';
   if (lang === 'ru') return 'ocr-ppocr-eslav';
   return 'ocr-ppocr-latin';

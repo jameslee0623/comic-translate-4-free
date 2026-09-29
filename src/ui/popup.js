@@ -1,5 +1,5 @@
 // Popup: trigger runs, show progress, backend + language quick-switch, whitelist.
-const BUILD = '20260928k'; // bump on every shipped build; shown in the footer
+const BUILD = '20260928l'; // bump on every shipped build; shown in the footer
 const $ = id => document.getElementById(id);
 const STAGE_LABEL = {
   idle: 'idle', capture: 'Capturing page…', detect: 'Detecting bubbles & text…',
