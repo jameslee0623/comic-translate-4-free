@@ -328,6 +328,11 @@ async function runPipeline(tabId) {
   const settings = await getSettings();
   const timings = {};
   const pipelineT0 = performance.now(); // overall wall-clock for this run
+  // Firefox: pre-load the 206MB LaMa first, before detector/OCR fragment the
+  // WASM heap. A fragmented heap can't provide the contiguous block LaMa needs.
+  if (directHandlers()) {
+    try { await callMl({ type: MSG.ML_ENSURE, model: 'inpaint' }); } catch (e) { /* loaded on demand */ }
+  }
   const pxKeys = []; // IDB pixel-bus keys created this run; dropped in finally
   let result;
   try {
