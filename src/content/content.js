@@ -491,7 +491,7 @@
           const totalMs = allTimings.total != null
             ? allTimings.total
             : Object.entries(allTimings).filter(([k]) => k !== 'total').reduce((a, [, v]) => a + (v || 0), 0);
-          const seqMs = Object.entries(allTimings).filter(([k]) => k !== 'total').reduce((a, [, v]) => a + (v || 0), 0);
+          const seqMs = Object.entries(allTimings).filter(([k]) => k !== 'total' && k !== 'render').reduce((a, [, v]) => a + (v || 0), 0);
           stageTabs['render'] = {
             title: 'Render',
             ms: allTimings.render,

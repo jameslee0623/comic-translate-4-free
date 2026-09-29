@@ -445,8 +445,9 @@ async function runPipeline(tabId) {
           thumb: await rgbaToDataURL(c.data, c.width, c.height, 200),
         });
       }
+      const ocrTextCount = blocks.filter(b => b.text && b.text.trim()).length;
       await emitDebug(runId, tabId, settings, 'ocr', {
-        title: `OCR — ${crops.length} crops${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}`, crops: ocrThumbs, ms: ocrMs,
+        title: `OCR — ${crops.length} crops, ${ocrTextCount} with text${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}`, crops: ocrThumbs, ms: ocrMs,
       });
     }
 
