@@ -68,6 +68,27 @@ Run LM Studio with its OpenAI-compatible server enabled (default
 the backend in Options, set the server URL, then press
 **Check LM Studio connection** to verify.
 
+## Build from source
+
+No bundler, no npm install — the source is the extension. Requirements:
+`bash`, `python3`, `rsync`, `zip`, and `node` (used only for a syntax check).
+
+```bash
+git clone https://github.com/jameslee0623/comic-translate-4-free.git
+cd comic-translate-4-free
+./build.sh
+```
+
+This writes `dist/comic-translate-4-free-v<version>-<build>.zip` containing
+`chrome/` and `firefox/` side by side, ready to load unpacked (Chrome) or as
+a temporary add-on (Firefox) per "Install" above.
+
+The `<build>` stamp comes from the `BUILD` const at the top of
+`src/ui/options.js` and `src/ui/popup.js` (keep the two in sync). Bump it
+before building if you want a unique stamp in the filename and the UI
+footer — otherwise your build is indistinguishable from the released one
+with the same stamp.
+
 Per page the extension sends a single batched request:
 
 ```
