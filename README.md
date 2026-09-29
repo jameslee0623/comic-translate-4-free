@@ -164,6 +164,9 @@ page couldn't run the parallel branches without freezing.)
   may be rate-limited; Azure needs your own key.
 - OCR engines: Baberu (Japanese/English/Chinese), PP-OCRv5
   (Korean).
+- Baberu truncates long text at ~64 characters (model architecture limit in
+  the ONNX export, not tunable; the full text is visible in the debug crop
+  but the decoder cannot output more).
 - Vertical text is rendered for tall CJK blocks; SFX / text outside bubbles
   uses its own text box.
 

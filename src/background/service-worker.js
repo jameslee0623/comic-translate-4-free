@@ -218,14 +218,14 @@ function extractFgColor(rgba, w, xyxy) {
   return cssColor(dr / dark, dg / dark, db / dark);
 }
 
-// Crop bounds for OCR: text box expanded 15%, bubble fallback (port of the
+// Crop bounds for OCR: text box expanded 5%, bubble fallback (port of the
 // Python adjust_text_line_coordinates usage in the OCR stage of
 // ogkalu2/comic-translate, Apache License 2.0).
 function cropForBlock(rgba, pw, ph, xyxy, bubbleXyxy) {
   const box = xyxy || bubbleXyxy;
   if (!box) return null;
   const [x1, y1, x2, y2] = box;
-  const ex = ((x2 - x1) * 15) / 100, ey = ((y2 - y1) * 15) / 100;
+  const ex = ((x2 - x1) * 5) / 100, ey = ((y2 - y1) * 5) / 100;
   const cx1 = Math.max(0, Math.floor(x1 - ex)), cy1 = Math.max(0, Math.floor(y1 - ey));
   const cx2 = Math.min(pw, Math.ceil(x2 + ex)), cy2 = Math.min(ph, Math.ceil(y2 + ey));
   if (cx2 <= cx1 || cy2 <= cy1) return null;

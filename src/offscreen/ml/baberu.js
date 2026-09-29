@@ -22,6 +22,12 @@
 //        -> decode: ids 0..3 are <pad>/<bos>/<eos>/<unk>, id>=4 -> charset[id-4]
 export const BABERU_IMG = 224;
 const BOS = 1, EOS = 2;
+// NOTE (2026-09-29): MAX_NEW_TOKENS is 256 but the Baberu ONNX export has a
+// hard ~64-token text limit (decoder positional embeddings only cover ~64
+// text positions). Long English sentences truncate at ~63-65 chars even though
+// the full text is visible in the crop. This is a model architecture limit,
+// not a tunable parameter. Future fix: re-export with longer max length,
+// or split long crops into overlapping chunks and concatenate.
 const MAX_NEW_TOKENS = 256;
 const REPETITION_PENALTY = 1.05;
 const MAX_CONTENT_RUN = 12;

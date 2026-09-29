@@ -158,8 +158,9 @@ translate 順序；單一執行緒的背景頁面無法在不卡死的情況下�
 - 本機 LLM 後端為實驗性（需要 WebGPU + 數 GB 下載）。
 - Google 後端使用非官方 `translate.googleapis.com` 端點，
   可能被限速；Azure 需要您自己的金鑰。
-- OCR 引擎：Baberu（日文/英文/簡體中文）、PP-OCRv5（韓文）、
-  PP-OCRv5（韓語）。
+- OCR 引擎：Baberu（日文/英文/中文）、PP-OCRv5（韓文）。
+- Baberu 會將長文字截斷在約 64 個字元（ONNX 匯出的模型結構限制，不可調；
+  除錯截圖中可見全文，但解碼器無法輸出更多）。
 - 直書文字針對高 CJK 文字區塊渲染；對話框外的狀聲詞等
   使用獨立文字框。
 

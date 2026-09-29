@@ -158,8 +158,9 @@ translate 顺序；单线程的后台页面无法在不卡死的情况下运行�
 - 本地 LLM 后端为实验性（需要 WebGPU + 数 GB 下载）。
 - Google 后端使用非官方 `translate.googleapis.com` 端点，
   可能被限流；Azure 需要您自己的密钥。
-- OCR 引擎：Baberu（日语/英语/简体中文）、PP-OCRv5（韩语）、
-  PP-OCRv5（韩语）。
+- OCR 引擎：Baberu（日语/英语/中文）、PP-OCRv5（韩语）。
+- Baberu 会将长文本截断在约 64 个字符（ONNX 导出的模型结构限制，不可调；
+  调试截图中可见全文，但解码器无法输出更多）。
 - 竖排文字针对高 CJK 文本块渲染；气泡外的拟声词等
   使用独立文本框。
 
