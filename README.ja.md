@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-**言語:** [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
+**言語:** [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
 マンガ・コミックのページをブラウザ内で翻訳します。全パイプラインがローカルで動作します：
 吹き出し・テキスト検出（RT-DETR-v2）、OCR（日本語・英語・中国語はBaberu）、

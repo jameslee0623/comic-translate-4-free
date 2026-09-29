@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-**Language:** [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
+**Language:** [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
 Translate manga/comic pages in-browser. The full pipeline runs locally:
 bubble/text detection (RT-DETR-v2), OCR (Baberu for Japanese/English/Chinese),

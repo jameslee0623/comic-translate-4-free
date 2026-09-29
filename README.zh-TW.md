@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-**語言：** [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
+**語言：** [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
 在瀏覽器內翻譯漫畫頁面。完整處理流程在本機執行：
 對話框/文字偵測（RT-DETR-v2）、OCR（日文/英文/中文用 Baberu）、透過 LaMa 影像修補清除原文、翻譯
