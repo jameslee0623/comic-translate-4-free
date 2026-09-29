@@ -539,11 +539,48 @@ async function runPipeline(tabId) {
     // the offscreen document on its own thread).
     let translateOut, inpaintOut;
     if (directHandlers()) {
-      // Firefox: original linear pipeline — blocks → ocr → mask → inpaint → translate → render.
-      // (Single-threaded; parallel branches hang when WASM blocks the event loop.)
+      // Firefox: translation runs on a Web Worker (own thread), mask → inpaint
+      // runs on the main thread. The worker's network I/O is not blocked when
+      // WASM inpaint hogs the main thread.
+      const t0t = performance.now();
+      const workerUrl = chrome.runtime.getURL('src/background/translate-worker.js');
+      const tWorker = new Worker(workerUrl, { type: 'module' });
+      const translateP = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          tWorker.terminate();
+          reject(new Error('translate worker timeout'));
+        }, 180000);
+        tWorker.onmessage = (e) => {
+          clearTimeout(timeout);
+          tWorker.terminate();
+          if (e.data.ok) resolve(e.data.translated);
+          else reject(new Error(e.data.error));
+        };
+        tWorker.onerror = (err) => {
+          clearTimeout(timeout);
+          tWorker.terminate();
+          reject(err instanceof Error ? err : new Error(String(err)));
+        };
+        tWorker.postMessage({
+          blocks: blocks.map(b => ({ text: b.text })),
+          settings,
+        });
+      });
+      // Main thread: mask → inpaint (linear, WASM may block but worker continues)
       const maskRes = await runMask();
       inpaintOut = await runInpaint(maskRes);
-      translateOut = await runTranslate();
+      // Collect translation from worker
+      const translated = await translateP;
+      checkCancelled(runId);
+      blocks.forEach((b, i) => { b.translation = translated[i]; });
+      const translateMs = Math.round(performance.now() - t0t);
+      parProgress('translate', 1);
+      await emitDebug(runId, tabId, settings, 'translate', {
+        title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
+        rows: blocks.map(b => ({ text: b.text, translation: b.translation })),
+        ms: translateMs,
+      });
+      translateOut = { translateMs };
     } else {
       const maskP = runMask();
       const inpaintP = maskP.then(runInpaint);
