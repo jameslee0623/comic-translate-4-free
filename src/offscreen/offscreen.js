@@ -108,7 +108,7 @@ const handlers = {
   [MSG.ML_PING]() {
     const ppocrLoaded = {};
     for (const k of Object.keys(ppocr)) ppocrLoaded[k] = ppocr[k].loaded;
-    return { ok: true, loaded: { detector: detector.loaded, ocr: ocr.loaded, baberu: baberu.loaded, ...ppocrLoaded, inpaint: inpainter.loaded } };
+    return { ok: true, loaded: { detector: detector.loaded, baberu: baberu.loaded, ...ppocrLoaded, inpaint: inpainter.loaded } };
   },
 
   async [MSG.ML_ENSURE]({ model }) {
