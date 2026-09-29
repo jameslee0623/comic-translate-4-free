@@ -1,8 +1,9 @@
 # Third-Party Notices
 
-This file lists the third-party software used by comic-translate-4-free
-extension: libraries bundled with it, code it was ported from, and ML models it
-downloads at runtime. The extension's own code is separate from these components.
+This file lists the third-party software used by the comic-translate-4-free
+extension: libraries bundled with it, code it was ported from, and ML models
+it downloads at runtime. The extension's own code is separate from these
+components.
 
 ## 1. Bundled libraries (shipped inside the extension package)
 
@@ -24,15 +25,14 @@ downloads at runtime. The extension's own code is separate from these components
 ## 2. Ported source code
 
 The pipeline logic below was ported (rewritten in JavaScript for the browser)
-from the following project. Per the Apache-2.0 terms, the original license and
-attribution are retained here, and each ported file carries a header naming its
-source.
+from the following projects. Per the Apache-2.0 terms, the original licenses
+and attributions are retained here, and each ported file carries a header
+naming its source.
 
 ### ogkalu2/comic-translate — Apache License 2.0
 https://github.com/ogkalu2/comic-translate — © ogkalu and contributors.
 
 Ported files in this repository:
-- `src/offscreen/ml/ocr.js` — from `modules/ocr/manga_ocr/mobile/onnx_engine.py`
 - `src/offscreen/ml/inpaint.js` — patch merging from
   `modules/inpainting/.../merge_overlapping_padded_boxes`
 - `src/offscreen/ml/mask.js` — text-removal mask from
@@ -40,12 +40,40 @@ Ported files in this repository:
 - `src/offscreen/ml/detector.js` and `src/shared/textblock.js` — box geometry
   from `modules/detection/utils/geometry.py` (`shrink_bbox`,
   `merge_overlapping_boxes`) and `modules/utils/textblock.py`
-- `src/content/content.js`, `src/background/service-worker.js` — `shrink_bbox`
-  semantics and OCR crop-bounds logic
+- `src/content/content.js` — `shrink_bbox` semantics (inline attribution)
+- `src/background/service-worker.js` — OCR crop-bounds logic (port of the
+  Python `adjust_text_line_coordinates` usage in the OCR stage; inline
+  attribution)
 
 Changes vs. upstream: rewritten from Python to JavaScript, adapted to
 ONNX Runtime Web tensors and the browser extension pipeline (no Python, no
 PyTorch, no OpenCV).
+
+### genshiai-daichi/baberu-ocr — Apache License 2.0
+https://huggingface.co/genshiai-daichi/baberu-ocr — © the Baberu authors.
+The model card is tagged `license:apache-2.0` and the repository carries an
+Apache-2.0 LICENSE file.
+
+Ported files in this repository:
+- `src/offscreen/ml/baberu.js` — the ONNX inference loop, a faithful port of
+  the repository's `onnx_infer.py` (pure-numpy host loop: crop preprocessing,
+  prefill + autoregressive decode with KV cache, repetition penalty 1.2,
+  symbol-aware content-run cap)
+
+Changes vs. upstream: rewritten from Python/NumPy to JavaScript, adapted to
+ONNX Runtime Web tensors.
+
+### PaddlePaddle/PaddleOCR — Apache License 2.0
+https://github.com/PaddlePaddle/PaddleOCR — © the PaddlePaddle authors.
+
+Ported files in this repository:
+- `src/offscreen/ml/ppocr.js` — text-recognition preprocessing and decoding,
+  a faithful port of PaddleOCR's `RecResizeImg` + `NormalizeImage` +
+  `CTCLabelDecode` (verified against PaddlePaddle's official PP-OCRv5
+  inference config on 2026-09-28)
+
+Changes vs. upstream: rewritten from Python to JavaScript, adapted to
+ONNX Runtime Web tensors.
 
 ### jameslee0623/ComicTranslate — author's own project
 - `src/background/translators.js` — LM Studio reply parsing ported from
@@ -53,30 +81,23 @@ PyTorch, no OpenCV).
   https://github.com/jameslee0623/ComicTranslate. No third-party obligation;
   listed here for provenance.
 
-## 3. ML models (downloaded at runtime, NOT shipped with the extension)
+## 3. ML models and data (downloaded at runtime or bundled as data, NOT part of the extension's code)
 
-The extension downloads these model files on first use into the browser's
-IndexedDB and never bundles them in the repository or the release zips. Their
-licenses belong to their publishers:
+The extension downloads the ONNX model files on first use into the browser's
+IndexedDB and never bundles them in the repository or the release zips. The
+character dictionaries/vocabularies below ARE bundled (they are small data
+files, a few KB to ~130 KB). Their licenses belong to their publishers:
 
-| Model | Source | License / notes |
+| Model / data | Source | License |
 |---|---|---|
-| Bubble/text detector (`detector-v4-s_int8.onnx`) | `ogkalu/comic-text-and-bubble-detector` — RT-DETR-v2 r50vd fine-tuned on ~11k manga/webtoon/manhua/western-comic images | No license tag on the model card; upstream RT-DETRv2 (lyuwenyu/RT-DETR, PekingU) is **Apache-2.0** |
-| Japanese OCR (`encoder.onnx`, `decoder_init.onnx`, `decoder_step.onnx`) | `ogkalu/manga-ocr-mobile` — ONNX export of manga-ocr | No license tag on the model card; upstream kha-white/manga-ocr code and weights are **Apache-2.0** |
-| Manga inpainter (`lama-manga-dynamic.onnx`) | `ogkalu/lama-manga-onnx-dynamic` — ONNX export of dreMaz/AnimeMangaInpainting | No license tag on the model card; lineage: dreMaz/AnimeMangaInpainting (MIT-tagged card) ← advimman/lama (**Apache-2.0**) |
-| Korean OCR (`brainocr.onnx`, used when the source language is Korean) | `ogkalu/pororo` — ONNX export of pororo's brainocr recognizer | No license tag on the model card; upstream kakaobrain/pororo is **Apache-2.0** |
-| Multilingual OCR (`rec.onnx` per language group, used for every source language except Japanese and Korean) | `monkt/paddleocr-onnx` (`languages/{english,latin,eslav,chinese}/rec.onnx`) — ONNX exports of PaddlePaddle PP-OCRv5 rec models | Repo is **Apache-2.0**-tagged; upstream PaddlePaddle/PaddleOCR is **Apache-2.0** |
-
-### OCR vocabulary
-- `src/offscreen/vocab.txt` (9,415 tokens) is the manga-ocr tokenizer
-  vocabulary from kha-white/manga-ocr — **Apache-2.0**.
-- `src/offscreen/ml/pororo-charset.txt` (2,588 chars) is the `character`
-  field of `ocr-opt.txt` shipped next to `brainocr.onnx` in
-  `ogkalu/pororo` — upstream kakaobrain/pororo is **Apache-2.0**.
-- `src/offscreen/ml/dicts/ppocr-{english,latin,eslav,chinese}.txt` are the
-  `dict.txt` files shipped with the matching `rec.onnx` in
-  `monkt/paddleocr-onnx` (**Apache-2.0**; the English dict was verified
-  entry-for-entry against PaddlePaddle's official PP-OCRv5 character dict).
+| Bubble/text detector (`detector-v4-s_int8.onnx`) | `ogkalu/comic-text-and-bubble-detector` — RT-DETR-v2 r50vd fine-tuned on ~11k manga/webtoon/manhua/western-comic images | **Apache-2.0** (license tag on the model card) |
+| Manga inpainter (`lama-manga-dynamic.onnx`) | `ogkalu/lama-manga-onnx-dynamic` — ONNX export of dreMaz/AnimeMangaInpainting | **Apache-2.0** (license tag on the model card); upstream dreMaz/AnimeMangaInpainting card is **MIT**-tagged (lineage: advimman/lama, Apache-2.0) |
+| Baberu OCR (`vision_int4.onnx`, `decoder_prefill_int8.onnx`, `decoder_step_int8.onnx`) — Japanese, English, Simplified Chinese | `genshiai-daichi/baberu-ocr` — manga-bubble-trained character OCR | **Apache-2.0** (license tag on the model card; LICENSE file in the repo) |
+| Korean OCR (`inference.onnx`) | `PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx` — official 2025 PP-OCRv5 Korean recognizer | **Apache-2.0** (license tag on the model card; upstream PaddlePaddle/PaddleOCR is Apache-2.0) |
+| Traditional Chinese OCR (`inference.onnx`) | `PaddlePaddle/PP-OCRv6_small_rec_onnx` — official PP-OCRv6 recognizer | **Apache-2.0** (license tag on the model card; upstream PaddlePaddle/PaddleOCR is Apache-2.0) |
+| Korean character dict (`src/offscreen/ml/dicts/ppocr-korean.txt`, bundled) | Character list from the official PaddlePaddle PP-OCRv5 Korean inference config | **Apache-2.0** (upstream PaddlePaddle/PaddleOCR) |
+| Traditional Chinese character dict (`src/offscreen/ml/dicts/ppocrv6.txt`, bundled) | Character list from the official PaddlePaddle PP-OCRv6 inference config | **Apache-2.0** (upstream PaddlePaddle/PaddleOCR) |
+| Baberu character vocab (`src/offscreen/ml/dicts/baberu-vocab.json`, bundled) | `tokenizer/vocab.json` from `genshiai-daichi/baberu-ocr` | **Apache-2.0** |
 
 ## 4. Not used
 
@@ -115,7 +136,7 @@ SOFTWARE.
 
 ---
 
-## 6. Apache License 2.0 (web-llm, comic-translate, manga-ocr, RT-DETRv2, LaMa)
+## 6. Apache License 2.0 (web-llm, comic-translate, baberu-ocr, PaddleOCR, RT-DETRv2, LaMa)
 
                                  Apache License
                            Version 2.0, January 2004

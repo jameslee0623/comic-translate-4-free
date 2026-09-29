@@ -3,8 +3,8 @@
 **Language:** [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
 Translate manga/comic pages in-browser. The full pipeline runs locally:
-bubble/text detection (RT-DETR-v2), OCR (manga-ocr for Japanese, Pororo for
-Korean, PP-OCRv5 for English and Chinese), text removal
+bubble/text detection (RT-DETR-v2), OCR (Baberu for Japanese/English/Simplified
+Chinese, PP-OCRv5 for Korean, PP-OCRv6 for Traditional Chinese), text removal
 via LaMa inpainting, translation (Google / Azure / local LLM), and wrapped
 re-rendering into the original speech bubbles.
 
@@ -139,10 +139,10 @@ background — orchestration, capture, blocks, mask, translation APIs,
 
 Models (Hugging Face, downloaded on demand):
 - `ogkalu/comic-text-and-bubble-detector` → `detector-v4-s_int8.onnx`
-- `ogkalu/manga-ocr-mobile` → `encoder.onnx`, `decoder_init.onnx`,
-  `decoder_step.onnx`, `vocab.txt` (Japanese)
-- `ogkalu/pororo` → `brainocr.onnx` (Korean)
-- PP-OCRv5 recognition models (English, Chinese Simplified/Traditional)
+- `genshiai-daichi/baberu-ocr` → `vision_int4.onnx`, `decoder_prefill_int8.onnx`,
+  `decoder_step_int8.onnx` (Japanese, English, Simplified Chinese)
+- `PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx` → `inference.onnx` (Korean)
+- `PaddlePaddle/PP-OCRv6_small_rec_onnx` → `inference.onnx` (Traditional Chinese)
 - `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
 
 Pipeline stages: capture → detect → blocks → OCR → mask → inpaint →
@@ -154,8 +154,8 @@ processed in overlapping vertical slices.
 - Local LLM backend is experimental (needs WebGPU + multi-GB downloads).
 - Google backend uses the unofficial `translate.googleapis.com` endpoint and
   may be rate-limited; Azure needs your own key.
-- OCR engines: manga-ocr (Japanese), Pororo brainocr (Korean), PP-OCRv5
-  (English, Chinese).
+- OCR engines: Baberu (Japanese/English/Simplified Chinese), PP-OCRv5
+  (Korean), PP-OCRv6 (Traditional Chinese).
 - Vertical text is rendered for tall CJK blocks; SFX / text outside bubbles
   uses its own text box.
 

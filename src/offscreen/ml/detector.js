@@ -1,4 +1,7 @@
-// RT-DETR-v2 bubble/text detector. Verified contract (spike 1):
+// RT-DETR-v2 bubble/text detector (ogkalu/comic-text-and-bubble-detector,
+// Apache License 2.0). Box geometry ported from ogkalu2/comic-translate
+// (Apache License 2.0, https://github.com/ogkalu2/comic-translate).
+// Verified contract (spike 1):
 //   in:  images [1,3,640,640] float32 (/255, RGB), orig_target_sizes int64 [[w,h]]
 //   out: labels [1,300], boxes [1,300,4] (original-image coords), scores [1,300]
 // Labels: 0 = bubble, 1 = text_bubble, 2 = text_free. NMS-free.

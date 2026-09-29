@@ -1,5 +1,6 @@
-// PP-OCRv5 text recognition via the ONNX exports in monkt/paddleocr-onnx
-// (languages/{english,latin,eslav,chinese}/rec.onnx).
+// PP-OCR text recognition via PaddlePaddle's official ONNX exports
+// (PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx and
+// PaddlePaddle/PP-OCRv6_small_rec_onnx, both Apache License 2.0).
 //
 // Faithful port of PaddleOCR's rec inference preprocessing (RecResizeImg +
 // NormalizeImage + CTCLabelDecode, verified against PaddlePaddle's official
@@ -18,8 +19,7 @@
 // use_space_char=true, which appends ' ' after the dict
 // (PaddleOCR's CTCLabelDecode then maps the last class to ' ').
 //
-// PaddleOCR is Apache License 2.0 (https://github.com/PaddlePaddle/PaddleOCR);
-// monkt/paddleocr-onnx is Apache License 2.0.
+// PaddleOCR is Apache License 2.0 (https://github.com/PaddlePaddle/PaddleOCR).
 
 import { resizeBilinearRGBA } from './image-ops.js';
 
