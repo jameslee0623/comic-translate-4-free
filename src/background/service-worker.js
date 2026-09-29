@@ -320,6 +320,7 @@ async function runPipeline(tabId) {
   runs.set(runId, { cancelled: false, tabId });
   const settings = await getSettings();
   const timings = {};
+  const pipelineT0 = performance.now(); // overall wall-clock for this run
   const pxKeys = []; // IDB pixel-bus keys created this run; dropped in finally
   let result;
   try {
@@ -516,6 +517,7 @@ async function runPipeline(tabId) {
     // Same tick as the send below: a cancellation can never slip in between
     // and let a stale render reach the tab.
     checkCancelled(runId);
+    timings.total = Math.round(performance.now() - pipelineT0);
     const renderRes = await chrome.tabs.sendMessage(tabId, {
       type: MSG.RENDER, runId, mode,
       imageDataUrl: finalDataUrl, width: w, height: h,

@@ -483,8 +483,14 @@
           } else {
             showPillError('unexpected render mode — reload the page to retry');
           }
-          const ms = '<p style="color:#888">timings: ' +
-            Object.entries(timings || {}).map(([k, v]) => `${k} ${v}ms`).join(' · ') + '</p>';
+          const allTimings = { ...(timings || {}) };
+          allTimings.render = Math.round(performance.now() - renderT0);
+          const totalMs = allTimings.total != null
+            ? allTimings.total
+            : Object.entries(allTimings).filter(([k]) => k !== 'total').reduce((a, [, v]) => a + (v || 0), 0);
+          const ms = '<p style="color:#eee;font-size:14px">total: <b>' + totalMs + 'ms</b></p>' +
+            '<p style="color:#888">' +
+            Object.entries(allTimings).filter(([k]) => k !== 'total').map(([k, v]) => `${k} ${v}ms`).join(' · ') + '</p>';
           if (debugBody) debugBody.insertAdjacentHTML('afterbegin', ms);
           if (debug) {
             ensureOverlay();
