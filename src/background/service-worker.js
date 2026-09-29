@@ -406,106 +406,138 @@ async function runPipeline(tabId) {
       ms: timings.blocks,
     });
 
-    // ---- 4. OCR
+    // ---- 4+5. OCR and mask in parallel — independent of each other.
+    // OCR needs only the blocks (runs in the offscreen doc); the mask needs
+    // blocks + pixels (built here in the service worker thread). True parallelism.
     checkCancelled(runId);
-    setProgress(runId, 'ocr', 0.38);
-    t0 = performance.now();
-    const crops = [];
-    for (const [i, b] of blocks.entries()) {
-      const c = cropForBlock(rgba, w, h, b.xyxy, b.bubble_xyxy);
-      if (!c) continue;
-      const pxKey = `ocr:${runId}:${i}`;
-      pxKeys.push(pxKey);
-      await pixelPut(pxKey, c.data.buffer);
-      crops.push({ id: i, key: pxKey, data: c.data, width: c.w, height: c.h, x: c.x, y: c.y, bw: b.xyxy[2] - b.xyxy[0], bh: b.xyxy[3] - b.xyxy[1] });
-    }
-    let ocrMs = 0, ocrEngineLabel = '';
-    if (crops.length) {
-      const r = await callMlChecked(runId, {
-        type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
-        crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
-      });
-      ocrMs = r.ms;
-      ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
-      for (const res of r.results) blocks[res.id].text = res.text;
-    }
-    timings.ocr = ocrMs;
-    setProgress(runId, 'ocr', 0.55);
-    const ocrThumbs = [];
-    for (const c of crops.slice(0, 40)) {
-      ocrThumbs.push({
-        id: c.id, text: blocks[c.id].text,
-        thumb: await rgbaToDataURL(c.data, c.width, c.height, 200),
-      });
-    }
-    await emitDebug(runId, tabId, settings, 'ocr', {
-      title: `OCR — ${crops.length} crops${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}`, crops: ocrThumbs, ms: ocrMs,
-    });
+    const phase1 = { ocr: 0, mask: 0 };
+    let phase1Max = 0.35;
+    const phase1Progress = (branch, frac) => {
+      phase1[branch] = frac;
+      phase1Max = Math.max(phase1Max, 0.35 + 0.25 * (phase1.ocr + phase1.mask) / 2);
+      setProgress(runId, branch, phase1Max);
+    };
+    const [ocrOut, maskOut] = await Promise.all([
+      (async () => {
+        phase1Progress('ocr', 0);
+        const crops = [];
+        for (const [i, b] of blocks.entries()) {
+          const c = cropForBlock(rgba, w, h, b.xyxy, b.bubble_xyxy);
+          if (!c) continue;
+          const pxKey = `ocr:${runId}:${i}`;
+          pxKeys.push(pxKey);
+          await pixelPut(pxKey, c.data.buffer);
+          crops.push({ id: i, key: pxKey, data: c.data, width: c.w, height: c.h, x: c.x, y: c.y, bw: b.xyxy[2] - b.xyxy[0], bh: b.xyxy[3] - b.xyxy[1] });
+        }
+        let ocrMs = 0, ocrEngineLabel = '';
+        if (crops.length) {
+          const r = await callMlChecked(runId, {
+            type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
+            crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
+          });
+          ocrMs = r.ms;
+          ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
+          for (const res of r.results) blocks[res.id].text = res.text;
+        }
+        phase1Progress('ocr', 1);
+        const ocrThumbs = [];
+        for (const c of crops.slice(0, 40)) {
+          ocrThumbs.push({
+            id: c.id, text: blocks[c.id].text,
+            thumb: await rgbaToDataURL(c.data, c.width, c.height, 200),
+          });
+        }
+        await emitDebug(runId, tabId, settings, 'ocr', {
+          title: `OCR — ${crops.length} crops${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}`, crops: ocrThumbs, ms: ocrMs,
+        });
+        return { ocrMs };
+      })(),
+      (async () => {
+        phase1Progress('mask', 0);
+        const t0m = performance.now();
+        const pageGray = toGrayU8(rgba, w, h);
+        const { mask: fullMask, entries } = generateMask(rgba, w, h, pageGray, blocks, 5);
+        const maskMs = Math.round(performance.now() - t0m);
+        phase1Progress('mask', 1);
+        await emitDebug(runId, tabId, settings, 'mask', {
+          title: `Mask — ${entries.length} block masks`,
+          mask: await rgbaToDataURL(maskToRGBA(fullMask, w, h), w, h), ms: maskMs,
+        });
+        return { fullMask, entries, maskMs };
+      })(),
+    ]);
+    timings.ocr = ocrOut.ocrMs;
+    timings.mask = maskOut.maskMs;
+    const { fullMask, entries } = maskOut;
 
-    // ---- 5. mask
+    // ---- 6+7. translate and inpaint in parallel — translate needs only the
+    // OCR text (network I/O in this thread), inpaint needs only the mask
+    // (offscreen ML). Render waits for both.
     checkCancelled(runId);
-    setProgress(runId, 'mask', 0.6);
-    t0 = performance.now();
-    const pageGray = toGrayU8(rgba, w, h);
-    const { mask: fullMask, entries } = generateMask(rgba, w, h, pageGray, blocks, 5);
-    timings.mask = Math.round(performance.now() - t0);
-    setProgress(runId, 'mask', 0.68);
-    await emitDebug(runId, tabId, settings, 'mask', {
-      title: `Mask — ${entries.length} block masks`,
-      mask: await rgbaToDataURL(maskToRGBA(fullMask, w, h), w, h), ms: timings.mask,
-    });
-
-    // ---- 6. translation (before inpaint: it only needs the OCR text, and it's
-    // fast — users see translations even if the slow inpaint stage lags).
-    checkCancelled(runId);
-    setProgress(runId, 'translate', 0.72);
-    t0 = performance.now();
-    const translated = await translateBlocks(blocks, settings);
-    blocks.forEach((b, i) => { b.translation = translated[i]; });
-    timings.translate = Math.round(performance.now() - t0);
-    setProgress(runId, 'translate', 0.78);
-    await emitDebug(runId, tabId, settings, 'translate', {
-      title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
-      rows: blocks.map(b => ({ text: b.text, translation: b.translation })),
-      ms: timings.translate,
-    });
-
-    // ---- 7. inpaint
-    checkCancelled(runId);
-    setProgress(runId, 'inpaint', 0.82);
-    t0 = performance.now();
-    const patchBoxes = mergePaddedBoxes(entries, 8, w, h);
-    const patches = [];
-    for (const [i, pb] of patchBoxes.entries()) {
-      const [x1, y1, x2, y2] = pb.map(Math.round);
-      const pxKey = `inpaint:${runId}:${i}`;
-      const maskKey = `inpaint-mask:${runId}:${i}`;
-      pxKeys.push(pxKey, maskKey);
-      await pixelPut(pxKey, cropRGBA(rgba, w, x1, y1, x2, y2).data.buffer);
-      await pixelPut(maskKey, cropMask1(fullMask, w, x1, y1, x2, y2).buffer);
-      patches.push({ id: i, x: x1, y: y1, key: pxKey, maskKey, width: x2 - x1, height: y2 - y1 });
-    }
-    const inpainted = new Uint8ClampedArray(rgba);
-    let inpaintMs = 0;
-    if (patches.length) {
-      const r = await callMlChecked(runId, {
-        type: MSG.ML_INPAINT, runId,
-        patches: patches.map(({ id, key, maskKey, width, height }) => ({ id, key, maskKey, width, height })),
-      });
-      inpaintMs = r.ms;
-      for (const res of r.results) {
-        const p = patches[res.id];
-        pxKeys.push(res.key);
-        const buf = await pixelTake(res.key);
-        pasteRGBA(inpainted, w, { data: new Uint8ClampedArray(buf), w: p.width, h: p.height }, p.x, p.y);
-      }
-    }
-    timings.inpaint = inpaintMs;
-    setProgress(runId, 'inpaint', 0.90);
-    await emitDebug(runId, tabId, settings, 'inpaint', {
-      title: `Inpaint — ${patches.length} patches`,
-      image: await rgbaToDataURL(inpainted, w, h), ms: inpaintMs,
-    });
+    const phase2 = { translate: 0, inpaint: 0 };
+    let phase2Max = 0.62;
+    const phase2Progress = (branch, frac) => {
+      phase2[branch] = frac;
+      phase2Max = Math.max(phase2Max, 0.62 + 0.28 * (phase2.translate + phase2.inpaint) / 2);
+      setProgress(runId, branch, phase2Max);
+    };
+    const [translateOut, inpaintOut] = await Promise.all([
+      (async () => {
+        phase2Progress('translate', 0);
+        const t0t = performance.now();
+        const translated = await translateBlocks(blocks, settings);
+        blocks.forEach((b, i) => { b.translation = translated[i]; });
+        const translateMs = Math.round(performance.now() - t0t);
+        phase2Progress('translate', 1);
+        await emitDebug(runId, tabId, settings, 'translate', {
+          title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
+          rows: blocks.map(b => ({ text: b.text, translation: b.translation })),
+          ms: translateMs,
+        });
+        return { translateMs };
+      })(),
+      (async () => {
+        phase2Progress('inpaint', 0);
+        checkCancelled(runId);
+        const t0i = performance.now();
+        const patchBoxes = mergePaddedBoxes(entries, 8, w, h);
+        const patches = [];
+        for (const [i, pb] of patchBoxes.entries()) {
+          checkCancelled(runId);
+          const [x1, y1, x2, y2] = pb.map(Math.round);
+          const pxKey = `inpaint:${runId}:${i}`;
+          const maskKey = `inpaint-mask:${runId}:${i}`;
+          pxKeys.push(pxKey, maskKey);
+          await pixelPut(pxKey, cropRGBA(rgba, w, x1, y1, x2, y2).data.buffer);
+          await pixelPut(maskKey, cropMask1(fullMask, w, x1, y1, x2, y2).buffer);
+          patches.push({ id: i, x: x1, y: y1, key: pxKey, maskKey, width: x2 - x1, height: y2 - y1 });
+        }
+        const inpainted = new Uint8ClampedArray(rgba);
+        let inpaintMs = 0;
+        if (patches.length) {
+          const r = await callMlChecked(runId, {
+            type: MSG.ML_INPAINT, runId,
+            patches: patches.map(({ id, key, maskKey, width, height }) => ({ id, key, maskKey, width, height })),
+          });
+          inpaintMs = r.ms;
+          for (const res of r.results) {
+            const p = patches[res.id];
+            pxKeys.push(res.key);
+            const buf = await pixelTake(res.key);
+            pasteRGBA(inpainted, w, { data: new Uint8ClampedArray(buf), w: p.width, h: p.height }, p.x, p.y);
+          }
+        }
+        phase2Progress('inpaint', 1);
+        await emitDebug(runId, tabId, settings, 'inpaint', {
+          title: `Inpaint — ${patches.length} patches`,
+          image: await rgbaToDataURL(inpainted, w, h), ms: inpaintMs,
+        });
+        return { inpainted, inpaintMs };
+      })(),
+    ]);
+    timings.translate = translateOut.translateMs;
+    timings.inpaint = inpaintOut.inpaintMs;
+    const { inpainted } = inpaintOut;
 
     // ---- 8. render: translated text composited onto the image.
     // mode 'replace' swaps the page's original <img>; 'overlay' shows it in the overlay.
