@@ -348,7 +348,11 @@
     if (!p) { debugBody.innerHTML = `<p style="color:#888">no data for "${esc(stage)}" yet</p>`; return; }
     let html = `<h3 style="margin:0 0 8px">${esc(p.title || stage)}</h3>`;
     if (p.totalMs != null) {
-      html += `<p style="color:#eee;font-size:14px;margin:0 0 4px">total: <b>${p.totalMs}ms</b></p>`;
+      html += `<p style="color:#eee;font-size:14px;margin:0 0 4px">total: <b>${p.totalMs}ms</b>`;
+      if (p.seqMs != null && p.seqMs > p.totalMs) {
+        html += ` <span style="color:#8f8;font-size:12px">(parallelism saved ${p.seqMs - p.totalMs}ms vs sequential ${p.seqMs}ms)</span>`;
+      }
+      html += `</p>`;
       if (p.breakdown) html += `<p style="color:#888;margin:0 0 8px">${esc(p.breakdown)}</p>`;
     }
     if (p.ms != null) html += `<p style="color:#888">${p.ms} ms</p>`;
@@ -487,11 +491,13 @@
           const totalMs = allTimings.total != null
             ? allTimings.total
             : Object.entries(allTimings).filter(([k]) => k !== 'total').reduce((a, [, v]) => a + (v || 0), 0);
+          const seqMs = Object.entries(allTimings).filter(([k]) => k !== 'total').reduce((a, [, v]) => a + (v || 0), 0);
           stageTabs['render'] = {
             title: 'Render',
             ms: allTimings.render,
             rows: renderInfo.map(r => ({ text: r.text, translation: `${r.size}px (auto ${r.auto}px)${r.vertical ? ' vertical' : ''}` })),
             totalMs,
+            seqMs,
             breakdown: Object.entries(allTimings).filter(([k]) => k !== 'total').map(([k, v]) => `${k} ${v}ms`).join(' · '),
           };
           if (debug) {

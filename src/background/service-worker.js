@@ -287,10 +287,16 @@ function maskToRGBA(mask, w, h) {
 async function emitDebug(runId, tabId, settings, stage, payload) {
   if (!settings.debugMode) return;
   try {
-    await chrome.tabs.sendMessage(tabId, {
-      type: MSG.DEBUG_STAGE, runId, stage, payload, debug: true,
-    });
-  } catch { /* content script not there yet */ }
+    // Race against a timeout: on some browsers tabs.sendMessage can hang
+    // (neither resolve nor reject), which would stall the pipeline — the
+    // mask branch must resolve so inpaint can start.
+    await Promise.race([
+      chrome.tabs.sendMessage(tabId, {
+        type: MSG.DEBUG_STAGE, runId, stage, payload, debug: true,
+      }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('emitDebug timeout')), 5000)),
+    ]);
+  } catch { /* content script not there yet or send hung */ }
 }
 
 function setProgress(runId, stage, progress) {
