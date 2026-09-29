@@ -18,11 +18,11 @@
 //             repetition_penalty 1.2 on all previously emitted ids
 //             symbol-aware content-run cap: a letter/number id emitted 12 times
 //               in a row gets -inf (kills repetition loops)
-//             stop at EOS or 128 tokens
+//             stop at EOS or 256 tokens
 //        -> decode: ids 0..3 are <pad>/<bos>/<eos>/<unk>, id>=4 -> charset[id-4]
 export const BABERU_IMG = 224;
 const BOS = 1, EOS = 2;
-const MAX_NEW_TOKENS = 128;
+const MAX_NEW_TOKENS = 256;
 const REPETITION_PENALTY = 1.2;
 const MAX_CONTENT_RUN = 12;
 const NUM_LAYERS = 6;
