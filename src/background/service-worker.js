@@ -539,9 +539,11 @@ async function runPipeline(tabId) {
     // the offscreen document on its own thread).
     let translateOut, inpaintOut;
     if (directHandlers()) {
-      translateOut = await runTranslate();
+      // Firefox: original linear pipeline — blocks → ocr → mask → inpaint → translate → render.
+      // (Single-threaded; parallel branches hang when WASM blocks the event loop.)
       const maskRes = await runMask();
       inpaintOut = await runInpaint(maskRes);
+      translateOut = await runTranslate();
     } else {
       const maskP = runMask();
       const inpaintP = maskP.then(runInpaint);
