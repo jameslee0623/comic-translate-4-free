@@ -1,5 +1,5 @@
 // Popup: trigger runs, show progress, backend + language quick-switch, whitelist.
-const BUILD = '20260928j'; // bump on every shipped build; shown in the footer
+const BUILD = '20260928k'; // bump on every shipped build; shown in the footer
 const $ = id => document.getElementById(id);
 const STAGE_LABEL = {
   idle: 'idle', capture: 'Capturing page…', detect: 'Detecting bubbles & text…',
@@ -77,6 +77,14 @@ function isWhitelisted(host, list) {
 // expires the click's user gesture across awaits, and permissions.request()
 // called after an await silently does nothing.
 let cachedImageHost = null;
+// A granted `*://host/*` satisfies the query, but be lenient like
+// hasHostAccess in the service worker: scheme-specific grants count too.
+async function hasOriginAccess(host) {
+  for (const p of [`*://${host}/*`, `http://${host}/*`, `https://${host}/*`]) {
+    if (await chrome.permissions.contains({ origins: [p] }).catch(() => false)) return true;
+  }
+  return false;
+}
 function requestSiteAccessNow(host) {
   const origins = [`*://${host}/*`, `*://*.${host}/*`];
   if (cachedImageHost && cachedImageHost !== host) origins.push(`*://${cachedImageHost}/*`);
@@ -88,16 +96,21 @@ function requestSiteAccessNow(host) {
 
 async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => [null]);
   currentHost = tab ? hostOfUrl(tab.url) : null;
-  // Best-effort: learn the page picture's host now (not on click) so the
-  // grant click can request it without any awaits first. Fire and forget.
+  // Learn the page picture's host now (not on click) so the grant click can
+  // request it without any awaits first — pictures often live on a CDN host
+  // different from the page host, and the pipeline's download tier needs
+  // permission for it. Awaited here: this is popup-open time, not a click
+  // gesture, so awaits are fine.
   cachedImageHost = null;
   if (tab && tab.id != null) {
-    chrome.tabs.sendMessage(tab.id, { type: 'ct/find-image' }).catch(() => null).then(r => {
+    try {
+      const r = await chrome.tabs.sendMessage(tab.id, { type: 'ct/find-image' }).catch(() => null);
       const src = r && r.image && r.image.src;
       if (src && /^https?:\/\//i.test(src)) {
-        cachedImageHost = new URL(src).hostname.toLowerCase();
+        const ih = new URL(src).hostname.toLowerCase();
+        if (ih && ih !== currentHost) cachedImageHost = ih;
       }
-    });
+    } catch { /* content script not injected yet — page host is enough to try */ }
   }
   const list = settings.siteWhitelist || [];
   const btn = $('whitelistBtn');
@@ -111,22 +124,21 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
     (ok ? '<span class="ok">whitelisted ✓</span>' : '<span class="warn">not whitelisted</span>');
   btn.textContent = ok ? 'Remove from whitelist' : 'Add this site to whitelist';
   btn.disabled = false;
-  // Whitelisted but no host access (e.g. the site was added in Options, which
-  // can't request the permission): offer the one-click grant. Without it,
-  // scripting injection — and therefore translation — cannot start.
+  // Whitelisted but missing host access: offer the one-click grant. This covers
+  // BOTH the page host (needed for script injection) and the picture's host
+  // (needed for the download tier) — the picture often lives on a CDN. After
+  // the first grant the content script can inject, so the picture host becomes
+  // known and a second click covers it; the row stays visible until both are
+  // granted, naming whichever host is still missing.
   const grantRow = $('grantRow');
   grantRow.style.display = 'none';
   if (ok && currentHost && chrome.permissions && chrome.permissions.contains) {
-    // A granted `*://host/*` satisfies the query, but be lenient like
-    // hasHostAccess: scheme-specific grants count too.
-    const has = await (async () => {
-      for (const p of [`*://${currentHost}/*`, `http://${currentHost}/*`, `https://${currentHost}/*`]) {
-        if (await chrome.permissions.contains({ origins: [p] }).catch(() => false)) return true;
-      }
-      return false;
-    })();
-    if (!has) {
+    const pageHas = await hasOriginAccess(currentHost);
+    const imgHas = !cachedImageHost || await hasOriginAccess(cachedImageHost);
+    const missing = !pageHas ? currentHost : (!imgHas ? cachedImageHost : null);
+    if (missing) {
       grantRow.style.display = '';
+      $('grantBtn').textContent = `Grant access to ${missing}`;
       $('grantBtn').onclick = () => {
         // Request synchronously in the click: no awaits before
         // permissions.request() or Firefox drops the user gesture.

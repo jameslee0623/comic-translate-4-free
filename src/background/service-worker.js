@@ -161,9 +161,13 @@ async function getPipelineImage(tabId, settings) {
     tooSmall(w, h);
     return { rgba, w, h, mode: 'replace', tier: 'worker-fetch' };
   } catch (e) { failures.push('download: ' + String((e && e.message) || e).slice(0, 120)); }
+  let imgHost = '';
+  try { imgHost = new URL(info.src).hostname; } catch { /* keep it empty */ }
   throw new Error(
     `couldn't read the page's picture (${failures.join('; ')}). ` +
-    `If the picture is hosted on another site, open the extension popup on this page and click "Grant access".`);
+    (imgHost
+      ? `The picture is hosted on ${imgHost} — open the extension popup on this page and click "Grant access to ${imgHost}".`
+      : `If the picture is hosted on another site, open the extension popup on this page and click "Grant access".`));
 }
 
 // ---------------------------------------------------------------- pixel helpers
