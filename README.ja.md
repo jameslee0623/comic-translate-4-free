@@ -144,13 +144,14 @@ background — オーケストレーション、キャプチャ、ブロック�
 translate → render。検出は640×640で実行；縦横比が3.5:1を超える縦長ページは
 重なり合う垂直スライスで処理します。
 
-**Chrome版とFirefox版のパイプラインの違い：** 両ビルド間で初めての動作の
-違いです。Chrome版はOCR後に翻訳とmask/inpaintを並列実行します — MLセッションが
-offscreenドキュメント内の独自スレッドで動作するため、各ステージは実際に
-重なって実行されます。Firefox版は従来のリニアな順序（mask → inpaint →
-translate）で実行します。MLセッションがバックグラウンドページの単一スレッド内で
-動作するため、WASM inpaintがイベントループをブロックし、並列の翻訳ブランチや
-UIがフリーズしてしまうためです。
+**Chrome版とFirefox版のパイプライン：** 両ビルドともOCR後に翻訳とmask/inpaintを
+並列実行します。Chrome版はPromise.allで並列化 — MLセッションがoffscreen
+ドキュメント内の独自スレッドで動作するため、各ステージは実際に重なって
+実行されます。Firefox版は翻訳をWeb Worker（独自スレッド）で実行し、
+mask → inpaintはメインスレッドで実行します — WASM inpaintがメインスレッドを
+占有しても、WorkerのネットワークI/Oはブロックされません。（Firefox版は以前、
+リニアなmask → inpaint → translate順序で実行していました。シングルスレッドの
+バックグラウンドページでは、並列ブランチがフリーズなしに実行できなかったためです。）
 
 ## 既知の制限
 

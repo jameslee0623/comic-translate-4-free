@@ -149,13 +149,14 @@ Pipeline stages: capture → detect → blocks → OCR → mask → inpaint →
 translate → render. Detection runs at 640×640; pages taller than 3.5:1 are
 processed in overlapping vertical slices.
 
-**Chrome vs Firefox pipeline:** this is the first behavioral difference
-between the two builds. Chrome runs translate and mask/inpaint in parallel
-after OCR — the ML sessions live in the offscreen document on its own
-thread, so the stages truly overlap. Firefox runs the original linear order
-(mask → inpaint → translate) because its ML sessions run in-process on the
-background page's single thread: the WASM inpaint blocks the event loop,
-which would freeze the parallel translate branch and the UI.
+**Chrome vs Firefox pipeline:** both builds run translate in parallel with
+mask/inpaint after OCR. Chrome does it via Promise.all — the ML sessions
+live in the offscreen document on its own thread, so the stages truly
+overlap. Firefox runs translation on a Web Worker (its own thread) while
+mask → inpaint runs on the main thread — the worker's network I/O is not
+blocked when the WASM inpaint hogs the main thread. (Firefox previously ran
+the linear mask → inpaint → translate order; the single-threaded background
+page couldn't run the parallel branches without freezing.)
 
 ## Known limitations
 
