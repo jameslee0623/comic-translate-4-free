@@ -147,6 +147,12 @@ background — 編排、擷取、文字區塊、遮罩、翻譯 API、
 translate → render。偵測在 640×640 下執行；
 長寬比超過 3.5:1 的高圖以重疊的垂直切片處理。
 
+**Chrome 與 Firefox 流水線差異：** 這是兩個建置版本之間的第一個行為差異。
+Chrome 在 OCR 之後並行執行翻譯與 mask/inpaint —— ML 會話運行在 offscreen
+文件的獨立執行緒中，因此各階段真正重疊執行。Firefox 採用原始的線性順序
+（mask → inpaint → translate），因為其 ML 會話在背景頁面的單一執行緒中處理序內
+執行：WASM inpaint 會阻塞事件迴圈，導致並行的翻譯分支和 UI 卡死。
+
 ## 已知限制
 
 - 本機 LLM 後端為實驗性（需要 WebGPU + 數 GB 下載）。

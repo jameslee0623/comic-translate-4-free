@@ -147,6 +147,12 @@ background — 编排、捕获、文本块、遮罩、翻译 API、
 translate → render。检测在 640×640 下运行；
 纵横比超过 3.5:1 的高图以重叠垂直切片处理。
 
+**Chrome 与 Firefox 流水线差异：** 这是两个构建版本之间的第一个行为差异。
+Chrome 在 OCR 之后并行执行翻译与 mask/inpaint —— ML 会话运行在 offscreen
+文档的独立线程中，因此各阶段真正重叠执行。Firefox 采用原始的线性顺序
+（mask → inpaint → translate），因为其 ML 会话在后台页面的单线程中进程内
+运行：WASM inpaint 会阻塞事件循环，导致并行的翻译分支和 UI 卡死。
+
 ## 已知限制
 
 - 本地 LLM 后端为实验性（需要 WebGPU + 数 GB 下载）。

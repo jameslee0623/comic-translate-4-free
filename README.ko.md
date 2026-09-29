@@ -145,6 +145,13 @@ background — 오케스트레이션, 캡처, 블록, 마스크, 번역 API,
 translate → render. 감지는 640×640으로 실행되며, 세로가 3.5:1을 넘는 페이지는
 겹치는 수직 슬라이스로 처리합니다.
 
+**Chrome vs Firefox 파이프라인:** 두 빌드 간의 첫 번째 동작 차이입니다.
+Chrome은 OCR 후 번역과 mask/inpaint를 병렬로 실행합니다 — ML 세션이 offscreen
+문서의 자체 스레드에서 동작하므로 각 단계가 실제로 겹쳐서 실행됩니다. Firefox는
+기존의 선형 순서(mask → inpaint → translate)로 실행합니다. ML 세션이 백그라운드
+페이지의 단일 스레드에서 인프로세스로 동작하므로, WASM inpaint가 이벤트 루프를
+차단하여 병렬 번역 브랜치와 UI가 멈춰버리기 때문입니다.
+
 ## 알려진 제한
 
 - 로컬 LLM 백엔드는 실험적입니다(WebGPU + 수 GB 다운로드 필요).
