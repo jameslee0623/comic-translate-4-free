@@ -170,14 +170,18 @@ export async function getSettings() {
     s.targetLang = DEFAULT_SETTINGS.targetLang;
     chrome.storage.local.set({ settings: s }).catch(() => {});
   }
-  if (!s._prunedOldOcrModels) {
-    s._prunedOldOcrModels = true;
-    chrome.storage.local.set({ settings: s }).catch(() => {});
-    try {
-      const { pruneRemovedModels } = await import('./model-specs.js');
-      await pruneRemovedModels();
-    } catch { /* best effort */ }
-  }
+  // Prune removed models. Tracks which IDs were pruned so newly added
+  // removals are picked up on installs where an earlier prune already ran.
+  try {
+    const { PRUNED_MODEL_IDS, pruneModelIds } = await import('./model-specs.js');
+    const doneIds = Array.isArray(s._prunedModelIds) ? s._prunedModelIds : [];
+    const pending = PRUNED_MODEL_IDS.filter(id => !doneIds.includes(id));
+    if (pending.length) {
+      await pruneModelIds(pending);
+      s._prunedModelIds = [...new Set([...doneIds, ...pending])];
+      chrome.storage.local.set({ settings: s }).catch(() => {});
+    }
+  } catch { /* best effort */ }
   return s;
 }
 

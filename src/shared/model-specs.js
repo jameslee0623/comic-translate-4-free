@@ -87,9 +87,10 @@ export async function deleteModelGroup(groupId) {
 // 2026-09-29 by Baberu): with no group row left in the UI
 // there'd be no way to delete them otherwise.
 const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav', 'ocr-pororo', 'ocr-ppocr-en', 'ocr-ppocr-chinese', 'ocr-ppocrv6', 'ocr-ppocr-ko', 'ocr-encoder', 'ocr-decoder-init', 'ocr-decoder-step'];
-export async function pruneRemovedModels() {
+export { PRUNED_MODEL_IDS };
+export async function pruneModelIds(ids) {
   const db = await openDb();
-  for (const id of PRUNED_MODEL_IDS) {
+  for (const id of ids) {
     try {
       const rec = await idbGet(db, id).catch(() => null);
       if (!rec) continue;
@@ -97,6 +98,9 @@ export async function pruneRemovedModels() {
       await idbDel(db, id);
     } catch { /* best effort */ }
   }
+}
+export async function pruneRemovedModels() {
+  await pruneModelIds(PRUNED_MODEL_IDS);
 }
 
 // ---- chunked model storage ----
