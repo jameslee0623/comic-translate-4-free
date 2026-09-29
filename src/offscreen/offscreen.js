@@ -1,13 +1,13 @@
 // Offscreen ML host: owns ALL onnxruntime-web sessions (detector, manga-ocr,
-// Pororo Korean OCR, PP-OCRv5 multilingual OCR, LaMa inpainter). The service worker orchestrates; this document only runs
+// Baberu OCR, PP-OCR Korean/v6 OCR, LaMa inpainter). The service worker orchestrates; this document only runs
 // inference. Models are read from the shared IndexedDB ('ct-db'/'models').
 // Verified: ort 1.30 threaded WASM runs here with numThreads=1 and no COOP/COEP
 // (chrome-extension: pages get SharedArrayBuffer without crossOriginIsolated).
 import { MSG, openDb, idbGet } from '../shared/contracts.js';
-import { ALL_FILES, downloadFileToIdb, readChunked, ocrEngineForLang, PPOCR_DICT_ASSET, PORORO_CHARSET_ASSET } from '../shared/model-specs.js';
+import { ALL_FILES, downloadFileToIdb, readChunked, ocrEngineForLang, PPOCR_DICT_ASSET, BABERU_VOCAB_ASSET } from '../shared/model-specs.js';
 import { Detector } from './ml/detector.js';
 import { MangaOCR } from './ml/ocr.js';
-import { PororoOCR } from './ml/pororo.js';
+import { BaberuOCR } from './ml/baberu.js';
 import { PPOCRV5 } from './ml/ppocr.js';
 import { meanBrightness } from './ml/image-ops.js';
 import { Inpainter } from './ml/inpaint.js';
@@ -18,22 +18,22 @@ ort.env.wasm.numThreads = 1;
 
 const detector = new Detector();
 const ocr = new MangaOCR();
-const pororo = new PororoOCR();
-// One PP-OCRv5 session per language group (model + dict differ per group);
+const baberu = new BaberuOCR();
+// One PP-OCR session per language group (model + dict differ per group);
 // created lazily and loaded on first use for that language.
 const ppocr = {
-  'ocr-ppocr-en': new PPOCRV5(),
-  'ocr-ppocr-chinese': new PPOCRV5(),
+  'ocr-ppocr-ko': new PPOCRV5(),
+  'ocr-ppocrv6': new PPOCRV5(),
 };
 const inpainter = new Inpainter();
 
 // Drop loaded ORT sessions so the next inference re-reads model files from
-// IndexedDB. group: 'detector' | 'ocr' | 'ocr-pororo' | 'ocr-ppocr-*' |
+// IndexedDB. group: 'detector' | 'ocr' | 'ocr-baberu' | 'ocr-ppocr-*' |
 // 'inpaint' | '*'.
 function resetGroup(group) {
   if (group === 'detector' || group === '*') detector.reset();
   if (group === 'ocr' || group === '*') ocr.reset();
-  if (group === 'ocr-pororo' || group === '*') pororo.reset();
+  if (group === 'ocr-baberu' || group === '*') baberu.reset();
   if (ppocr[group]) ppocr[group].reset();
   if (group === '*') for (const k of Object.keys(ppocr)) ppocr[k].reset();
   if (group === 'inpaint' || group === '*') inpainter.reset();
@@ -67,9 +67,9 @@ function blobUrl(buf) {
 const MODEL_FILES = {
   detector: ['detector'],
   ocr: ['ocr-encoder', 'ocr-decoder-init', 'ocr-decoder-step'],
-  'ocr-pororo': ['ocr-pororo'],
-  'ocr-ppocr-en': ['ocr-ppocr-en'],
-  'ocr-ppocr-chinese': ['ocr-ppocr-chinese'],
+  'ocr-baberu': ['ocr-baberu-vision', 'ocr-baberu-prefill', 'ocr-baberu-step'],
+  'ocr-ppocr-ko': ['ocr-ppocr-ko'],
+  'ocr-ppocrv6': ['ocr-ppocrv6'],
   inpaint: ['inpaint'],
 };
 
@@ -88,9 +88,10 @@ async function ensureModel(kind) {
       const [enc, init, step] = await Promise.all(MODEL_FILES.ocr.map(modelBuffer));
       const vocabText = await assetText('src/offscreen/vocab.txt');
       await ocr.load(blobUrl(enc), blobUrl(init), blobUrl(step), vocabText);
-    } else if (kind === 'ocr-pororo' && !pororo.loaded) {
-      const charsetText = await assetText(PORORO_CHARSET_ASSET);
-      await pororo.load(blobUrl(await modelBuffer('ocr-pororo')), charsetText);
+    } else if (kind === 'ocr-baberu' && !baberu.loaded) {
+      const [vis, pre, step] = await Promise.all(MODEL_FILES['ocr-baberu'].map(modelBuffer));
+      const vocabJson = await assetText(BABERU_VOCAB_ASSET);
+      await baberu.load(blobUrl(vis), blobUrl(pre), blobUrl(step), vocabJson);
     } else if (ppocr[kind] && !ppocr[kind].loaded) {
       const dictText = await assetText(PPOCR_DICT_ASSET[kind]);
       await ppocr[kind].load(blobUrl(await modelBuffer(kind)), dictText);
@@ -115,7 +116,7 @@ const handlers = {
   [MSG.ML_PING]() {
     const ppocrLoaded = {};
     for (const k of Object.keys(ppocr)) ppocrLoaded[k] = ppocr[k].loaded;
-    return { ok: true, loaded: { detector: detector.loaded, ocr: ocr.loaded, pororo: pororo.loaded, ...ppocrLoaded, inpaint: inpainter.loaded } };
+    return { ok: true, loaded: { detector: detector.loaded, ocr: ocr.loaded, baberu: baberu.loaded, ...ppocrLoaded, inpaint: inpainter.loaded } };
   },
 
   async [MSG.ML_ENSURE]({ model }) {
@@ -193,10 +194,11 @@ const handlers = {
   async [MSG.ML_OCR]({ crops, runId, sourceLang }) {
     throwIfCancelled(runId);
     // OCR engine follows the source language: manga-ocr for Japanese,
-    // Pororo for Korean, PP-OCRv5 for everything else.
+    // PP-OCRv5 Korean for Korean, Baberu for English + Simplified Chinese,
+    // PP-OCRv6 for Traditional Chinese.
     const engine = ocrEngineForLang(sourceLang || 'ja');
     await ensureModel(engine);
-    const inst = engine === 'ocr' ? ocr : engine === 'ocr-pororo' ? pororo : ppocr[engine];
+    const inst = engine === 'ocr' ? ocr : engine === 'ocr-baberu' ? baberu : ppocr[engine];
     throwIfCancelled(runId);
     const t0 = performance.now();
     const results = [];

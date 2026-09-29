@@ -44,8 +44,8 @@ export async function getSettings() {
     s.sourceLang = DEFAULT_SETTINGS.sourceLang;
     chrome.storage.local.set({ settings: s }).catch(() => {});
   }
-  if (!s._prunedLatinRuModels) {
-    s._prunedLatinRuModels = true;
+  if (!s._prunedOldOcrModels) {
+    s._prunedOldOcrModels = true;
     chrome.storage.local.set({ settings: s }).catch(() => {});
     try {
       const { pruneRemovedModels } = await import('./model-specs.js');

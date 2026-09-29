@@ -31,56 +31,60 @@ export const MODEL_GROUPS = [
     ],
   },
   {
-    id: 'ocr-pororo', labelKey: 'model_pororo', label: 'Pororo Korean OCR (brainocr)',
+    id: 'ocr-ppocr-ko', labelKey: 'model_ko', label: 'PP-OCRv5 OCR (Korean, official 2025 model)',
     files: [
-      { id: 'ocr-pororo', file: 'brainocr.onnx', bytes: 76907335,
-        url: hf('ogkalu/pororo', 'brainocr.onnx') },
+      { id: 'ocr-ppocr-ko', file: 'inference.onnx', bytes: 13418787,
+        url: hf('PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx', 'inference.onnx') },
     ],
   },
   {
-    id: 'ocr-ppocr-en', labelKey: 'model_en', label: 'PP-OCRv5 OCR (English)',
+    id: 'ocr-baberu', labelKey: 'model_baberu', label: 'Baberu OCR (English + Chinese Simplified, manga-trained)',
     files: [
-      { id: 'ocr-ppocr-en', file: 'rec.onnx', bytes: 7830888,
-        url: hf('monkt/paddleocr-onnx', 'languages/english/rec.onnx') },
+      { id: 'ocr-baberu-vision', file: 'vision_int4.onnx', bytes: 52293486,
+        url: hf('genshiai-daichi/baberu-ocr', 'onnx/vision_int4.onnx') },
+      { id: 'ocr-baberu-prefill', file: 'decoder_prefill_int8.onnx', bytes: 35133596,
+        url: hf('genshiai-daichi/baberu-ocr', 'onnx/decoder_prefill_int8.onnx') },
+      { id: 'ocr-baberu-step', file: 'decoder_step_int8.onnx', bytes: 33929034,
+        url: hf('genshiai-daichi/baberu-ocr', 'onnx/decoder_step_int8.onnx') },
     ],
   },
   {
-    id: 'ocr-ppocr-chinese', labelKey: 'model_zh', label: 'PP-OCRv5 OCR (Chinese Simplified/Traditional)',
+    id: 'ocr-ppocrv6', labelKey: 'model_zh_tw', label: 'PP-OCRv6 OCR (Chinese Traditional)',
     files: [
-      { id: 'ocr-ppocr-chinese', file: 'rec.onnx', bytes: 84468836,
-        url: hf('monkt/paddleocr-onnx', 'languages/chinese/rec.onnx') },
+      { id: 'ocr-ppocrv6', file: 'inference.onnx', bytes: 21159378,
+        url: hf('PaddlePaddle/PP-OCRv6_small_rec_onnx', 'inference.onnx') },
     ],
   },
 ];
 
 // OCR engine routing by source language (LANGS in shared/settings.js):
-//   ja          -> manga-ocr ('ocr' group; manga-specialized, kept for Japanese)
-//   ko          -> Pororo brainocr ('ocr-pororo' group)
-//   en          -> PP-OCRv5 english ('ocr-ppocr-en' group)
-//   zh-CN/zh-TW -> PP-OCRv5 chinese ('ocr-ppocr-chinese' group)
-// (Latin/Russian models removed 2026-09-28: not needed.)
+//   ja      -> manga-ocr ('ocr' group; manga-specialized, kept for Japanese)
+//   ko      -> PP-OCRv5 Korean ('ocr-ppocr-ko' group; official 2025 model)
+//   en      -> Baberu ('ocr-baberu' group; trained on manga bubbles)
+//   zh-CN   -> Baberu ('ocr-baberu' group)
+//   zh-TW   -> PP-OCRv6 small ('ocr-ppocrv6' group; first line with explicit
+//              Traditional Chinese support)
+// (Pororo + PP-OCRv5 en/chinese models removed 2026-09-28: superseded.)
 export function ocrEngineForLang(lang) {
-  if (lang === 'ko') return 'ocr-pororo';
+  if (lang === 'ko') return 'ocr-ppocr-ko';
   if (lang === 'ja') return 'ocr';
-  if (lang === 'en') return 'ocr-ppocr-en';
-  if (lang === 'zh-CN' || lang === 'zh-TW') return 'ocr-ppocr-chinese';
-  return 'ocr-ppocr-en'; // fallback: only ja/en/ko/zh are offered as source languages
+  if (lang === 'en') return 'ocr-baberu';
+  if (lang === 'zh-CN') return 'ocr-baberu';
+  if (lang === 'zh-TW') return 'ocr-ppocrv6';
+  return 'ocr-baberu'; // fallback: only ja/en/ko/zh are offered as source languages
 }
 
-// PP-OCRv5 character dictionaries, bundled (one char per line, UTF-8).
-// These are the exact dict.txt files shipped with the monkt/paddleocr-onnx
-// rec.onnx exports (verified byte-identical in order and content against the
-// official PaddlePaddle PP-OCRv5 character_dict for English on 2026-09-28).
+// PP-OCR character dictionaries, bundled (one char per line, UTF-8).
+// The v5/v6 dicts are the exact character_dict lists from the official
+// PaddlePaddle inference.yml configs (extracted 2026-09-28).
 export const PPOCR_DICT_ASSET = {
-  'ocr-ppocr-en': 'src/offscreen/ml/dicts/ppocr-english.txt',
-  'ocr-ppocr-chinese': 'src/offscreen/ml/dicts/ppocr-chinese.txt',
+  'ocr-ppocr-ko': 'src/offscreen/ml/dicts/ppocr-korean.txt',
+  'ocr-ppocrv6': 'src/offscreen/ml/dicts/ppocrv6.txt',
 };
 
-// Pororo brainocr charset, bundled (one char per line, UTF-8).
-// Extracted from the `character` field of ocr-opt.txt next to brainocr.onnx
-// in ogkalu/pororo (2588 chars; model class c>0 maps to line c-1, class 0 is
-// the CTC blank — see pororo's build_vocab which prepends '[blank]').
-export const PORORO_CHARSET_ASSET = 'src/offscreen/ml/pororo-charset.txt';
+// Baberu character vocab, bundled (JSON array; id>=4 -> charset[id-4]).
+// From genshiai-daichi/baberu-ocr tokenizer/vocab.json.
+export const BABERU_VOCAB_ASSET = 'src/offscreen/ml/dicts/baberu-vocab.json';
 
 export const ALL_FILES = MODEL_GROUPS.flatMap(g =>
   g.files.map(f => ({ ...f, group: g.id, groupLabel: g.label })));
@@ -118,9 +122,10 @@ export async function deleteModelGroup(groupId) {
 }
 
 // One-time cleanup for model files whose groups were removed from
-// MODEL_GROUPS (Latin/Russian PP-OCRv5, 2026-09-28): with no group row left in
-// the UI there'd be no way to delete them otherwise.
-const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav'];
+// MODEL_GROUPS (Latin/Russian PP-OCRv5, 2026-09-28; Pororo + PP-OCRv5
+// en/chinese, superseded 2026-09-28): with no group row left in the UI
+// there'd be no way to delete them otherwise.
+const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav', 'ocr-pororo', 'ocr-ppocr-en', 'ocr-ppocr-chinese'];
 export async function pruneRemovedModels() {
   const db = await openDb();
   for (const id of PRUNED_MODEL_IDS) {
