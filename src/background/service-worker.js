@@ -444,56 +444,50 @@ async function runPipeline(tabId) {
       });
     }
 
-    // ---- 5+6. translate and mask in parallel — both need only the OCR text
-    // and are independent of each other (translate: network I/O here;
-    // mask: CPU here). Inpaint still waits for the mask below.
+    // ---- 5+6+7. translate || (mask -> inpaint). Translate and mask both need
+    // only the OCR text and are independent of each other (translate: network
+    // I/O here; mask: CPU here). Inpaint needs the mask, so it chains off the
+    // mask promise and starts as soon as the mask is done — it does not wait
+    // for translate. Render waits for both translate and inpaint.
     checkCancelled(runId);
-    const phase1 = { translate: 0, mask: 0 };
-    let phase1Max = 0.58;
-    const phase1Progress = (branch, frac) => {
-      phase1[branch] = frac;
-      phase1Max = Math.max(phase1Max, 0.58 + 0.14 * (phase1.translate + phase1.mask) / 2);
-      setProgress(runId, branch, phase1Max);
+    const par = { translate: 0, mask: 0, inpaint: 0 };
+    let parMax = 0.58;
+    const parProgress = (branch, frac) => {
+      par[branch] = frac;
+      parMax = Math.max(parMax, 0.58 + 0.32 * (par.translate + par.mask + par.inpaint) / 3);
+      setProgress(runId, branch, parMax);
     };
-    const [translateOut, maskOut] = await Promise.all([
-      (async () => {
-        phase1Progress('translate', 0);
-        const t0t = performance.now();
-        const translated = await translateBlocks(blocks, settings);
-        blocks.forEach((b, i) => { b.translation = translated[i]; });
-        const translateMs = Math.round(performance.now() - t0t);
-        phase1Progress('translate', 1);
-        await emitDebug(runId, tabId, settings, 'translate', {
-          title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
-          rows: blocks.map(b => ({ text: b.text, translation: b.translation })),
-          ms: translateMs,
-        });
-        return { translateMs };
-      })(),
-      (async () => {
-        phase1Progress('mask', 0);
-        const t0m = performance.now();
-        const pageGray = toGrayU8(rgba, w, h);
-        const { mask: fullMask, entries } = generateMask(rgba, w, h, pageGray, blocks, 5);
-        const maskMs = Math.round(performance.now() - t0m);
-        phase1Progress('mask', 1);
-        await emitDebug(runId, tabId, settings, 'mask', {
-          title: `Mask — ${entries.length} block masks`,
-          mask: await rgbaToDataURL(maskToRGBA(fullMask, w, h), w, h), ms: maskMs,
-        });
-        return { fullMask, entries, maskMs };
-      })(),
-    ]);
-    timings.translate = translateOut.translateMs;
-    timings.mask = maskOut.maskMs;
-    const { fullMask, entries } = maskOut;
-
-    // ---- 7. inpaint (needs the mask). Runs while translate is already done;
-    // render below waits for both translate and inpaint.
-    checkCancelled(runId);
-    setProgress(runId, 'inpaint', 0.74);
-    let inpainted, inpaintMs;
-    {
+    const translateP = (async () => {
+      parProgress('translate', 0);
+      const t0t = performance.now();
+      const translated = await translateBlocks(blocks, settings);
+      checkCancelled(runId);
+      blocks.forEach((b, i) => { b.translation = translated[i]; });
+      const translateMs = Math.round(performance.now() - t0t);
+      parProgress('translate', 1);
+      await emitDebug(runId, tabId, settings, 'translate', {
+        title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
+        rows: blocks.map(b => ({ text: b.text, translation: b.translation })),
+        ms: translateMs,
+      });
+      return { translateMs };
+    })();
+    const maskP = (async () => {
+      parProgress('mask', 0);
+      const t0m = performance.now();
+      const pageGray = toGrayU8(rgba, w, h);
+      const { mask: fullMask, entries } = generateMask(rgba, w, h, pageGray, blocks, 5);
+      const maskMs = Math.round(performance.now() - t0m);
+      parProgress('mask', 1);
+      await emitDebug(runId, tabId, settings, 'mask', {
+        title: `Mask — ${entries.length} block masks`,
+        mask: await rgbaToDataURL(maskToRGBA(fullMask, w, h), w, h), ms: maskMs,
+      });
+      return { fullMask, entries, maskMs };
+    })();
+    const inpaintP = maskP.then(async ({ fullMask, entries, maskMs }) => {
+      checkCancelled(runId);
+      parProgress('inpaint', 0);
       const t0i = performance.now();
       const patchBoxes = mergePaddedBoxes(entries, 8, w, h);
       const patches = [];
@@ -507,8 +501,8 @@ async function runPipeline(tabId) {
         await pixelPut(maskKey, cropMask1(fullMask, w, x1, y1, x2, y2).buffer);
         patches.push({ id: i, x: x1, y: y1, key: pxKey, maskKey, width: x2 - x1, height: y2 - y1 });
       }
-      inpainted = new Uint8ClampedArray(rgba);
-      inpaintMs = 0;
+      const inpainted = new Uint8ClampedArray(rgba);
+      let inpaintMs = 0;
       if (patches.length) {
         const r = await callMlChecked(runId, {
           type: MSG.ML_INPAINT, runId,
@@ -522,13 +516,20 @@ async function runPipeline(tabId) {
           pasteRGBA(inpainted, w, { data: new Uint8ClampedArray(buf), w: p.width, h: p.height }, p.x, p.y);
         }
       }
-      timings.inpaint = Math.round(performance.now() - t0i);
-      setProgress(runId, 'inpaint', 0.90);
+      const totalInpaintMs = Math.round(performance.now() - t0i);
+      parProgress('inpaint', 1);
       await emitDebug(runId, tabId, settings, 'inpaint', {
         title: `Inpaint — ${patches.length} patches`,
         image: await rgbaToDataURL(inpainted, w, h), ms: inpaintMs,
       });
-    }
+      return { inpainted, inpaintMs, maskMs, totalInpaintMs };
+    });
+
+    const [translateOut, inpaintOut] = await Promise.all([translateP, inpaintP]);
+    timings.translate = translateOut.translateMs;
+    timings.mask = inpaintOut.maskMs;
+    timings.inpaint = inpaintOut.totalInpaintMs;
+    const { inpainted } = inpaintOut;
 
     // ---- 8. render: translated text composited onto the image.
     // mode 'replace' swaps the page's original <img>; 'overlay' shows it in the overlay.
