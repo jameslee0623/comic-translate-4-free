@@ -66,6 +66,7 @@ function hostAccessError(host) {
 // ---------------------------------------------------------------- state
 const runs = new Map();          // runId -> {cancelled, tabId, stage}
 let currentRun = null;           // {runId, stage, progress} | null
+let runSeq = 0;                  // ensures runId uniqueness within the same millisecond
 
 const isCancelled = runId => runs.get(runId)?.cancelled;
 function checkCancelled(runId) {
@@ -322,7 +323,7 @@ function broadcastError(runId, error) {
 
 // ---------------------------------------------------------------- pipeline
 async function runPipeline(tabId) {
-  const runId = 'run-' + Date.now().toString(36);
+  const runId = 'run-' + Date.now().toString(36) + '-' + (runSeq++) + '-' + Math.random().toString(36).slice(2, 8);
   runs.set(runId, { cancelled: false, tabId });
   const settings = await getSettings();
   const timings = {};
