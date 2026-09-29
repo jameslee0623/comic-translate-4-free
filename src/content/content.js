@@ -378,11 +378,21 @@
         ).join('') + '</table>';
     }
     if (p.crops) {
-      html += p.crops.map(c =>
-        `<div style="margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px">` +
-        `<img src="${c.thumb}" style="max-width:100%;background:#fff">` +
-        `<div>#${c.id}: ${esc(c.text) || '<i style="color:#888">empty</i>'}</div></div>`
-      ).join('');
+      html += p.crops.map(c => {
+        const n = c.chars != null ? c.chars : (c.text || '').length;
+        // Baberu's decoder was trained with a 64-char label cap, so a crop whose
+        // first pass stopped at ~64 chars gets re-OCR'd in overlapping chunks.
+        const cap = c.hitCeiling
+          ? ` <span style="color:#fc6">⚠ 64-char model cap` +
+            (c.chunks > 1 ? ` — re-OCR'd in ${c.chunks} chunks` : ' — could not split further') + `</span>`
+          : '';
+        const looped = c.stopped === 'limit'
+          ? ` <span style="color:#f88">⚠ hit the 128-token safety cap (output degenerate)</span>` : '';
+        return `<div style="margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px">` +
+          `<img src="${c.thumb}" style="max-width:100%;background:#fff">` +
+          `<div>#${c.id}: ${esc(c.text) || '<i style="color:#888">empty</i>'}</div>` +
+          `<div style="color:#888">${n} chars${cap}${looped}</div></div>`;
+      }).join('');
     }
     if (p.rows) {
       html += '<table style="width:100%;border-collapse:collapse">' +

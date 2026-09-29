@@ -433,6 +433,9 @@ async function runPipeline(tabId) {
         crops.push({ id: i, key: pxKey, data: c.data, width: c.w, height: c.h, x: c.x, y: c.y, bw: b.xyxy[2] - b.xyxy[0], bh: b.xyxy[3] - b.xyxy[1] });
       }
       let ocrMs = 0, ocrEngineLabel = '';
+      // Per-crop OCR diagnostics for the debug panel: char count and whether
+      // this crop needed the Baberu ~64-char-ceiling chunked re-OCR.
+      const ocrStats = new Map();
       if (crops.length) {
         const r = await callMlChecked(runId, {
           type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
@@ -440,7 +443,10 @@ async function runPipeline(tabId) {
         });
         ocrMs = r.ms;
         ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
-        for (const res of r.results) blocks[res.id].text = res.text;
+        for (const res of r.results) {
+          blocks[res.id].text = res.text;
+          ocrStats.set(res.id, { chars: res.chars, chunks: res.chunks, hitCeiling: res.hitCeiling, stopped: res.stopped });
+        }
       }
       timings.ocr = ocrMs;
       setProgress(runId, 'ocr', 0.55);
@@ -448,12 +454,16 @@ async function runPipeline(tabId) {
       for (const c of crops.slice(0, 40)) {
         ocrThumbs.push({
           id: c.id, text: blocks[c.id].text,
+          ...(ocrStats.get(c.id) || {}),
           thumb: await rgbaToDataURL(c.data, c.width, c.height, 200),
         });
       }
       const ocrTextCount = blocks.filter(b => b.text && b.text.trim()).length;
+      const clippedCount = [...ocrStats.values()].filter(s => s.hitCeiling).length;
       await emitDebug(runId, tabId, settings, 'ocr', {
-        title: `OCR — ${crops.length} crops, ${ocrTextCount} with text${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}`, crops: ocrThumbs, ms: ocrMs,
+        title: `OCR — ${crops.length} crops, ${ocrTextCount} with text${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}` +
+          (clippedCount ? `, ${clippedCount} hit the 64-char model cap (re-OCR'd in chunks)` : ''),
+        crops: ocrThumbs, ms: ocrMs,
       });
     }
 

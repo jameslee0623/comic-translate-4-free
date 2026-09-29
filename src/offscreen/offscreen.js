@@ -167,7 +167,6 @@ const handlers = {
     // OCR engine follows the source language — all languages use Baberu.
     const engine = ocrEngineForLang(sourceLang || 'ja');
     await ensureModel(engine);
-    const inst = baberu;
     throwIfCancelled(runId);
     const t0 = performance.now();
     const results = [];
@@ -175,8 +174,14 @@ const handlers = {
       for (const c of crops) {
         throwIfCancelled(runId);
         const raw = await pixelTake(c.key);
-        const text = await inst.ocrSingle(new Uint8ClampedArray(raw), c.width, c.height);
-        results.push({ id: c.id, text });
+        const u8 = new Uint8ClampedArray(raw);
+        // Baberu clips at ~64 chars (upstream training cap), so the chunked
+        // path re-OCRs an over-long crop in overlapping pieces.
+        const r = await baberu.ocrChunked(u8, c.width, c.height, {
+          lang: sourceLang || 'ja',
+          shouldAbort: () => cancelledRuns.has(runId),
+        });
+        results.push({ id: c.id, text: r.text, chars: r.text.length, chunks: r.chunks, hitCeiling: r.hitCeiling, stopped: r.stopped });
       }
     } finally {
       if (runId) cancelledRuns.delete(runId);

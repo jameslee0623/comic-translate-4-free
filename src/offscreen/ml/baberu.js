@@ -22,17 +22,30 @@
 //        -> decode: ids 0..3 are <pad>/<bos>/<eos>/<unk>, id>=4 -> charset[id-4]
 export const BABERU_IMG = 224;
 const BOS = 1, EOS = 2;
-// NOTE (2026-09-29): the Baberu ONNX export has a hard ~64-token text limit
-// (decoder positional embeddings only cover ~64 text positions). Long English
-// sentences truncate at ~63-65 chars even though the full text is visible in
-// the crop. This is a model architecture limit, not a tunable parameter
-// (MAX_NEW_TOKENS/repetition penalty were tried and reverted — they don't
-// help). Future fix: re-export with longer max length, or split long crops
-// into overlapping chunks and concatenate.
+// NOTE (2026-09-29, corrected): the ~64-character ceiling on long text is a
+// TRAINING-TIME limit of the upstream checkpoint, not an ONNX/architecture
+// limit. genshiai-daichi/baberu-ocr trains its decoder with a 64-char label cap
+// (data_ocr.py: `ids = [bos] + [t2i[c] for c in text[:max_text_len]] + [eos]`,
+// max_text_len default 64 in train_ocr.py), so the model only ever saw
+// [BOS] + <=64 chars + [EOS] and learned to emit EOS right after ~64 chars.
+// The exported graphs are fully dynamic — decoder_step_int8.onnx declares
+// past_* as [1,2,'past_len',64], RoPE is computed in-graph, and config.json has
+// max_position_embeddings 2048 and no learned position table — so nothing here
+// is tunable. MAX_NEW_TOKENS/REPETITION_PENALTY match the published decode
+// (onnx_infer.py) and were correctly reverted. What we CAN do is re-OCR an
+// oversized crop in overlapping chunks (ocrChunked below).
 const MAX_NEW_TOKENS = 128;
 const REPETITION_PENALTY = 1.2;
 const MAX_CONTENT_RUN = 12;
 const NUM_LAYERS = 6;
+// Upstream data_ocr.py max_text_len: emitted text is truncated at ~this many
+// chars. CEILING_TOKENS is the point at which we treat a decode as clipped and
+// re-OCR the crop in chunks (64 minus room for a trailing space/EOS).
+const BABERU_MAX_CHARS = 64;
+const CEILING_TOKENS = BABERU_MAX_CHARS - 2;
+const SPLIT_OVERLAP = 0.15;  // fraction of the split axis duplicated at the seam
+const MIN_CHUNK_PX = 40;     // don't split a crop whose split axis is smaller
+const MAX_SPLIT_DEPTH = 2;   // up to 4 leaves -> ~4x64 chars of capacity
 
 const MEAN = [0.485, 0.456, 0.406];
 const STD = [0.229, 0.224, 0.225];
@@ -89,6 +102,63 @@ const EXCLUDED_RUN = new Set(['ー', 'ｰ', '〜', '~']);
 function isContentChar(ch) {
   if ([...ch].length !== 1 || EXCLUDED_RUN.has(ch)) return false;
   return /\p{L}|\p{N}/u.test(ch);
+}
+
+// ---------------------------------------------------------------- chunking
+// The upstream checkpoint only ever learned to emit ~64 chars (see NOTE above),
+// so a crop whose text is longer comes back clipped. To recover the rest we
+// split an oversized crop into two overlapping sub-crops along the axis its
+// text lines STACK on (so concatenating the halves keeps reading order), OCR
+// each, and stitch the pieces with the duplicated seam removed.
+
+// Straight rectangle copy of an RGBA buffer (mirrors cropRGBA in
+// service-worker.js). Returns { rgba, w, h }.
+function cropRegion(rgba, w, h, x1, y1, x2, y2) {
+  const ox = Math.max(0, Math.min(w - 1, Math.round(x1)));
+  const oy = Math.max(0, Math.min(h - 1, Math.round(y1)));
+  const cw = Math.max(1, Math.min(w, Math.round(x2)) - ox);
+  const ch = Math.max(1, Math.min(h, Math.round(y2)) - oy);
+  const out = new Uint8ClampedArray(cw * ch * 4);
+  for (let r = 0; r < ch; r++) {
+    const s = ((oy + r) * w + ox) * 4;
+    out.set(rgba.subarray(s, s + cw * 4), r * cw * 4);
+  }
+  return { rgba: out, w: cw, h: ch };
+}
+
+// Which axis the text lines stack on, so a split preserves reading order.
+//   en / zh (horizontal writing): lines stack vertically -> split by y, top
+//     half first.
+//   ja: may be vertical writing, where columns stack right-to-left -> split by
+//     x, RIGHT half first. The pipeline never fills in TextBlock.direction, so
+//     fall back to the crop aspect as a proxy.
+function splitAxisFor(w, h, lang, forced) {
+  if (forced === 'x') return { axis: 'x', rightFirst: lang === 'ja' };
+  if (forced === 'y') return { axis: 'y', rightFirst: false };
+  if (lang === 'ja') {
+    if (h >= w * 1.2) return { axis: 'y', rightFirst: false }; // multi-line horizontal
+    return { axis: 'x', rightFirst: true };                    // vertical writing
+  }
+  return { axis: 'y', rightFirst: false };
+}
+
+// Comparison key for the seam: case-insensitive, internal whitespace runs
+// collapsed. Deliberately does NOT trim — trimming would let an off-by-one
+// window (leading space on one side, trailing space on the other) compare equal
+// and then splice at the wrong offset. Whitespace differences at the seam
+// therefore fall through to the conservative space-join below.
+const overlapNorm = s => s.toUpperCase().replace(/\s+/g, ' ');
+
+// Join two chunk texts, dropping the run the overlapping crops read twice.
+// Conservative: only removes a >=3-char exact (normalised) overlap; if the two
+// crops read the seam differently it keeps both copies rather than losing text.
+function overlapJoin(a, b) {
+  const A = a.replace(/\s+$/, ''), B = b.replace(/^\s+/, '');
+  const max = Math.min(A.length, B.length, 40);
+  for (let n = max; n >= 3; n--) {
+    if (overlapNorm(A.slice(-n)) === overlapNorm(B.slice(0, n))) return A + B.slice(n);
+  }
+  return A + ' ' + B;
 }
 
 export class BaberuOCR {
@@ -164,7 +234,11 @@ export class BaberuOCR {
     return names;
   }
 
-  async ocrSingle(rgba, w, h) {
+  // One crop -> one decode. Returns { text, nTok, stopped }: the generated
+  // text, how many character tokens were emitted (1 char per token, so == text
+  // length for valid ids), and whether the loop ended on EOS or the
+  // MAX_NEW_TOKENS safety cap.
+  async _decode(rgba, w, h) {
     const chw = preprocessCrop(rgba, w, h);
     const i64 = (v) => new ort.Tensor('int64', BigInt64Array.from([BigInt(v)]), [1, 1]);
     const visIn = this._feed(this.vis, { pixel_values: new ort.Tensor('float32', chw, [1, 3, BABERU_IMG, BABERU_IMG]) });
@@ -192,6 +266,7 @@ export class BaberuOCR {
     let pos = seqLen + 1;
     const seq = [BOS], toks = [];
     const vocabSize = this.id2ch.size + 4;
+    let stopped = 'limit';
 
     for (let step = 0; step < MAX_NEW_TOKENS; step++) {
       // repetition_penalty 1.2 over previously emitted ids (incl. BOS).
@@ -214,7 +289,7 @@ export class BaberuOCR {
       for (let i = 1; i < vocabSize && i < logits.length; i++) {
         if (logits[i] > logits[nxt]) nxt = i;
       }
-      if (nxt === EOS) break;
+      if (nxt === EOS) { stopped = 'eos'; break; }
       toks.push(nxt);
       seq.push(nxt);
       if (toks.length >= MAX_NEW_TOKENS) break;
@@ -239,7 +314,53 @@ export class BaberuOCR {
       const ch = this.id2ch.get(id);
       if (ch !== undefined) text += ch;
     }
-    return text;
+    // nTok is what decides "clipped": an EOS landing at >= CEILING_TOKENS chars
+    // is the upstream 64-char training cap showing through, not a real ending.
+    return { text, nTok: toks.length, stopped };
+  }
+
+  async ocrSingle(rgba, w, h) {
+    return (await this._decode(rgba, w, h)).text;
+  }
+
+  // Chunked OCR for crops whose text runs past the model's ~64-char training
+  // cap. Returns { text, chunks, hitCeiling, firstPass, stopped }: `chunks` is
+  // how many decodes produced `text` (1 = no split), `firstPass` is the plain
+  // single-crop decode (the fallback), and `stopped` is 'eos' | 'limit'.
+  async ocrChunked(rgba, w, h, opts = {}) {
+    const { lang = 'ja', axis = null, shouldAbort = null, depth = 0 } = opts;
+    const first = await this._decode(rgba, w, h);
+    // The upstream cap makes the model emit EOS right at ~64 chars, so an EOS
+    // this late is the symptom, not a natural sentence end. Length is the
+    // trigger, not the stop reason (MAX_NEW_TOKENS is only a safety cap that a
+    // real bubble never reaches).
+    const hitCeiling = first.nTok >= CEILING_TOKENS;
+    const plain = { text: first.text, chunks: 1, hitCeiling, firstPass: first.text, stopped: first.stopped };
+    if (!hitCeiling || depth >= MAX_SPLIT_DEPTH) return plain;
+    const { axis: ax, rightFirst } = splitAxisFor(w, h, lang, axis);
+    const len = ax === 'x' ? w : h;
+    if (len < MIN_CHUNK_PX * 2) return plain; // too small to split usefully
+    const mid = Math.round(len / 2), ov = Math.round(len * SPLIT_OVERLAP);
+    let a, b;
+    if (ax === 'x') {
+      a = cropRegion(rgba, w, h, 0, 0, mid + ov, h);
+      b = cropRegion(rgba, w, h, mid - ov, 0, w, h);
+    } else {
+      a = cropRegion(rgba, w, h, 0, 0, w, mid + ov);
+      b = cropRegion(rgba, w, h, 0, mid - ov, w, h);
+    }
+    if (ax === 'x' && rightFirst) { const t = a; a = b; b = t; }
+    if (shouldAbort && shouldAbort()) throw new Error('cancelled');
+    const ra = await this.ocrChunked(a.rgba, a.w, a.h, { lang, axis: ax, shouldAbort, depth: depth + 1 });
+    const rb = await this.ocrChunked(b.rgba, b.w, b.h, { lang, axis: ax, shouldAbort, depth: depth + 1 });
+    const text = overlapJoin(ra.text, rb.text);
+    // Splitting must not lose text: if the stitched result isn't longer than the
+    // clipped single-pass decode, keep the simpler result.
+    if (text.length <= first.text.length) return plain;
+    // 'limit' means some piece ran into the MAX_NEW_TOKENS safety cap without
+    // EOS — a degenerate (looping) output, worth flagging in the panel.
+    const stopped = (ra.stopped === 'limit' || rb.stopped === 'limit') ? 'limit' : 'eos';
+    return { text, chunks: ra.chunks + rb.chunks, hitCeiling, firstPass: first.text, stopped };
   }
 
   async ocrCrops(crops) {

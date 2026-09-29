@@ -162,9 +162,11 @@ page couldn't run the parallel branches without freezing.)
 - Google backend uses the unofficial `translate.googleapis.com` endpoint and
   may be rate-limited; Azure needs your own key.
 - OCR engines: Baberu (Japanese/English/Chinese).
-- Baberu truncates long text at ~64 characters (model architecture limit in
-  the ONNX export, not tunable; the full text is visible in the debug crop
-  but the decoder cannot output more).
+- Baberu's decoder was trained upstream with a 64-character label cap
+  (`--max-text-len 64`), so one crop never returns more than ~64 characters.
+  Longer bubbles are re-OCR'd automatically in overlapping chunks and stitched
+  back together (up to ~4x64 chars); the debug panel's OCR tab marks any crop
+  that hit the cap.
 - Vertical text is rendered for tall CJK blocks; SFX / text outside bubbles
   uses its own text box.
 
