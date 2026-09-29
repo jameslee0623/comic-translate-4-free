@@ -94,12 +94,28 @@ export class BaberuOCR {
 
   reset() { this.vis = null; this.pre = null; this.stp = null; }
 
-  async load(visUrl, preUrl, stepUrl, vocabJson, executionProviders = ['wasm']) {
+  // One graph at a time: the caller fetches each buffer, we build its session,
+  // and the buffer is releasable before the next fetch. Holding all three
+  // (121MB) at once — plus their blobs, pre-fix — spiked the transient peak.
+  async loadVis(visBytes, executionProviders = ['wasm']) {
     if (this.vis) return;
-    const opts = { executionProviders };
-    this.vis = await ort.InferenceSession.create(visUrl, opts);
-    this.pre = await ort.InferenceSession.create(preUrl, opts);
-    this.stp = await ort.InferenceSession.create(stepUrl, opts);
+    const u8 = visBytes instanceof Uint8Array ? visBytes : new Uint8Array(visBytes);
+    this.vis = await ort.InferenceSession.create(u8, { executionProviders });
+  }
+
+  async loadPre(preBytes, executionProviders = ['wasm']) {
+    if (this.pre) return;
+    const u8 = preBytes instanceof Uint8Array ? preBytes : new Uint8Array(preBytes);
+    this.pre = await ort.InferenceSession.create(u8, { executionProviders });
+  }
+
+  async loadStep(stepBytes, executionProviders = ['wasm']) {
+    if (this.stp) return;
+    const u8 = stepBytes instanceof Uint8Array ? stepBytes : new Uint8Array(stepBytes);
+    this.stp = await ort.InferenceSession.create(u8, { executionProviders });
+  }
+
+  setVocab(vocabJson) {
     const charset = JSON.parse(vocabJson);
     this.id2ch = new Map();
     this.contentIds = new Set();
@@ -107,6 +123,15 @@ export class BaberuOCR {
       this.id2ch.set(i + 4, charset[i]);
       if (isContentChar(charset[i])) this.contentIds.add(i + 4);
     }
+  }
+
+  // Legacy combined entry point (bytes go straight to ORT — no Blob URLs).
+  async load(visBytes, preBytes, stepBytes, vocabJson, executionProviders = ['wasm']) {
+    if (this.vis) return;
+    await this.loadVis(visBytes, executionProviders);
+    await this.loadPre(preBytes, executionProviders);
+    await this.loadStep(stepBytes, executionProviders);
+    this.setVocab(vocabJson);
   }
 
   _feed(session, obj) {

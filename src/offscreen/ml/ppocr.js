@@ -68,9 +68,11 @@ export class PPOCRV5 {
     this.dict = null;
   }
 
-  async load(modelUrl, dictText, executionProviders = ['wasm']) {
+  async load(modelBytes, dictText, executionProviders = ['wasm']) {
     if (this.session) return;
-    this.session = await ort.InferenceSession.create(modelUrl, { executionProviders });
+    // Bytes go straight to ORT — no Blob/object-URL round trip (see detector.js).
+    const u8 = modelBytes instanceof Uint8Array ? modelBytes : new Uint8Array(modelBytes);
+    this.session = await ort.InferenceSession.create(u8, { executionProviders });
     this.dict = dictText.split('\n').map(l => l.replace(/\r$/, ''));
     // A trailing newline yields a final empty entry — not a character.
     if (this.dict.length && this.dict[this.dict.length - 1] === '') this.dict.pop();

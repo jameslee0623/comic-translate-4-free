@@ -57,18 +57,6 @@ async function modelBuffer(id) {
   throw new Error(`cached model "${id}" is corrupt — delete it in the popup and download it again`);
 }
 
-function blobUrl(buf) {
-  return URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
-}
-
-const MODEL_FILES = {
-  detector: ['detector'],
-  'ocr-baberu': ['ocr-baberu-vision', 'ocr-baberu-prefill', 'ocr-baberu-step'],
-  'ocr-ppocr-ko': ['ocr-ppocr-ko'],
-  'ocr-ppocrv6': ['ocr-ppocrv6'],
-  inpaint: ['inpaint'],
-};
-
 async function assetText(path) {
   return (await (await fetch(chrome.runtime.getURL(path))).text());
 }
@@ -79,16 +67,22 @@ async function ensureModel(kind) {
   if (loading[kind]) { await loading[kind]; return; }
   const p = (async () => {
     if (kind === 'detector' && !detector.loaded) {
-      await detector.load(blobUrl(await modelBuffer('detector')));
+      await detector.load(await modelBuffer('detector'));
     } else if (kind === 'ocr-baberu' && !baberu.loaded) {
-      const [vis, pre, step] = await Promise.all(MODEL_FILES['ocr-baberu'].map(modelBuffer));
+      // Fetch + attach one graph at a time so the three buffers (121MB)
+      // are never all resident at once.
       const vocabJson = await assetText(BABERU_VOCAB_ASSET);
-      await baberu.load(blobUrl(vis), blobUrl(pre), blobUrl(step), vocabJson);
+      try {
+        await baberu.loadVis(await modelBuffer('ocr-baberu-vision'));
+        await baberu.loadPre(await modelBuffer('ocr-baberu-prefill'));
+        await baberu.loadStep(await modelBuffer('ocr-baberu-step'));
+      } catch (e) { baberu.reset(); throw e; }
+      baberu.setVocab(vocabJson);
     } else if (ppocr[kind] && !ppocr[kind].loaded) {
       const dictText = await assetText(PPOCR_DICT_ASSET[kind]);
-      await ppocr[kind].load(blobUrl(await modelBuffer(kind)), dictText);
+      await ppocr[kind].load(await modelBuffer(kind), dictText);
     } else if (kind === 'inpaint' && !inpainter.loaded) {
-      await inpainter.load(blobUrl(await modelBuffer('inpaint')));
+      await inpainter.load(await modelBuffer('inpaint'));
     }
   })();
   loading[kind] = p;

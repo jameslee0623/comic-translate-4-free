@@ -10,9 +10,11 @@ import { toNCHW, padToMod } from './image-ops.js';
 export class Inpainter {
   constructor() { this.session = null; }
 
-  async load(modelBlobUrl, executionProviders = ['wasm']) {
+  async load(modelBytes, executionProviders = ['wasm']) {
     if (this.session) return;
-    this.session = await ort.InferenceSession.create(modelBlobUrl, { executionProviders });
+    // Bytes go straight to ORT — no Blob/object-URL round trip (see detector.js).
+    const u8 = modelBytes instanceof Uint8Array ? modelBytes : new Uint8Array(modelBytes);
+    this.session = await ort.InferenceSession.create(u8, { executionProviders });
   }
 
   get loaded() { return !!this.session; }

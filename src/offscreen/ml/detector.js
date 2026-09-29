@@ -9,9 +9,13 @@ const SIZE = 640;
 export class Detector {
   constructor() { this.session = null; }
 
-  async load(modelBlobUrl, executionProviders = ['wasm']) {
+  async load(modelBytes, executionProviders = ['wasm']) {
     if (this.session) return;
-    this.session = await ort.InferenceSession.create(modelBlobUrl, { executionProviders });
+    // Bytes go straight to ORT — no Blob/object-URL round trip. (Blobs were
+    // never revoked, leaking every model's bytes for the page's lifetime,
+    // and the blob + ORT's blob-fetch doubled the transient peak.)
+    const u8 = modelBytes instanceof Uint8Array ? modelBytes : new Uint8Array(modelBytes);
+    this.session = await ort.InferenceSession.create(u8, { executionProviders });
   }
 
   get loaded() { return !!this.session; }
