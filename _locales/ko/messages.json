@@ -1,0 +1,337 @@
+{
+  "add": {
+    "message": "추가"
+  },
+  "appDesc": {
+    "message": "브라우저에서 만화/코믹 페이지를 번역: 말풍선 감지, OCR, 인페인팅, 번역, 다시 그리기. 모든 ML은 ONNX Runtime Web으로 로컬 실행."
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "켜면 허용된 사이트의 페이지가 로드되자마자 자동으로 번역을 시작합니다 — 버튼 클릭 불필요. (팁: 팝업에서 사이트를 추가하면 이미지 읽기 권한도 함께 얻습니다.)"
+  },
+  "auto_translate": {
+    "message": "페이지 로드 시 자동 번역"
+  },
+  "automation": {
+    "message": "자동화"
+  },
+  "azure_key": {
+    "message": "Azure API 키"
+  },
+  "azure_region": {
+    "message": "Azure 리전"
+  },
+  "azure_region_ph": {
+    "message": "예: japaneast"
+  },
+  "backend": {
+    "message": "백엔드"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator(키 필요)"
+  },
+  "backend_google": {
+    "message": "Google(무료)"
+  },
+  "backend_google_opt": {
+    "message": "Google(무료, 키 불필요)"
+  },
+  "backend_hint": {
+    "message": "Azure 키/리전은 이 브라우저의 확장 프로그램 저장소에만 저장됩니다. LM Studio는 OpenAI 호환 서버를 활성화한 상태로 실행해야 합니다(기본값 http://localhost:1234). WebLLM은 첫 사용 시 수 GB를 다운로드하며 WebGPU가 필요합니다."
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio(로컬)"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio(로컬 서버)"
+  },
+  "backend_localllm": {
+    "message": "로컬 LLM(실험적)"
+  },
+  "backend_localllm_opt": {
+    "message": "로컬 LLM(실험적)"
+  },
+  "cancel": {
+    "message": "취소"
+  },
+  "check_azure": {
+    "message": "Azure 연결 확인"
+  },
+  "check_lmstudio": {
+    "message": "LM Studio 연결 확인"
+  },
+  "debug": {
+    "message": "디버그"
+  },
+  "debug_hint": {
+    "message": "각 파이프라인 단계의 출력을 사이드 패널에 표시하여 단계별로 확인할 수 있습니다."
+  },
+  "debug_mode": {
+    "message": "디버그 모드(단계 검사)"
+  },
+  "delete": {
+    "message": "삭제"
+  },
+  "det_threshold": {
+    "message": "감지 신뢰도 임계값"
+  },
+  "detection_hint": {
+    "message": "최소 이미지 크기보다 작은 페이지는 건너뜁니다. 렌더링 글꼴 크기는 페이지의 원문에서 자동 추정됩니다(위 최대값이 상한)."
+  },
+  "detection_rendering": {
+    "message": "감지 및 렌더링"
+  },
+  "download": {
+    "message": "다운로드"
+  },
+  "download_all": {
+    "message": "모든 모델 다운로드"
+  },
+  "downloaded": {
+    "message": "✓ 다운로드됨($SIZE$)",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_access": {
+    "message": "액세스 허용"
+  },
+  "grant_access_to": {
+    "message": "$HOST$ 액세스 허용",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "허용 목록에 있지만 이 사이트에 대한 액세스 권한이 없어 번역을 시작할 수 없습니다."
+  },
+  "languages": {
+    "message": "언어"
+  },
+  "lmstudio_api": {
+    "message": "LM Studio API"
+  },
+  "lmstudio_api_openai": {
+    "message": "OpenAI 호환(/v1/chat/completions)"
+  },
+  "lmstudio_api_v1": {
+    "message": "LM Studio REST API v1(/api/v1/chat)"
+  },
+  "lmstudio_key": {
+    "message": "LM Studio API 키(선택)"
+  },
+  "lmstudio_url": {
+    "message": "LM Studio 서버 URL"
+  },
+  "localllm_llama": {
+    "message": "Llama 3.2 3B"
+  },
+  "localllm_model": {
+    "message": "로컬 LLM 모델(WebLLM)"
+  },
+  "localllm_qwen": {
+    "message": "Qwen2.5 1.5B"
+  },
+  "localllm_smol": {
+    "message": "SmolLM2 1.7B(가장 작음)"
+  },
+  "max_font_size": {
+    "message": "최대 글꼴 크기(px)"
+  },
+  "min_font_size": {
+    "message": "최소 글꼴 크기(px)"
+  },
+  "min_image_size": {
+    "message": "최소 이미지 크기(px)"
+  },
+  "model_detector": {
+    "message": "텍스트 감지(RT-DETR-v2)"
+  },
+  "model_en": {
+    "message": "PP-OCRv5 OCR(영어)"
+  },
+  "model_inpaint": {
+    "message": "LaMa 인페인터(만화용)"
+  },
+  "model_ocr_ja": {
+    "message": "manga-ocr(일본어)"
+  },
+  "model_pororo": {
+    "message": "Pororo 한국어 OCR(brainocr)"
+  },
+  "model_zh": {
+    "message": "PP-OCRv5 OCR(중국어 간체/번체)"
+  },
+  "models": {
+    "message": "모델"
+  },
+  "models_hint": {
+    "message": "모델은 Hugging Face에서 한 번 다운로드되어 브라우저(IndexedDB)에 캐시됩니다."
+  },
+  "no_site": {
+    "message": "사이트를 감지할 수 없음"
+  },
+  "not_whitelisted": {
+    "message": "미등록"
+  },
+  "options_settings": {
+    "message": "옵션 및 설정"
+  },
+  "options_title": {
+    "message": "옵션"
+  },
+  "redownload": {
+    "message": "다시 다운로드"
+  },
+  "required_badge": {
+    "message": "필수"
+  },
+  "saved": {
+    "message": "저장됨 ✓"
+  },
+  "site_this": {
+    "message": "이 사이트: $HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "사이트 허용 목록"
+  },
+  "source_lang": {
+    "message": "원본 언어"
+  },
+  "target_lang": {
+    "message": "대상 언어"
+  },
+  "translate_page": {
+    "message": "이 페이지 번역"
+  },
+  "translation_backend": {
+    "message": "번역 백엔드"
+  },
+  "whitelist_add": {
+    "message": "이 사이트를 허용 목록에 추가"
+  },
+  "whitelist_desc": {
+    "message": "번역은 허용 목록에 등록된 사이트에서만 실행됩니다. 팝업에서 사이트를 추가하거나 호스트 이름을 여기에 입력하세요."
+  },
+  "whitelist_remove": {
+    "message": "허용 목록에서 제거"
+  },
+  "whitelisted": {
+    "message": "등록됨 ✓"
+  },
+  "wl_placeholder": {
+    "message": "예: example.com"
+  },
+  "whitelist_empty": {
+    "message": "비어 있음 — 사이트를 추가하기 전까지 모든 곳에서 번역이 비활성화됩니다"
+  },
+  "remove": {
+    "message": "제거"
+  },
+  "checking": {
+    "message": "확인 중…"
+  },
+  "download_failed": {
+    "message": "✗ 다운로드 실패: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading": {
+    "message": "다운로드 중… $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "bg_unreachable": {
+    "message": "백그라운드 서비스에 연결할 수 없음"
+  },
+  "bg_unreachable_hint": {
+    "message": "about:debugging에서 확장 프로그램을 다시 로드한 뒤 이 페이지를 다시 여세요."
+  },
+  "stage_idle": {
+    "message": "대기 중"
+  },
+  "stage_capture": {
+    "message": "페이지 캡처 중…"
+  },
+  "stage_detect": {
+    "message": "말풍선 및 텍스트 감지 중…"
+  },
+  "stage_blocks": {
+    "message": "텍스트 블록 조립 중…"
+  },
+  "stage_ocr": {
+    "message": "텍스트 읽는 중(OCR)…"
+  },
+  "stage_mask": {
+    "message": "마스크 생성 중…"
+  },
+  "stage_inpaint": {
+    "message": "인페인팅 중…"
+  },
+  "stage_translate": {
+    "message": "번역 중…"
+  },
+  "stage_render": {
+    "message": "렌더링 중…"
+  },
+  "stage_done": {
+    "message": "완료"
+  },
+  "stage_cancelled": {
+    "message": "취소됨"
+  },
+  "stage_error": {
+    "message": "오류"
+  },
+  "downloading_generic": {
+    "message": "다운로드 중…"
+  },
+  "download_all_n": {
+    "message": "모든 모델 다운로드(남은 $N$개)",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "all_downloaded": {
+    "message": "모든 모델 다운로드됨 ✓"
+  },
+  "wrong_file": {
+    "message": "⚠ 잘못된 파일이 캐시됨($FILES$) — 아래 다운로드를 눌러 올바른 파일을 받으세요",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ 다운로드됨"
+  },
+  "not_downloaded": {
+    "message": "다운로드되지 않음"
+  }
+}

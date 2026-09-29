@@ -28,62 +28,63 @@
 </style>
 </head>
 <body>
-  <h1>comic-translate-4-free — Options <span id="saved">Saved ✓</span></h1>
+  <h1><span data-i18n="appName">comic-translate-4-free</span> — <span data-i18n="options_title">Options</span> <span id="saved" data-i18n="saved">Saved ✓</span></h1>
 
-  <h2>Site whitelist</h2>
-  <p style="color:#8a8a90;font-size:12px">Translation only runs on whitelisted sites. Add a site from the popup or type its hostname here.</p>
+  <h2 data-i18n="site_whitelist">Site whitelist</h2>
+  <p style="color:#8a8a90;font-size:12px" data-i18n="whitelist_desc">Translation only runs on whitelisted sites. Add a site from the popup or type its hostname here.</p>
   <ul id="whitelist"></ul>
-  <div class="row"><input type="text" id="wlAdd" placeholder="e.g. example.com" style="width:220px"><button id="wlAddBtn">Add</button></div>
+  <div class="row"><input type="text" id="wlAdd" data-i18n-ph="wl_placeholder" placeholder="e.g. example.com" style="width:220px"><button id="wlAddBtn" data-i18n="add">Add</button></div>
 
-  <h2>Languages</h2>
-  <div class="row"><label>Source language</label><select id="sourceLang"></select></div>
-  <div class="row"><label>Target language</label><select id="targetLang"></select></div>
+  <h2 data-i18n="languages">Languages</h2>
+  <div class="row"><label data-i18n="source_lang">Source language</label><select id="sourceLang"></select></div>
+  <div class="row"><label data-i18n="target_lang">Target language</label><select id="targetLang"></select></div>
 
-  <h2>Translation backend</h2>
-  <div class="row"><label>Backend</label><select id="backend">
-    <option value="google">Google (free, no key)</option>
-    <option value="azure">Azure Translator (key required)</option>
-    <option value="lmstudio">LM Studio (local server)</option>
-    <option value="local-llm">Local LLM (experimental)</option>
+  <h2 data-i18n="translation_backend">Translation backend</h2>
+  <div class="row"><label data-i18n="backend">Backend</label><select id="backend">
+    <option value="google" data-i18n="backend_google_opt">Google (free, no key)</option>
+    <option value="azure" data-i18n="backend_azure_opt">Azure Translator (key required)</option>
+    <option value="lmstudio" data-i18n="backend_lmstudio_opt">LM Studio (local server)</option>
+    <option value="local-llm" data-i18n="backend_localllm_opt">Local LLM (experimental)</option>
   </select></div>
-  <div class="row"><label>Azure API key</label><input type="password" id="azureKey" autocomplete="off"></div>
-  <div class="row"><label>Azure region</label><input type="text" id="azureRegion" placeholder="e.g. japaneast" autocomplete="off"></div>
-  <div class="row"><label></label><button id="checkAzure">Check Azure connection</button><span id="azureResult" class="check-result"></span></div>
-  <div class="row"><label>LM Studio server URL</label><input type="text" id="lmStudioUrl" placeholder="http://localhost:1234/v1" autocomplete="off"></div>
-  <div class="row"><label>LM Studio API</label><select id="lmStudioApi">
-    <option value="openai">OpenAI-compatible (/v1/chat/completions)</option>
-    <option value="lmstudio-v1">LM Studio REST API v1 (/api/v1/chat)</option>
+  <div class="row"><label data-i18n="azure_key">Azure API key</label><input type="password" id="azureKey" autocomplete="off"></div>
+  <div class="row"><label data-i18n="azure_region">Azure region</label><input type="text" id="azureRegion" data-i18n-ph="azure_region_ph" placeholder="e.g. japaneast" autocomplete="off"></div>
+  <div class="row"><label></label><button id="checkAzure" data-i18n="check_azure">Check Azure connection</button><span id="azureResult" class="check-result"></span></div>
+  <div class="row"><label data-i18n="lmstudio_url">LM Studio server URL</label><input type="text" id="lmStudioUrl" placeholder="http://localhost:1234/v1" autocomplete="off"></div>
+  <div class="row"><label data-i18n="lmstudio_api">LM Studio API</label><select id="lmStudioApi">
+    <option value="openai" data-i18n="lmstudio_api_openai">OpenAI-compatible (/v1/chat/completions)</option>
+    <option value="lmstudio-v1" data-i18n="lmstudio_api_v1">LM Studio REST API v1 (/api/v1/chat)</option>
   </select></div>
-  <div class="row"><label>LM Studio API key (optional)</label><input type="password" id="lmStudioKey" autocomplete="off"></div>
-  <div class="row"><label></label><button id="checkLmStudio">Check LM Studio connection</button><span id="lmStudioResult" class="check-result"></span></div>
-  <div class="row"><label>Local LLM model (WebLLM)</label><select id="localLlmModel">
-    <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC">SmolLM2 1.7B (smallest)</option>
-    <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC">Qwen2.5 1.5B</option>
-    <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B</option>
+  <div class="row"><label data-i18n="lmstudio_key">LM Studio API key (optional)</label><input type="password" id="lmStudioKey" autocomplete="off"></div>
+  <div class="row"><label></label><button id="checkLmStudio" data-i18n="check_lmstudio">Check LM Studio connection</button><span id="lmStudioResult" class="check-result"></span></div>
+  <div class="row"><label data-i18n="localllm_model">Local LLM model (WebLLM)</label><select id="localLlmModel">
+    <option value="SmolLM2-1.7B-Instruct-q4f16_1-MLC" data-i18n="localllm_smol">SmolLM2 1.7B (smallest)</option>
+    <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" data-i18n="localllm_qwen">Qwen2.5 1.5B</option>
+    <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC" data-i18n="localllm_llama">Llama 3.2 3B</option>
   </select></div>
-  <p class="hint">Azure key/region are stored only in this browser's extension storage. LM Studio must be running with its OpenAI-compatible server enabled (default http://localhost:1234). The extension sends one batched request per page — <span style="font-family:monospace">POST /chat/completions</span> with <span style="font-family:monospace">{messages:[{role:'user',content:'Translate the following N text(s) from …'}], temperature:0, texts:[…], target, source}</span> — and expects a JSON array of N translated strings back. WebLLM downloads gigabytes on first use and needs WebGPU.</p>
+  <p class="hint" data-i18n="backend_hint">Azure key/region are stored only in this browser's extension storage. LM Studio must be running with its OpenAI-compatible server enabled (default http://localhost:1234). WebLLM downloads gigabytes on first use and needs WebGPU.</p>
 
-  <h2>Detection &amp; rendering</h2>
-  <div class="row"><label>Detection confidence threshold</label><input type="range" id="threshold" min="0.1" max="0.9" step="0.05"><span id="thresholdVal"></span></div>
-  <div class="row"><label>Minimum image size (px)</label><input type="number" id="minImageSize" min="100" max="4000"></div>
-  <div class="row"><label>Maximum font size (px)</label><input type="number" id="initFontSize" min="10" max="120"></div>
-  <div class="row"><label>Minimum font size (px)</label><input type="number" id="minFontSize" min="6" max="40"></div>
-  <p class="hint">Pages smaller than the minimum image size are skipped. The render font size is auto-estimated from the original text on the page (capped by the maximum above).</p>
+  <h2 data-i18n="detection_rendering">Detection &amp; rendering</h2>
+  <div class="row"><label data-i18n="det_threshold">Detection confidence threshold</label><input type="range" id="threshold" min="0.1" max="0.9" step="0.05"><span id="thresholdVal"></span></div>
+  <div class="row"><label data-i18n="min_image_size">Minimum image size (px)</label><input type="number" id="minImageSize" min="100" max="4000"></div>
+  <div class="row"><label data-i18n="max_font_size">Maximum font size (px)</label><input type="number" id="initFontSize" min="10" max="120"></div>
+  <div class="row"><label data-i18n="min_font_size">Minimum font size (px)</label><input type="number" id="minFontSize" min="6" max="40"></div>
+  <p class="hint" data-i18n="detection_hint">Pages smaller than the minimum image size are skipped. The render font size is auto-estimated from the original text on the page (capped by the maximum above).</p>
 
-  <h2>Automation</h2>
-  <div class="row"><label>Auto-translate on page load</label><input type="checkbox" id="autoTranslate"></div>
-  <p class="hint">When on, whitelisted pages start translating automatically as soon as they finish loading — no button click needed. (Tip: add a site from the popup so the extension gets permission to read its images.)</p>
+  <h2 data-i18n="automation">Automation</h2>
+  <div class="row"><label data-i18n="auto_translate">Auto-translate on page load</label><input type="checkbox" id="autoTranslate"></div>
+  <p class="hint" data-i18n="auto_hint">When on, whitelisted pages start translating automatically as soon as they finish loading — no button click needed. (Tip: add a site from the popup so the extension gets permission to read its images.)</p>
 
-  <h2>Debug</h2>
-  <div class="row"><label>Debug mode (stage inspector)</label><input type="checkbox" id="debugMode"></div>
-  <p class="hint">Shows every pipeline stage's output in a side panel so each stage can be checked.</p>
+  <h2 data-i18n="debug">Debug</h2>
+  <div class="row"><label data-i18n="debug_mode">Debug mode (stage inspector)</label><input type="checkbox" id="debugMode"></div>
+  <p class="hint" data-i18n="debug_hint">Shows every pipeline stage's output in a side panel so each stage can be checked.</p>
 
-  <h2>Models</h2>
-  <div class="row"><button id="downloadAll">Download all models</button></div>
+  <h2 data-i18n="models">Models</h2>
+  <div class="row"><button id="downloadAll" data-i18n="download_all">Download all models</button></div>
   <div id="models"></div>
-  <p class="hint">Models are downloaded from Hugging Face once and cached in the browser (IndexedDB).</p>
+  <p class="hint" data-i18n="models_hint">Models are downloaded from Hugging Face once and cached in the browser (IndexedDB).</p>
 
-  <div class="foot" style="margin-top:28px;color:#666;font-size:12px">comic-translate-4-free <span id="version"></span></div>
+  <div class="foot" style="margin-top:28px;color:#666;font-size:12px"><span data-i18n="appName">comic-translate-4-free</span> <span id="version"></span></div>
+  <script src="i18n.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

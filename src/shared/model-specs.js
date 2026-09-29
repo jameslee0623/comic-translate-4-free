@@ -6,14 +6,14 @@ const hf = (repo, file) => `https://huggingface.co/${repo}/resolve/main/${file}`
 
 export const MODEL_GROUPS = [
   {
-    id: 'detector', label: 'Bubble/text detector (RT-DETR-v2)', required: true,
+    id: 'detector', labelKey: 'model_detector', label: 'Bubble/text detector (RT-DETR-v2)', required: true,
     files: [
       { id: 'detector', file: 'detector-v4-s_int8.onnx', bytes: 11120765,
         url: hf('ogkalu/comic-text-and-bubble-detector', 'detector-v4-s_int8.onnx') },
     ],
   },
   {
-    id: 'ocr', label: 'manga-ocr Japanese OCR (KV split)',
+    id: 'ocr', labelKey: 'model_ocr_ja', label: 'manga-ocr Japanese OCR (KV split)',
     files: [
       { id: 'ocr-encoder', file: 'encoder.onnx', bytes: 17070003,
         url: hf('ogkalu/manga-ocr-mobile', 'encoder.onnx') },
@@ -24,28 +24,28 @@ export const MODEL_GROUPS = [
     ],
   },
   {
-    id: 'inpaint', label: 'LaMa manga inpainter', required: true,
+    id: 'inpaint', labelKey: 'model_inpaint', label: 'LaMa manga inpainter', required: true,
     files: [
       { id: 'inpaint', file: 'lama-manga-dynamic.onnx', bytes: 206291843,
         url: hf('ogkalu/lama-manga-onnx-dynamic', 'lama-manga-dynamic.onnx') },
     ],
   },
   {
-    id: 'ocr-pororo', label: 'Pororo Korean OCR (brainocr)',
+    id: 'ocr-pororo', labelKey: 'model_pororo', label: 'Pororo Korean OCR (brainocr)',
     files: [
       { id: 'ocr-pororo', file: 'brainocr.onnx', bytes: 76907335,
         url: hf('ogkalu/pororo', 'brainocr.onnx') },
     ],
   },
   {
-    id: 'ocr-ppocr-en', label: 'PP-OCRv5 OCR (English)',
+    id: 'ocr-ppocr-en', labelKey: 'model_en', label: 'PP-OCRv5 OCR (English)',
     files: [
       { id: 'ocr-ppocr-en', file: 'rec.onnx', bytes: 7830888,
         url: hf('monkt/paddleocr-onnx', 'languages/english/rec.onnx') },
     ],
   },
   {
-    id: 'ocr-ppocr-chinese', label: 'PP-OCRv5 OCR (Chinese Simplified/Traditional)',
+    id: 'ocr-ppocr-chinese', labelKey: 'model_zh', label: 'PP-OCRv5 OCR (Chinese Simplified/Traditional)',
     files: [
       { id: 'ocr-ppocr-chinese', file: 'rec.onnx', bytes: 84468836,
         url: hf('monkt/paddleocr-onnx', 'languages/chinese/rec.onnx') },
@@ -101,7 +101,7 @@ export async function getModelStatus() {
       if (!rec) { done = false; continue; }
       if (!bytesOk) { done = false; sizeMismatch = true; }
     }
-    out.push({ id: g.id, label: g.label, required: !!g.required, downloaded: done, sizeMismatch, files });
+    out.push({ id: g.id, label: g.label, labelKey: g.labelKey, required: !!g.required, downloaded: done, sizeMismatch, files });
   }
   return out;
 }

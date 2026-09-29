@@ -19,7 +19,7 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
   },
-  "description": "Translate manga/comic pages in-browser: bubble detection, OCR, inpainting, translation, re-rendering. All ML runs locally via ONNX Runtime Web.",
+  "description": "__MSG_appDesc__",
   "host_permissions": [
     "https://huggingface.co/*",
     "https://cdn-lfs.huggingface.co/*",
@@ -35,7 +35,7 @@
     "48": "icons/icon48.png"
   },
   "manifest_version": 3,
-  "name": "comic-translate-4-free",
+  "name": "__MSG_appName__",
   "optional_host_permissions": [
     "<all_urls>"
   ],
@@ -50,5 +50,6 @@
     "tabs",
     "unlimitedStorage"
   ],
-  "version": "0.3.0"
+  "version": "0.3.0",
+  "default_locale": "en"
 }

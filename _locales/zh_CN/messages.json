@@ -1,0 +1,337 @@
+{
+  "add": {
+    "message": "添加"
+  },
+  "appDesc": {
+    "message": "在浏览器内翻译漫画页面：气泡检测、OCR、图像修复、翻译、重新渲染。所有 ML 均通过 ONNX Runtime Web 在本地运行。"
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "开启后，白名单页面加载完成后会自动开始翻译 — 无需点击按钮。（提示：从弹出窗口添加网站，以便扩展获得读取其图片的权限。）"
+  },
+  "auto_translate": {
+    "message": "页面加载时自动翻译"
+  },
+  "automation": {
+    "message": "自动化"
+  },
+  "azure_key": {
+    "message": "Azure API 密钥"
+  },
+  "azure_region": {
+    "message": "Azure 区域"
+  },
+  "azure_region_ph": {
+    "message": "例如 japaneast"
+  },
+  "backend": {
+    "message": "后端"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator（需要密钥）"
+  },
+  "backend_google": {
+    "message": "Google（免费）"
+  },
+  "backend_google_opt": {
+    "message": "Google（免费，无需密钥）"
+  },
+  "backend_hint": {
+    "message": "Azure 密钥/区域仅存储在此浏览器的扩展存储中。LM Studio 须启用 OpenAI 兼容服务器并运行（默认 http://localhost:1234）。WebLLM 首次使用需下载数 GB 数据，且需要 WebGPU。"
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio（本地）"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio（本地服务器）"
+  },
+  "backend_localllm": {
+    "message": "本地 LLM（实验性）"
+  },
+  "backend_localllm_opt": {
+    "message": "本地 LLM（实验性）"
+  },
+  "cancel": {
+    "message": "取消"
+  },
+  "check_azure": {
+    "message": "检查 Azure 连接"
+  },
+  "check_lmstudio": {
+    "message": "检查 LM Studio 连接"
+  },
+  "debug": {
+    "message": "调试"
+  },
+  "debug_hint": {
+    "message": "在侧边面板中显示每个流水线阶段的输出，便于逐阶段检查。"
+  },
+  "debug_mode": {
+    "message": "调试模式（阶段检查器）"
+  },
+  "delete": {
+    "message": "删除"
+  },
+  "det_threshold": {
+    "message": "检测置信度阈值"
+  },
+  "detection_hint": {
+    "message": "小于最小图片尺寸的页面将被跳过。渲染字体大小根据页面原文自动估算（以上限的最大值为上限）。"
+  },
+  "detection_rendering": {
+    "message": "检测与渲染"
+  },
+  "download": {
+    "message": "下载"
+  },
+  "download_all": {
+    "message": "下载所有模型"
+  },
+  "downloaded": {
+    "message": "✓ 已下载（$SIZE$）",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_access": {
+    "message": "授予访问权限"
+  },
+  "grant_access_to": {
+    "message": "授予对 $HOST$ 的访问权限",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "已在白名单中，但扩展无权访问此网站 — 无法开始翻译。"
+  },
+  "languages": {
+    "message": "语言"
+  },
+  "lmstudio_api": {
+    "message": "LM Studio API"
+  },
+  "lmstudio_api_openai": {
+    "message": "OpenAI 兼容（/v1/chat/completions）"
+  },
+  "lmstudio_api_v1": {
+    "message": "LM Studio REST API v1（/api/v1/chat）"
+  },
+  "lmstudio_key": {
+    "message": "LM Studio API 密钥（可选）"
+  },
+  "lmstudio_url": {
+    "message": "LM Studio 服务器 URL"
+  },
+  "localllm_llama": {
+    "message": "Llama 3.2 3B"
+  },
+  "localllm_model": {
+    "message": "本地 LLM 模型（WebLLM）"
+  },
+  "localllm_qwen": {
+    "message": "Qwen2.5 1.5B"
+  },
+  "localllm_smol": {
+    "message": "SmolLM2 1.7B（最小）"
+  },
+  "max_font_size": {
+    "message": "最大字体大小（px）"
+  },
+  "min_font_size": {
+    "message": "最小字体大小（px）"
+  },
+  "min_image_size": {
+    "message": "最小图片尺寸（px）"
+  },
+  "model_detector": {
+    "message": "文本检测（RT-DETR-v2）"
+  },
+  "model_en": {
+    "message": "PP-OCRv5 OCR（英语）"
+  },
+  "model_inpaint": {
+    "message": "LaMa 图像修复（漫画专用）"
+  },
+  "model_ocr_ja": {
+    "message": "manga-ocr（日语）"
+  },
+  "model_pororo": {
+    "message": "Pororo 韩语 OCR（brainocr）"
+  },
+  "model_zh": {
+    "message": "PP-OCRv5 OCR（中文 简体/繁体）"
+  },
+  "models": {
+    "message": "模型"
+  },
+  "models_hint": {
+    "message": "模型从 Hugging Face 下载一次后缓存在浏览器（IndexedDB）中。"
+  },
+  "no_site": {
+    "message": "未检测到网站"
+  },
+  "not_whitelisted": {
+    "message": "未在白名单"
+  },
+  "options_settings": {
+    "message": "选项与设置"
+  },
+  "options_title": {
+    "message": "选项"
+  },
+  "redownload": {
+    "message": "重新下载"
+  },
+  "required_badge": {
+    "message": "必需"
+  },
+  "saved": {
+    "message": "已保存 ✓"
+  },
+  "site_this": {
+    "message": "此网站：$HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "网站白名单"
+  },
+  "source_lang": {
+    "message": "源语言"
+  },
+  "target_lang": {
+    "message": "目标语言"
+  },
+  "translate_page": {
+    "message": "翻译此页面"
+  },
+  "translation_backend": {
+    "message": "翻译后端"
+  },
+  "whitelist_add": {
+    "message": "将此网站加入白名单"
+  },
+  "whitelist_desc": {
+    "message": "翻译仅在白名单网站上运行。从弹出窗口添加网站，或在此处输入其主机名。"
+  },
+  "whitelist_remove": {
+    "message": "从白名单移除"
+  },
+  "whitelisted": {
+    "message": "已在白名单 ✓"
+  },
+  "wl_placeholder": {
+    "message": "例如 example.com"
+  },
+  "whitelist_empty": {
+    "message": "为空 — 在您添加网站之前，所有地方的翻译均处于禁用状态"
+  },
+  "remove": {
+    "message": "移除"
+  },
+  "checking": {
+    "message": "检查中…"
+  },
+  "download_failed": {
+    "message": "✗ 下载失败：$ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading": {
+    "message": "下载中… $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "bg_unreachable": {
+    "message": "无法连接到后台服务"
+  },
+  "bg_unreachable_hint": {
+    "message": "请在 about:debugging 中重新加载扩展，然后重新打开此页面。"
+  },
+  "stage_idle": {
+    "message": "空闲"
+  },
+  "stage_capture": {
+    "message": "正在捕获页面…"
+  },
+  "stage_detect": {
+    "message": "正在检测气泡和文字…"
+  },
+  "stage_blocks": {
+    "message": "正在组装文本块…"
+  },
+  "stage_ocr": {
+    "message": "正在识别文字 (OCR)…"
+  },
+  "stage_mask": {
+    "message": "正在生成遮罩…"
+  },
+  "stage_inpaint": {
+    "message": "正在图像修复…"
+  },
+  "stage_translate": {
+    "message": "正在翻译…"
+  },
+  "stage_render": {
+    "message": "正在渲染…"
+  },
+  "stage_done": {
+    "message": "完成"
+  },
+  "stage_cancelled": {
+    "message": "已取消"
+  },
+  "stage_error": {
+    "message": "出错"
+  },
+  "downloading_generic": {
+    "message": "下载中…"
+  },
+  "download_all_n": {
+    "message": "下载所有模型（还剩 $N$ 个）",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "all_downloaded": {
+    "message": "所有模型已下载 ✓"
+  },
+  "wrong_file": {
+    "message": "⚠ 缓存的文件有误（$FILES$）— 请按下面的“下载”获取正确的文件",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ 已下载"
+  },
+  "not_downloaded": {
+    "message": "未下载"
+  }
+}

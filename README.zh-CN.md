@@ -1,0 +1,163 @@
+# comic-translate-4-free
+
+**语言：** [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
+
+在浏览器内翻译漫画页面。完整流水线在本地运行：
+气泡/文字检测（RT-DETR-v2）、OCR（日语用 manga-ocr、韩语用 Pororo、
+英语和中文用 PP-OCRv5）、通过 LaMa 图像修复擦除原文、翻译
+（Google / Azure / 本地 LLM），以及将译文换行重绘回原气泡。
+
+扩展 UI 跟随浏览器的语言设置（英语、日语、韩语、中文简体/繁体）。
+
+由 [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate)
+移植到 Manifest V3 + ONNX Runtime Web（WASM）。
+
+## 下载（无需构建）
+
+从 [**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
+页面获取可直接安装的 zip — 每个 release 都由 CI 自动构建，
+同时包含 `chrome/` 和 `firefox/`。解压后按下方“安装”操作即可。
+您无需克隆仓库或自行运行 `build.sh`。
+
+## 安装
+
+zip 中包含两个构建：`chrome/` 和 `firefox/`。
+
+**Chrome：** 打开 `chrome://extensions` → 启用**开发者模式** →
+**加载已解压的扩展程序** → 选择 `chrome/` 文件夹。
+
+**Firefox：** 打开 `about:debugging#/runtime/this-firefox` →
+**临时载入附加组件** → 打开 `firefox/` 文件夹并选择 `manifest.json`。
+（临时附加组件在 Firefox 重启前有效。如需永久安装，
+须使用 addons.mozilla.org 签名的构建。）
+
+然后在选项页中下载一次模型 — 点击 **Download all models**
+按钮即可获取全部（检测器、OCR 模型、修复器，共约 350MB）。
+它们缓存在浏览器（IndexedDB）中，不会重复下载。
+每个文件的字节大小在下载后都会校验；损坏的文件会标 ⚠
+并可重新下载。
+
+## 使用
+
+1. **先将网站加入白名单** — 翻译只在您明确允许的网站上运行。
+   点击扩展图标并按 **Add this site to whitelist**
+   （或在选项中添加主机名）。这是硬性门槛：
+   流水线不会在其他任何网站上运行。
+2. 在白名单网站上打开漫画页面。
+3. 点击扩展图标 → **Translate this page**。
+   每个网站首次使用时，Chrome 会请求一次性权限，
+   以便扩展以完整分辨率下载页面图片。
+4. 页面角落的状态 pill 显示实时进度
+   （Capturing → Detecting → OCR → …）。
+   完成后，页面自身的图片会被就地替换为翻译版本 —
+   原文被修复擦除，译文重绘回气泡中。
+   若页面没有明确的主图，则改为以浮层形式显示译文。
+
+流水线输入为页面中最大的图片，受最小图片尺寸设置限制
+（默认 500px）：更小的图片会给出明确错误并跳过。
+扩展直接读取页面自身的图片 — 绝不会对网页截图。
+
+**选项**（右键图标 → 选项）：网站白名单、源语言/目标语言、
+翻译后端（Google 免费 / Azure Translator / LM Studio /
+实验性本地 LLM）、Azure 与 LM Studio 的连接测试按钮、
+检测阈值、最小图片尺寸（默认 500px — 更小的捕获会被跳过）、
+字体大小、调试模式。
+
+### LM Studio
+
+运行启用了 OpenAI 兼容服务器的 LM Studio（默认
+`http://localhost:1234`，服务器路径 `/v1`）。
+在选项中将后端选为 **LM Studio (local)**，设置服务器 URL，
+然后按 **Check LM Studio connection** 验证连接。
+
+## 从源码构建
+
+无需打包器、无需 npm install — 源码本身就是扩展。
+依赖：`bash`、`python3`、`rsync`、`zip` 和 `node`
+（仅用于语法检查）。
+
+```bash
+git clone https://github.com/jameslee0623/comic-translate-4-free.git
+cd comic-translate-4-free
+./build.sh
+```
+
+这会生成 `dist/comic-translate-4-free-v<version>-<build>.zip`，
+同时包含 `chrome/` 和 `firefox/`，
+按上文“安装”加载即可（Chrome 以解压方式，
+Firefox 以临时附加组件方式）。
+
+`<build>` 戳来自 `src/ui/options.js` 与 `src/ui/popup.js`
+顶部的 `BUILD` 常量（保持两者同步）。
+构建前 bump 它，可在文件名和 UI 页脚中获得唯一戳记 —
+否则您的构建与同戳记的 release 构建无法区分。
+
+扩展每个页面只发送一次批量请求：
+
+```
+POST {server}/chat/completions
+{
+  "messages": [
+    { "role": "user",
+      "content": "Translate the following 9 text(s) from Japanese to Chinese (Traditional):\n[\"…\",\"…\"]" }
+  ],
+  "temperature": 0,
+  "texts": ["…", "…"],
+  "target": "zh-TW",
+  "source": "ja"
+}
+```
+
+模型应回复译文字符串的 JSON 数组 —
+与输入文本数量相同、顺序一致。
+较长回复中裸露的 `[...]` 也会被接受；
+最后的兜底是每行一条译文。
+
+## 调试模式
+
+在选项中启用**调试模式**后，每个流水线阶段的输出都会显示在
+侧边检查面板中：捕获的图像、检测框、文本块、
+OCR 裁剪 + 识别结果、修复遮罩、修复后的页面、译文。
+
+## 架构
+
+```
+popup / options (src/ui)
+      │ chrome.runtime messages
+      ▼
+background — 编排、捕获、文本块、遮罩、翻译 API、
+             调试输出
+  ├─ Chrome: service worker + offscreen document (src/offscreen)
+  │  承载全部 onnxruntime-web 会话
+  │  （下载在其中执行，使 197MB 的抓取在 SW 休眠期间也能继续）
+  └─ Firefox: background page (src/background/background.html)
+     在进程内承载相同会话（Firefox 没有 offscreen document）
+└── content script (src/content) — 浮层画布 + 文字渲染器 + 调试面板
+```
+
+模型（Hugging Face，按需下载）：
+- `ogkalu/comic-text-and-bubble-detector` → `detector-v4-s_int8.onnx`
+- `ogkalu/manga-ocr-mobile` → `encoder.onnx`、`decoder_init.onnx`、
+  `decoder_step.onnx`、`vocab.txt`（日语）
+- `ogkalu/pororo` → `brainocr.onnx`（韩语）
+- PP-OCRv5 识别模型（英语、中文简体/繁体）
+- `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
+
+流水线阶段：capture → detect → blocks → OCR → mask → inpaint →
+translate → render。检测在 640×640 下运行；
+纵横比超过 3.5:1 的高图以重叠垂直切片处理。
+
+## 已知限制
+
+- 本地 LLM 后端为实验性（需要 WebGPU + 数 GB 下载）。
+- Google 后端使用非官方 `translate.googleapis.com` 端点，
+  可能被限流；Azure 需要您自己的密钥。
+- OCR 引擎：manga-ocr（日语）、Pororo brainocr（韩语）、
+  PP-OCRv5（英语、中文）。
+- 竖排文字针对高 CJK 文本块渲染；气泡外的拟声词等
+  使用独立文本框。
+
+## 第三方声明
+
+捆绑的库、移植的代码、运行时下载的模型及其许可证，
+见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。

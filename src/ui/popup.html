@@ -38,38 +38,39 @@
       <span id="site">…</span>
     </div>
     <div class="row">
-      <button id="whitelistBtn">Add this site to whitelist</button>
+      <button id="whitelistBtn" data-i18n="whitelist_add">Add this site to whitelist</button>
     </div>
     <div class="row" id="grantRow" style="display:none;margin-top:6px">
-      <span class="warn" style="font-size:12px">whitelisted, but the extension has no access to this site — translation can't start.</span>
-      <button id="grantBtn">Grant access</button>
+      <span class="warn" style="font-size:12px" data-i18n="grant_warning">whitelisted, but the extension has no access to this site — translation can't start.</span>
+      <button id="grantBtn" data-i18n="grant_access">Grant access</button>
     </div>
   </div>
 
-  <div style="margin-top:10px"><button id="translate" class="primary">Translate this page</button></div>
+  <div style="margin-top:10px"><button id="translate" class="primary" data-i18n="translate_page">Translate this page</button></div>
   <div class="row">
-    <button id="cancel" disabled>Cancel</button>
+    <button id="cancel" data-i18n="cancel" disabled>Cancel</button>
     <span id="status"></span>
   </div>
   <div class="bar"><div id="progress"></div></div>
   <div id="error"></div>
 
-  <h2>Languages</h2>
+  <h2 data-i18n="languages">Languages</h2>
   <div class="row">
-    <select id="sourceLang" title="Source language"></select>
+    <select id="sourceLang" data-i18n-title="source_lang" title="Source language"></select>
     <span style="color:#9a9aa0">→</span>
-    <select id="targetLang" title="Target language"></select>
+    <select id="targetLang" data-i18n-title="target_lang" title="Target language"></select>
   </div>
 
-  <h2>Translation backend</h2>
+  <h2 data-i18n="translation_backend">Translation backend</h2>
   <div class="row"><select id="backend">
-    <option value="google">Google (free)</option>
-    <option value="azure">Azure Translator</option>
-    <option value="lmstudio">LM Studio (local)</option>
-    <option value="local-llm">Local LLM (experimental)</option>
+    <option value="google" data-i18n="backend_google">Google (free)</option>
+    <option value="azure" data-i18n="backend_azure">Azure Translator</option>
+    <option value="lmstudio" data-i18n="backend_lmstudio">LM Studio (local)</option>
+    <option value="local-llm" data-i18n="backend_localllm">Local LLM (experimental)</option>
   </select></div>
 
-  <div class="foot"><a href="#" id="options">Options &amp; settings</a> <span id="build" style="color:#666"></span></div>
+  <div class="foot"><a href="#" id="options" data-i18n="options_settings">Options &amp; settings</a> <span id="build" style="color:#666"></span></div>
+  <script src="i18n.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

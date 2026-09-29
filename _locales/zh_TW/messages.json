@@ -1,0 +1,337 @@
+{
+  "add": {
+    "message": "新增"
+  },
+  "appDesc": {
+    "message": "在瀏覽器內翻譯漫畫頁面：對話框偵測、OCR、影像修補、翻譯、重新渲染。所有 ML 均透過 ONNX Runtime Web 在本機執行。"
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "開啟後，白名單頁面載入完成後會自動開始翻譯 — 無需點擊按鈕。（提示：從彈出視窗新增網站，以便擴充功能取得讀取其圖片的權限。）"
+  },
+  "auto_translate": {
+    "message": "頁面載入時自動翻譯"
+  },
+  "automation": {
+    "message": "自動化"
+  },
+  "azure_key": {
+    "message": "Azure API 金鑰"
+  },
+  "azure_region": {
+    "message": "Azure 區域"
+  },
+  "azure_region_ph": {
+    "message": "例如 japaneast"
+  },
+  "backend": {
+    "message": "後端"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator（需要金鑰）"
+  },
+  "backend_google": {
+    "message": "Google（免費）"
+  },
+  "backend_google_opt": {
+    "message": "Google（免費，無需金鑰）"
+  },
+  "backend_hint": {
+    "message": "Azure 金鑰/區域僅儲存在此瀏覽器的擴充功能儲存空間中。LM Studio 須啟用 OpenAI 相容伺服器並執行（預設 http://localhost:1234）。WebLLM 首次使用需下載數 GB 資料，且需要 WebGPU。"
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio（本機）"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio（本機伺服器）"
+  },
+  "backend_localllm": {
+    "message": "本機 LLM（實驗性）"
+  },
+  "backend_localllm_opt": {
+    "message": "本機 LLM（實驗性）"
+  },
+  "cancel": {
+    "message": "取消"
+  },
+  "check_azure": {
+    "message": "檢查 Azure 連線"
+  },
+  "check_lmstudio": {
+    "message": "檢查 LM Studio 連線"
+  },
+  "debug": {
+    "message": "除錯"
+  },
+  "debug_hint": {
+    "message": "在側邊面板中顯示每個處理階段的輸出，便於逐階段檢查。"
+  },
+  "debug_mode": {
+    "message": "除錯模式（階段檢視器）"
+  },
+  "delete": {
+    "message": "刪除"
+  },
+  "det_threshold": {
+    "message": "偵測信賴度閾值"
+  },
+  "detection_hint": {
+    "message": "小於最小圖片尺寸的頁面將被略過。渲染字型大小會根據頁面原文自動估算（以設定的最大值為上限）。"
+  },
+  "detection_rendering": {
+    "message": "偵測與渲染"
+  },
+  "download": {
+    "message": "下載"
+  },
+  "download_all": {
+    "message": "下載所有模型"
+  },
+  "downloaded": {
+    "message": "✓ 已下載（$SIZE$）",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_access": {
+    "message": "授予存取權限"
+  },
+  "grant_access_to": {
+    "message": "授予對 $HOST$ 的存取權限",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "已在白名單中，但擴充功能無權存取此網站 — 無法開始翻譯。"
+  },
+  "languages": {
+    "message": "語言"
+  },
+  "lmstudio_api": {
+    "message": "LM Studio API"
+  },
+  "lmstudio_api_openai": {
+    "message": "OpenAI 相容（/v1/chat/completions）"
+  },
+  "lmstudio_api_v1": {
+    "message": "LM Studio REST API v1（/api/v1/chat）"
+  },
+  "lmstudio_key": {
+    "message": "LM Studio API 金鑰（選用）"
+  },
+  "lmstudio_url": {
+    "message": "LM Studio 伺服器 URL"
+  },
+  "localllm_llama": {
+    "message": "Llama 3.2 3B"
+  },
+  "localllm_model": {
+    "message": "本機 LLM 模型（WebLLM）"
+  },
+  "localllm_qwen": {
+    "message": "Qwen2.5 1.5B"
+  },
+  "localllm_smol": {
+    "message": "SmolLM2 1.7B（最小）"
+  },
+  "max_font_size": {
+    "message": "最大字型大小（px）"
+  },
+  "min_font_size": {
+    "message": "最小字型大小（px）"
+  },
+  "min_image_size": {
+    "message": "最小圖片尺寸（px）"
+  },
+  "model_detector": {
+    "message": "文字偵測（RT-DETR-v2）"
+  },
+  "model_en": {
+    "message": "PP-OCRv5 OCR（英文）"
+  },
+  "model_inpaint": {
+    "message": "LaMa 影像修補（漫畫專用）"
+  },
+  "model_ocr_ja": {
+    "message": "manga-ocr（日文）"
+  },
+  "model_pororo": {
+    "message": "Pororo 韓文 OCR（brainocr）"
+  },
+  "model_zh": {
+    "message": "PP-OCRv5 OCR（中文 簡體/繁體）"
+  },
+  "models": {
+    "message": "模型"
+  },
+  "models_hint": {
+    "message": "模型從 Hugging Face 下載一次後快取在瀏覽器（IndexedDB）中。"
+  },
+  "no_site": {
+    "message": "未偵測到網站"
+  },
+  "not_whitelisted": {
+    "message": "不在白名單"
+  },
+  "options_settings": {
+    "message": "選項與設定"
+  },
+  "options_title": {
+    "message": "選項"
+  },
+  "redownload": {
+    "message": "重新下載"
+  },
+  "required_badge": {
+    "message": "必要"
+  },
+  "saved": {
+    "message": "已儲存 ✓"
+  },
+  "site_this": {
+    "message": "此網站：$HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "網站白名單"
+  },
+  "source_lang": {
+    "message": "來源語言"
+  },
+  "target_lang": {
+    "message": "目標語言"
+  },
+  "translate_page": {
+    "message": "翻譯此頁面"
+  },
+  "translation_backend": {
+    "message": "翻譯後端"
+  },
+  "whitelist_add": {
+    "message": "將此網站加入白名單"
+  },
+  "whitelist_desc": {
+    "message": "翻譯僅在白名單網站上執行。從彈出視窗新增網站，或在此輸入其主機名稱。"
+  },
+  "whitelist_remove": {
+    "message": "從白名單移除"
+  },
+  "whitelisted": {
+    "message": "已在白名單 ✓"
+  },
+  "wl_placeholder": {
+    "message": "例如 example.com"
+  },
+  "whitelist_empty": {
+    "message": "為空 — 在您新增網站之前，所有地方的翻譯均處於停用狀態"
+  },
+  "remove": {
+    "message": "移除"
+  },
+  "checking": {
+    "message": "檢查中…"
+  },
+  "download_failed": {
+    "message": "✗ 下載失敗：$ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading": {
+    "message": "下載中… $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "bg_unreachable": {
+    "message": "無法連線到背景服務"
+  },
+  "bg_unreachable_hint": {
+    "message": "請在 about:debugging 中重新載入擴充功能，然後重新開啟此頁面。"
+  },
+  "stage_idle": {
+    "message": "閒置"
+  },
+  "stage_capture": {
+    "message": "正在擷取頁面…"
+  },
+  "stage_detect": {
+    "message": "正在偵測對話框與文字…"
+  },
+  "stage_blocks": {
+    "message": "正在組裝文字區塊…"
+  },
+  "stage_ocr": {
+    "message": "正在辨識文字 (OCR)…"
+  },
+  "stage_mask": {
+    "message": "正在產生遮罩…"
+  },
+  "stage_inpaint": {
+    "message": "正在影像修補…"
+  },
+  "stage_translate": {
+    "message": "正在翻譯…"
+  },
+  "stage_render": {
+    "message": "正在渲染…"
+  },
+  "stage_done": {
+    "message": "完成"
+  },
+  "stage_cancelled": {
+    "message": "已取消"
+  },
+  "stage_error": {
+    "message": "發生錯誤"
+  },
+  "downloading_generic": {
+    "message": "下載中…"
+  },
+  "download_all_n": {
+    "message": "下載所有模型（還剩 $N$ 個）",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "all_downloaded": {
+    "message": "所有模型已下載 ✓"
+  },
+  "wrong_file": {
+    "message": "⚠ 快取的檔案有誤（$FILES$）— 請按下面的「下載」取得正確的檔案",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ 已下載"
+  },
+  "not_downloaded": {
+    "message": "未下載"
+  }
+}

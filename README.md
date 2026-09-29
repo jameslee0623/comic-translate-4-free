@@ -1,9 +1,15 @@
 # comic-translate-4-free
 
+**Language:** [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
+
 Translate manga/comic pages in-browser. The full pipeline runs locally:
-bubble/text detection (RT-DETR-v2), Japanese OCR (manga-ocr), text removal
+bubble/text detection (RT-DETR-v2), OCR (manga-ocr for Japanese, Pororo for
+Korean, PP-OCRv5 for English and Chinese), text removal
 via LaMa inpainting, translation (Google / Azure / local LLM), and wrapped
 re-rendering into the original speech bubbles.
+
+The extension UI follows your browser's language setting (English, Japanese,
+Korean, Simplified/Traditional Chinese).
 
 Ported from [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate)
 to Manifest V3 + ONNX Runtime Web (WASM).
@@ -29,8 +35,8 @@ add-ons stay until Firefox restarts. For a permanent install the build must
 be signed on addons.mozilla.org.)
 
 Then download the models once from the Options page — one
-**Download all models** button fetches everything (detector, OCR, inpainter,
-~260 MB total). They are cached in the browser (IndexedDB) and never
+**Download all models** button fetches everything (detector, OCR models,
+inpainter, ~350 MB total). They are cached in the browser (IndexedDB) and never
 re-downloaded. The byte size of each file is verified after download; a
 truncated or wrong file is flagged with a ⚠ and can be re-downloaded.
 
@@ -51,14 +57,14 @@ truncated or wrong file is flagged with a ⚠ and can be re-downloaded.
    main image, the translation shows in an overlay instead.
 
 The pipeline input is the page's largest image, gated by the minimum image
-size setting (default 600px): smaller pictures are skipped with a clear
-error. If the image can't be read directly, the extension falls back to a
-viewport screenshot.
+size setting (default 500px): smaller pictures are skipped with a clear
+error. The extension reads the page's own image directly — it never
+screenshots the webpage.
 
 **Options** (right-click the icon → Options): site whitelist, source/target
 languages, translation backend (Google free / Azure Translator / LM Studio /
 experimental local LLM), connection-test buttons for Azure and LM Studio,
-detection threshold, minimum image size (default 600px — smaller captures are
+detection threshold, minimum image size (default 500px — smaller captures are
 skipped), font sizes, debug mode.
 
 ### LM Studio
@@ -134,7 +140,9 @@ background — orchestration, capture, blocks, mask, translation APIs,
 Models (Hugging Face, downloaded on demand):
 - `ogkalu/comic-text-and-bubble-detector` → `detector-v4-s_int8.onnx`
 - `ogkalu/manga-ocr-mobile` → `encoder.onnx`, `decoder_init.onnx`,
-  `decoder_step.onnx`, `vocab.txt`
+  `decoder_step.onnx`, `vocab.txt` (Japanese)
+- `ogkalu/pororo` → `brainocr.onnx` (Korean)
+- PP-OCRv5 recognition models (English, Chinese Simplified/Traditional)
 - `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
 
 Pipeline stages: capture → detect → blocks → OCR → mask → inpaint →
@@ -146,7 +154,8 @@ processed in overlapping vertical slices.
 - Local LLM backend is experimental (needs WebGPU + multi-GB downloads).
 - Google backend uses the unofficial `translate.googleapis.com` endpoint and
   may be rate-limited; Azure needs your own key.
-- OCR is Japanese-optimized (manga-ocr).
+- OCR engines: manga-ocr (Japanese), Pororo brainocr (Korean), PP-OCRv5
+  (English, Chinese).
 - Vertical text is rendered for tall CJK blocks; SFX / text outside bubbles
   uses its own text box.
 

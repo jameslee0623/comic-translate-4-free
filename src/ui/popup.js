@@ -1,15 +1,21 @@
 // Popup: trigger runs, show progress, backend + language quick-switch, whitelist.
 const BUILD = '20260928l'; // bump on every shipped build; shown in the footer
 const $ = id => document.getElementById(id);
+// Stage labels come from i18n (stage_* keys), English fallback if missing.
 const STAGE_LABEL = {
   idle: 'idle', capture: 'Capturing page…', detect: 'Detecting bubbles & text…',
   blocks: 'Assembling text blocks…', ocr: 'Reading text (OCR)…', mask: 'Building masks…',
   inpaint: 'Inpainting…', translate: 'Translating…', render: 'Rendering…',
   done: 'Done', cancelled: 'Cancelled', error: 'Error',
 };
+for (const k of Object.keys(STAGE_LABEL)) {
+  const m = ctMsg('stage_' + k);
+  if (m) STAGE_LABEL[k] = m;
+}
+// Language names in their native form — readable in any UI language.
 const LANGS = [
-  ['ja', 'Japanese'], ['en', 'English'], ['ko', 'Korean'], ['zh-CN', 'Chinese (S)'],
-  ['zh-TW', 'Chinese (T)'],
+  ['ja', '日本語'], ['en', 'English'], ['ko', '한국어'], ['zh-CN', '简体中文'],
+  ['zh-TW', '繁體中文'],
 ];
 
 let currentHost = null;
@@ -114,14 +120,18 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
   const list = settings.siteWhitelist || [];
   const btn = $('whitelistBtn');
   if (!currentHost) {
-    $('site').innerHTML = 'no site detected';
+    $('site').innerHTML = ctMsg('no_site') || 'no site detected';
     btn.disabled = true;
     return;
   }
   const ok = isWhitelisted(currentHost, list);
-  $('site').innerHTML = `this site: <b>${currentHost}</b> — ` +
-    (ok ? '<span class="ok">whitelisted ✓</span>' : '<span class="warn">not whitelisted</span>');
-  btn.textContent = ok ? 'Remove from whitelist' : 'Add this site to whitelist';
+  const hostHtml = `<b>${currentHost}</b>`;
+  const statusHtml = ok
+    ? `<span class="ok">${ctMsg('whitelisted') || 'whitelisted ✓'}</span>`
+    : `<span class="warn">${ctMsg('not_whitelisted') || 'not whitelisted'}</span>`;
+  // site_this = "this site: $HOST$ — $STATUS$" (word order localized per locale)
+  $('site').innerHTML = ctMsg('site_this', [hostHtml, statusHtml]) || `this site: ${hostHtml} — ${statusHtml}`;
+  btn.textContent = ctMsg(ok ? 'whitelist_remove' : 'whitelist_add') || (ok ? 'Remove from whitelist' : 'Add this site to whitelist');
   btn.disabled = false;
   // Whitelisted but missing host access: offer the one-click grant. This covers
   // BOTH the page host (needed for script injection) and the picture's host
@@ -137,7 +147,7 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
     const missing = !pageHas ? currentHost : (!imgHas ? cachedImageHost : null);
     if (missing) {
       grantRow.style.display = '';
-      $('grantBtn').textContent = `Grant access to ${missing}`;
+      $('grantBtn').textContent = ctMsg('grant_access_to', [missing]) || `Grant access to ${missing}`;
       $('grantBtn').onclick = () => {
         // Request synchronously in the click: no awaits before
         // permissions.request() or Firefox drops the user gesture.
@@ -210,6 +220,7 @@ chrome.runtime.onMessage.addListener(msg => {
   }
 });
 
+ctApplyI18n();
 fillLangs();
 try {
   const v = chrome.runtime.getManifest().version;

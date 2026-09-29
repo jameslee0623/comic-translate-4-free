@@ -2,8 +2,8 @@
 const BUILD = '20260928l'; // keep in sync with popup.js; shown in the footer
 const $ = id => document.getElementById(id);
 const LANGS = [
-  ['ja', 'Japanese'], ['en', 'English'], ['ko', 'Korean'], ['zh-CN', 'Chinese (Simplified)'],
-  ['zh-TW', 'Chinese (Traditional)'],
+  ['ja', '日本語'], ['en', 'English'], ['ko', '한국어'], ['zh-CN', '简体中文'],
+  ['zh-TW', '繁體中文'],
 ];
 const DEFAULTS = {
   sourceLang: 'ja', targetLang: 'en', translationBackend: 'google',
@@ -62,7 +62,8 @@ function renderWhitelist() {
   const ul = $('whitelist');
   ul.innerHTML = '';
   if (!whitelist.length) {
-    ul.innerHTML = '<li style="color:#8a8a90">empty — translation is disabled everywhere until you add a site</li>';
+    const emptyMsg = ctMsg('whitelist_empty') || 'empty — translation is disabled everywhere until you add a site';
+    ul.innerHTML = `<li style="color:#8a8a90">${emptyMsg}</li>`;
     return;
   }
   for (const h of whitelist) {
@@ -70,7 +71,7 @@ function renderWhitelist() {
     const span = document.createElement('span');
     span.textContent = h;
     const b = document.createElement('button');
-    b.textContent = 'Remove';
+    b.textContent = ctMsg('remove') || 'Remove';
     b.onclick = () => { whitelist = whitelist.filter(x => x !== h); renderWhitelist(); saveNow(); };
     li.appendChild(span); li.appendChild(b);
     ul.appendChild(li);
@@ -171,10 +172,12 @@ function setCheckResult(el, r) {
   el.textContent = r.ok ? '✓ ' + (r.detail || 'connected') : '✗ ' + (r.error || 'failed');
 }
 
+function checkingText() { return ctMsg('checking') || 'checking…'; }
+
 // Save first so the check uses the latest values, then check.
 $('checkAzure').onclick = async () => {
   const btn = $('checkAzure'), out = $('azureResult');
-  btn.disabled = true; out.className = 'check-result'; out.textContent = 'checking…';
+  btn.disabled = true; out.className = 'check-result'; out.textContent = checkingText();
   await chrome.storage.local.set({ settings: collect() });
   const r = await chrome.runtime.sendMessage({ type: 'ct/check-azure' }).catch(e => ({ ok: false, error: String(e) }));
   setCheckResult(out, r);
@@ -183,7 +186,7 @@ $('checkAzure').onclick = async () => {
 
 $('checkLmStudio').onclick = async () => {
   const btn = $('checkLmStudio'), out = $('lmStudioResult');
-  btn.disabled = true; out.className = 'check-result'; out.textContent = 'checking…';
+  btn.disabled = true; out.className = 'check-result'; out.textContent = checkingText();
   await chrome.storage.local.set({ settings: collect() });
   const r = await chrome.runtime.sendMessage({ type: 'ct/check-lmstudio' }).catch(e => ({ ok: false, error: String(e) }));
   setCheckResult(out, r);
@@ -211,16 +214,16 @@ chrome.runtime.onMessage.addListener(msg => {
   if (msg.error) {
     dlErrors[msg.fileId] = msg.error;
     dlInFlight.delete(msg.fileId);
-    if (el) el.innerHTML = `<span style="color:#f85149">✗ download failed: ${escapeHtml(msg.error)}</span>`;
+    if (el) el.innerHTML = `<span style="color:#f85149">${escapeHtml(ctMsg('download_failed', [msg.error])) || escapeHtml('✗ download failed: ' + msg.error)}</span>`;
     dlDoneCheck();
   } else if (msg.done) {
     delete dlErrors[msg.fileId];
     dlInFlight.delete(msg.fileId);
-    if (el) el.innerHTML = '<span style="color:#7ee787">✓ downloaded</span>';
+    if (el) el.innerHTML = `<span style="color:#7ee787">${ctMsg('downloaded_short') || '✓ downloaded'}</span>`;
     dlDoneCheck();
   } else if (el && msg.total > 0) {
     const pct = Math.round(100 * msg.loaded / msg.total);
-    el.innerHTML = `<span style="color:#58a6ff">downloading… ${pct}% ` +
+    el.innerHTML = `<span style="color:#58a6ff">${ctMsg('downloading', [String(pct)]) || `downloading… ${pct}%`} ` +
       `(${(msg.loaded / 1048576).toFixed(0)}/${(msg.total / 1048576).toFixed(0)} MB)</span>`;
   }
 });
@@ -232,7 +235,9 @@ async function refreshModels() {
   const dlAll = $('downloadAll');
   if (!r || !r.ok) {
     const detail = (r && r.error) ? ` — ${r.error}` : '';
-    box.innerHTML = `<span style="color:#f85149">could not reach background service${detail}<br><span style="color:#9a9aa0;font-size:12px">Try reloading the extension at about:debugging, then reopen this page.</span></span>`;
+    const bgMsg = ctMsg('bg_unreachable') || 'could not reach background service';
+    const bgHint = ctMsg('bg_unreachable_hint') || 'Try reloading the extension at about:debugging, then reopen this page.';
+    box.innerHTML = `<span style="color:#f85149">${bgMsg}${detail}<br><span style="color:#9a9aa0;font-size:12px">${bgHint}</span></span>`;
     return;
   }
   const missing = r.models.filter(g => !g.downloaded);
@@ -240,7 +245,7 @@ async function refreshModels() {
   // Download one or more groups; progress arrives via ct/model-progress.
   const downloadGroups = groups => {
     dlAll.dataset.busy = '1'; dlAll.disabled = true;
-    dlAll.textContent = 'Downloading…';
+    dlAll.textContent = ctMsg('downloading_generic') || 'Downloading…';
     for (const g of groups) for (const f of g.files) {
       dlInFlight.add(f.id);
       delete dlErrors[f.id];
@@ -256,32 +261,35 @@ async function refreshModels() {
   // One button downloads everything that's missing.
   dlAll.disabled = !missing.length || dlAll.dataset.busy === '1';
   dlAll.textContent = dlAll.dataset.busy === '1' ? dlAll.textContent
-    : missing.length ? `Download all models (${missing.length} remaining)`
-    : 'All models downloaded ✓';
+    : missing.length ? (ctMsg('download_all_n', [String(missing.length)]) || `Download all models (${missing.length} remaining)`)
+    : (ctMsg('all_downloaded') || 'All models downloaded ✓');
   dlAll.onclick = () => downloadGroups(missing);
   for (const g of r.models) {
     const div = document.createElement('div');
     div.className = 'model';
     const bytes = g.files.reduce((a, f) => a + (f.bytes || 0), 0);
     const bad = g.files.filter(f => f.downloaded && !f.bytesOk);
+    const sizeStr = bytes ? (bytes / 1048576).toFixed(0) + ' MB' : '';
     let status = g.sizeMismatch
-      ? `<span style="color:#f0b429">⚠ wrong file cached (${bad.map(f => f.file).join(', ')}) — press Download below to fetch the correct one</span>`
+      ? `<span style="color:#f0b429">${escapeHtml(ctMsg('wrong_file', [bad.map(f => f.file).join(', ')]) || `⚠ wrong file cached (${bad.map(f => f.file).join(', ')}) — press Download below to fetch the correct one`)}</span>`
       : g.downloaded
-        ? `<span style="color:#7ee787">✓ downloaded${bytes ? ' (' + (bytes / 1048576).toFixed(0) + ' MB)' : ''}</span>`
-        : '<span style="color:#f0b429">not downloaded</span>';
+        ? `<span style="color:#7ee787">${escapeHtml(sizeStr ? (ctMsg('downloaded', [sizeStr]) || `✓ downloaded (${sizeStr})`) : (ctMsg('downloaded_short') || '✓ downloaded'))}</span>`
+        : `<span style="color:#f0b429">${ctMsg('not_downloaded') || 'not downloaded'}</span>`;
     const dlErr = g.files.map(f => dlErrors[f.id]).filter(Boolean)[0];
     if (dlErr) status += `<br><span style="color:#f85149">✗ ${escapeHtml(dlErr)}</span>`;
-    div.innerHTML = `<div><b>${g.label}</b>${g.required ? ' <span style="color:#f0b429;font-size:11px;border:1px solid #f0b429;border-radius:4px;padding:0 5px">required</span>' : ''}<div id="model-status-${g.id}" style="color:#9a9aa0;font-size:12px">${status}</div></div>`;
+    const label = (g.labelKey && ctMsg(g.labelKey)) || g.label;
+    const reqBadge = g.required ? ` <span style="color:#f0b429;font-size:11px;border:1px solid #f0b429;border-radius:4px;padding:0 5px">${ctMsg('required_badge') || 'required'}</span>` : '';
+    div.innerHTML = `<div><b>${escapeHtml(label)}</b>${reqBadge}<div id="model-status-${g.id}" style="color:#9a9aa0;font-size:12px">${status}</div></div>`;
     const btnBox = document.createElement('div');
     if (!g.downloaded || g.sizeMismatch) {
       const dl = document.createElement('button');
-      dl.textContent = g.sizeMismatch ? 'Re-download' : 'Download';
+      dl.textContent = ctMsg(g.sizeMismatch ? 'redownload' : 'download') || (g.sizeMismatch ? 'Re-download' : 'Download');
       dl.onclick = () => { downloadGroups([g]); refreshModels(); };
       btnBox.appendChild(dl);
     }
     if (g.downloaded) {
       const b = document.createElement('button');
-      b.textContent = 'Delete';
+      b.textContent = ctMsg('delete') || 'Delete';
       b.onclick = async () => {
         await chrome.runtime.sendMessage({ type: 'ct/delete-model', id: g.id });
         refreshModels();
@@ -294,6 +302,8 @@ async function refreshModels() {
 }
 
 load();
+ctApplyI18n();
+document.title = `${ctMsg('appName') || 'comic-translate-4-free'} — ${ctMsg('options_title') || 'Options'}`;
 try {
   const v = chrome.runtime.getManifest().version;
   $('version').textContent = `v${v} · build ${BUILD}`;

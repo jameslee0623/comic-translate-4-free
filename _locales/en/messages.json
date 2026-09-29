@@ -1,0 +1,337 @@
+{
+  "add": {
+    "message": "Add"
+  },
+  "appDesc": {
+    "message": "Translate manga/comic pages in-browser: bubble detection, OCR, inpainting, translation, re-rendering. All ML runs locally via ONNX Runtime Web."
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "When on, whitelisted pages start translating automatically as soon as they finish loading — no button click needed. (Tip: add a site from the popup so the extension gets permission to read its images.)"
+  },
+  "auto_translate": {
+    "message": "Auto-translate on page load"
+  },
+  "automation": {
+    "message": "Automation"
+  },
+  "azure_key": {
+    "message": "Azure API key"
+  },
+  "azure_region": {
+    "message": "Azure region"
+  },
+  "azure_region_ph": {
+    "message": "e.g. japaneast"
+  },
+  "backend": {
+    "message": "Backend"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator (key required)"
+  },
+  "backend_google": {
+    "message": "Google (free)"
+  },
+  "backend_google_opt": {
+    "message": "Google (free, no key)"
+  },
+  "backend_hint": {
+    "message": "Azure key/region are stored only in this browser's extension storage. LM Studio must be running with its OpenAI-compatible server enabled (default http://localhost:1234). WebLLM downloads gigabytes on first use and needs WebGPU."
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio (local)"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio (local server)"
+  },
+  "backend_localllm": {
+    "message": "Local LLM (experimental)"
+  },
+  "backend_localllm_opt": {
+    "message": "Local LLM (experimental)"
+  },
+  "cancel": {
+    "message": "Cancel"
+  },
+  "check_azure": {
+    "message": "Check Azure connection"
+  },
+  "check_lmstudio": {
+    "message": "Check LM Studio connection"
+  },
+  "debug": {
+    "message": "Debug"
+  },
+  "debug_hint": {
+    "message": "Shows every pipeline stage's output in a side panel so each stage can be checked."
+  },
+  "debug_mode": {
+    "message": "Debug mode (stage inspector)"
+  },
+  "delete": {
+    "message": "Delete"
+  },
+  "det_threshold": {
+    "message": "Detection confidence threshold"
+  },
+  "detection_hint": {
+    "message": "Pages smaller than the minimum image size are skipped. The render font size is auto-estimated from the original text on the page (capped by the maximum above)."
+  },
+  "detection_rendering": {
+    "message": "Detection & rendering"
+  },
+  "download": {
+    "message": "Download"
+  },
+  "download_all": {
+    "message": "Download all models"
+  },
+  "downloaded": {
+    "message": "✓ downloaded ($SIZE$)",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_access": {
+    "message": "Grant access"
+  },
+  "grant_access_to": {
+    "message": "Grant access to $HOST$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "Whitelisted, but the extension has no access to this site — translation can't start."
+  },
+  "languages": {
+    "message": "Languages"
+  },
+  "lmstudio_api": {
+    "message": "LM Studio API"
+  },
+  "lmstudio_api_openai": {
+    "message": "OpenAI-compatible (/v1/chat/completions)"
+  },
+  "lmstudio_api_v1": {
+    "message": "LM Studio REST API v1 (/api/v1/chat)"
+  },
+  "lmstudio_key": {
+    "message": "LM Studio API key (optional)"
+  },
+  "lmstudio_url": {
+    "message": "LM Studio server URL"
+  },
+  "localllm_llama": {
+    "message": "Llama 3.2 3B"
+  },
+  "localllm_model": {
+    "message": "Local LLM model (WebLLM)"
+  },
+  "localllm_qwen": {
+    "message": "Qwen2.5 1.5B"
+  },
+  "localllm_smol": {
+    "message": "SmolLM2 1.7B (smallest)"
+  },
+  "max_font_size": {
+    "message": "Maximum font size (px)"
+  },
+  "min_font_size": {
+    "message": "Minimum font size (px)"
+  },
+  "min_image_size": {
+    "message": "Minimum image size (px)"
+  },
+  "model_detector": {
+    "message": "Text detector (RT-DETR-v2)"
+  },
+  "model_en": {
+    "message": "PP-OCRv5 OCR (English)"
+  },
+  "model_inpaint": {
+    "message": "LaMa inpainter (manga)"
+  },
+  "model_ocr_ja": {
+    "message": "manga-ocr (Japanese)"
+  },
+  "model_pororo": {
+    "message": "Pororo Korean OCR (brainocr)"
+  },
+  "model_zh": {
+    "message": "PP-OCRv5 OCR (Chinese Simplified/Traditional)"
+  },
+  "models": {
+    "message": "Models"
+  },
+  "models_hint": {
+    "message": "Models are downloaded from Hugging Face once and cached in the browser (IndexedDB)."
+  },
+  "no_site": {
+    "message": "no site detected"
+  },
+  "not_whitelisted": {
+    "message": "not whitelisted"
+  },
+  "options_settings": {
+    "message": "Options & settings"
+  },
+  "options_title": {
+    "message": "Options"
+  },
+  "redownload": {
+    "message": "Re-download"
+  },
+  "required_badge": {
+    "message": "required"
+  },
+  "saved": {
+    "message": "Saved ✓"
+  },
+  "site_this": {
+    "message": "this site: $HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "Site whitelist"
+  },
+  "source_lang": {
+    "message": "Source language"
+  },
+  "target_lang": {
+    "message": "Target language"
+  },
+  "translate_page": {
+    "message": "Translate this page"
+  },
+  "translation_backend": {
+    "message": "Translation backend"
+  },
+  "whitelist_add": {
+    "message": "Add this site to whitelist"
+  },
+  "whitelist_desc": {
+    "message": "Translation only runs on whitelisted sites. Add a site from the popup or type its hostname here."
+  },
+  "whitelist_remove": {
+    "message": "Remove from whitelist"
+  },
+  "whitelisted": {
+    "message": "whitelisted ✓"
+  },
+  "wl_placeholder": {
+    "message": "e.g. example.com"
+  },
+  "whitelist_empty": {
+    "message": "empty — translation is disabled everywhere until you add a site"
+  },
+  "remove": {
+    "message": "Remove"
+  },
+  "checking": {
+    "message": "checking…"
+  },
+  "download_failed": {
+    "message": "✗ download failed: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading": {
+    "message": "downloading… $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "bg_unreachable": {
+    "message": "could not reach background service"
+  },
+  "bg_unreachable_hint": {
+    "message": "Try reloading the extension at about:debugging, then reopen this page."
+  },
+  "stage_idle": {
+    "message": "idle"
+  },
+  "stage_capture": {
+    "message": "Capturing page…"
+  },
+  "stage_detect": {
+    "message": "Detecting bubbles & text…"
+  },
+  "stage_blocks": {
+    "message": "Assembling text blocks…"
+  },
+  "stage_ocr": {
+    "message": "Reading text (OCR)…"
+  },
+  "stage_mask": {
+    "message": "Building masks…"
+  },
+  "stage_inpaint": {
+    "message": "Inpainting…"
+  },
+  "stage_translate": {
+    "message": "Translating…"
+  },
+  "stage_render": {
+    "message": "Rendering…"
+  },
+  "stage_done": {
+    "message": "Done"
+  },
+  "stage_cancelled": {
+    "message": "Cancelled"
+  },
+  "stage_error": {
+    "message": "Error"
+  },
+  "downloading_generic": {
+    "message": "Downloading…"
+  },
+  "download_all_n": {
+    "message": "Download all models ($N$ remaining)",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "all_downloaded": {
+    "message": "All models downloaded ✓"
+  },
+  "wrong_file": {
+    "message": "⚠ wrong file cached ($FILES$) — press Download below to fetch the correct one",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ downloaded"
+  },
+  "not_downloaded": {
+    "message": "not downloaded"
+  }
+}
