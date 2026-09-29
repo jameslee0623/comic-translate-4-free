@@ -153,23 +153,23 @@
   "min_image_size": {
     "message": "Minimum image size (px)"
   },
+  "model_baberu": {
+    "message": "Baberu OCR (English + Chinese Simplified, manga-trained)"
+  },
   "model_detector": {
     "message": "Text detector (RT-DETR-v2)"
-  },
-  "model_en": {
-    "message": "PP-OCRv5 OCR (English)"
   },
   "model_inpaint": {
     "message": "LaMa inpainter (manga)"
   },
+  "model_ko": {
+    "message": "PP-OCRv5 OCR (Korean, official 2025 model)"
+  },
   "model_ocr_ja": {
     "message": "manga-ocr (Japanese)"
   },
-  "model_pororo": {
-    "message": "Pororo Korean OCR (brainocr)"
-  },
-  "model_zh": {
-    "message": "PP-OCRv5 OCR (Chinese Simplified/Traditional)"
+  "model_zh_tw": {
+    "message": "PP-OCRv6 OCR (Chinese Traditional)"
   },
   "models": {
     "message": "Models"

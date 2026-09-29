@@ -153,23 +153,23 @@
   "min_image_size": {
     "message": "최소 이미지 크기(px)"
   },
+  "model_baberu": {
+    "message": "Baberu OCR(영어 + 중국어 간체, 만화 학습)"
+  },
   "model_detector": {
     "message": "텍스트 감지(RT-DETR-v2)"
-  },
-  "model_en": {
-    "message": "PP-OCRv5 OCR(영어)"
   },
   "model_inpaint": {
     "message": "LaMa 인페인터(만화용)"
   },
+  "model_ko": {
+    "message": "PP-OCRv5 OCR(한국어, 2025 공식 모델)"
+  },
   "model_ocr_ja": {
     "message": "manga-ocr(일본어)"
   },
-  "model_pororo": {
-    "message": "Pororo 한국어 OCR(brainocr)"
-  },
-  "model_zh": {
-    "message": "PP-OCRv5 OCR(중국어 간체/번체)"
+  "model_zh_tw": {
+    "message": "PP-OCRv6 OCR(중국어 번체)"
   },
   "models": {
     "message": "모델"

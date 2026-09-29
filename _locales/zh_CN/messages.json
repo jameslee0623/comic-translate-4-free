@@ -153,23 +153,23 @@
   "min_image_size": {
     "message": "最小图片尺寸（px）"
   },
+  "model_baberu": {
+    "message": "Baberu OCR（英语＋简体中文，漫画训练）"
+  },
   "model_detector": {
     "message": "文本检测（RT-DETR-v2）"
-  },
-  "model_en": {
-    "message": "PP-OCRv5 OCR（英语）"
   },
   "model_inpaint": {
     "message": "LaMa 图像修复（漫画专用）"
   },
+  "model_ko": {
+    "message": "PP-OCRv5 OCR（韩语，2025 官方模型）"
+  },
   "model_ocr_ja": {
     "message": "manga-ocr（日语）"
   },
-  "model_pororo": {
-    "message": "Pororo 韩语 OCR（brainocr）"
-  },
-  "model_zh": {
-    "message": "PP-OCRv5 OCR（中文 简体/繁体）"
+  "model_zh_tw": {
+    "message": "PP-OCRv6 OCR（繁体中文）"
   },
   "models": {
     "message": "模型"
