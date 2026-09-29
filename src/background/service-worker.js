@@ -13,7 +13,7 @@ import { pixelPut, pixelTake, pixelDrop } from '../shared/pixel-bus.js';
 import { generateMask } from '../offscreen/ml/mask.js';
 import { mergePaddedBoxes } from '../offscreen/ml/inpaint.js';
 import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL } from './translators.js';
-import { mlHostAlive, ensureMlHost, callMl, makeCanvas, canvasToBlob } from './ml-bridge.js';
+import { mlHostAlive, ensureMlHost, callMl, makeCanvas, canvasToBlob, directHandlers } from './ml-bridge.js';
 
 // Content script path for scripting.executeScript.
 // Chrome: service worker, paths relative to extension root.
@@ -465,7 +465,7 @@ async function runPipeline(tabId) {
       parMax = Math.max(parMax, 0.58 + 0.32 * (par.translate + par.mask + par.inpaint) / 3);
       setProgress(runId, branch, parMax);
     };
-    const translateP = (async () => {
+    const runTranslate = async () => {
       parProgress('translate', 0);
       const t0t = performance.now();
       const translated = await translateBlocks(blocks, settings);
@@ -479,8 +479,8 @@ async function runPipeline(tabId) {
         ms: translateMs,
       });
       return { translateMs };
-    })();
-    const maskP = (async () => {
+    };
+    const runMask = async () => {
       parProgress('mask', 0);
       const t0m = performance.now();
       const pageGray = toGrayU8(rgba, w, h);
@@ -492,8 +492,8 @@ async function runPipeline(tabId) {
         mask: await rgbaToDataURL(maskToRGBA(fullMask, w, h), w, h), ms: maskMs,
       });
       return { fullMask, entries, maskMs };
-    })();
-    const inpaintP = maskP.then(async ({ fullMask, entries, maskMs }) => {
+    };
+    const runInpaint = async ({ fullMask, entries, maskMs }) => {
       checkCancelled(runId);
       parProgress('inpaint', 0);
       const t0i = performance.now();
@@ -531,9 +531,23 @@ async function runPipeline(tabId) {
         image: await rgbaToDataURL(inpainted, w, h), ms: inpaintMs,
       });
       return { inpainted, inpaintMs, maskMs, totalInpaintMs };
-    });
+    };
 
-    const [translateOut, inpaintOut] = await Promise.all([translateP, inpaintP]);
+    // Firefox runs ML in-process on a single thread: WASM inpaint blocks the
+    // event loop, freezing the parallel translate branch and the UI. Run the
+    // stages sequentially there; Chrome keeps the parallel pipeline (ML is in
+    // the offscreen document on its own thread).
+    let translateOut, inpaintOut;
+    if (directHandlers()) {
+      translateOut = await runTranslate();
+      const maskRes = await runMask();
+      inpaintOut = await runInpaint(maskRes);
+    } else {
+      const maskP = runMask();
+      const inpaintP = maskP.then(runInpaint);
+      const translateP = runTranslate();
+      [translateOut, inpaintOut] = await Promise.all([translateP, inpaintP]);
+    }
     timings.translate = translateOut.translateMs;
     timings.mask = inpaintOut.maskMs;
     timings.inpaint = inpaintOut.totalInpaintMs;

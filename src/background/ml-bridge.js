@@ -6,7 +6,7 @@
 //   background-ff.js (globalThis.__ctMlHandlers).
 import { MSG } from '../shared/contracts.js';
 
-function directHandlers() {
+export function directHandlers() {
   return (typeof globalThis !== 'undefined' && globalThis.__ctMlHandlers) || null;
 }
 
