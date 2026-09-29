@@ -37,13 +37,6 @@ export const MODEL_GROUPS = [
         url: hf('genshiai-daichi/baberu-ocr', 'onnx/decoder_step_int8.onnx') },
     ],
   },
-  {
-    id: 'ocr-ppocrv6', labelKey: 'model_zh_tw', label: 'PP-OCRv6 OCR (Chinese Traditional)',
-    files: [
-      { id: 'ocr-ppocrv6', file: 'inference.onnx', bytes: 21159378,
-        url: hf('PaddlePaddle/PP-OCRv6_small_rec_onnx', 'inference.onnx') },
-    ],
-  },
 ];
 
 // OCR engine routing by source language (LANGS in shared/settings.js):
@@ -52,25 +45,20 @@ export const MODEL_GROUPS = [
 //   ko      -> PP-OCRv5 Korean ('ocr-ppocr-ko' group; official 2025 model)
 //   en      -> Baberu ('ocr-baberu' group; trained on manga bubbles)
 //   zh-CN   -> Baberu ('ocr-baberu' group)
-//   zh-TW   -> PP-OCRv6 small ('ocr-ppocrv6' group; first line with explicit
-//              Traditional Chinese support)
+//   zh-TW   -> Baberu ('ocr-baberu' group; handles Traditional well)
 // (manga-ocr removed 2026-09-29: superseded by Baberu for Japanese.
-// Pororo + PP-OCRv5 en/chinese models removed 2026-09-28: superseded.)
+// Pororo + PP-OCRv5 en/chinese models removed 2026-09-28: superseded.
+// PP-OCRv6 small removed 2026-09-29: Baberu covers Traditional Chinese.)
 export function ocrEngineForLang(lang) {
   if (lang === 'ko') return 'ocr-ppocr-ko';
-  if (lang === 'ja') return 'ocr-baberu';
-  if (lang === 'en') return 'ocr-baberu';
-  if (lang === 'zh-CN') return 'ocr-baberu';
-  if (lang === 'zh-TW') return 'ocr-ppocrv6';
-  return 'ocr-baberu'; // fallback: only ja/en/ko/zh are offered as source languages
+  return 'ocr-baberu'; // ja/en/zh-CN/zh-TW all use Baberu
 }
 
 // PP-OCR character dictionaries, bundled (one char per line, UTF-8).
-// The v5/v6 dicts are the exact character_dict lists from the official
-// PaddlePaddle inference.yml configs (extracted 2026-09-28).
+// The v5 dict is the exact character_dict list from the official
+// PaddlePaddle inference.yml config (extracted 2026-09-28).
 export const PPOCR_DICT_ASSET = {
   'ocr-ppocr-ko': 'src/offscreen/ml/dicts/ppocr-korean.txt',
-  'ocr-ppocrv6': 'src/offscreen/ml/dicts/ppocrv6.txt',
 };
 
 // Baberu character vocab, bundled (JSON array; id>=4 -> charset[id-4]).

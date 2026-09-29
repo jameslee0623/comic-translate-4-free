@@ -165,9 +165,6 @@
   "model_ko": {
     "message": "PP-OCRv5 OCR(한국어, 2025 공식 모델)"
   },
-  "model_zh_tw": {
-    "message": "PP-OCRv6 OCR(중국어 번체)"
-  },
   "models": {
     "message": "모델"
   },

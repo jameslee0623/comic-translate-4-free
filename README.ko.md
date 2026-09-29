@@ -4,7 +4,7 @@
 
 브라우저에서 만화/코믹 페이지를 번역합니다. 전체 파이프라인이 로컬에서 실행됩니다:
 말풍선/텍스트 감지(RT-DETR-v2), OCR(일본어·영어·중국어 간체는 Baberu, 한국어는 PP-OCRv5,
-중국어 번체는 PP-OCRv6), LaMa 인페인팅으로 원문 제거, 번역(Google / Azure /
+중국어는 Baberu), LaMa 인페인팅으로 원문 제거, 번역(Google / Azure /
 로컬 LLM), 그리고 원래 말풍선에 맞춘 줄바꿈 다시 그리기.
 
 확장 프로그램 UI는 브라우저의 언어 설정을 따릅니다(영어, 일본어, 한국어,
@@ -136,9 +136,8 @@ background — 오케스트레이션, 캡처, 블록, 마스크, 번역 API,
 모델(Hugging Face, 필요 시 다운로드):
 - `ogkalu/comic-text-and-bubble-detector` → `detector-v4-s_int8.onnx`
 - `genshiai-daichi/baberu-ocr` → `vision_int4.onnx`, `decoder_prefill_int8.onnx`,
-  `decoder_step_int8.onnx`(일본어, 영어, 중국어 간체)
+  `decoder_step_int8.onnx`(일본어, 영어, 중국어 간체/번체)
 - `PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx` → `inference.onnx`(한국어)
-- `PaddlePaddle/PP-OCRv6_small_rec_onnx` → `inference.onnx`(중국어 번체)
 - `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
 
 파이프라인 단계: capture → detect → blocks → OCR → mask → inpaint →
@@ -160,7 +159,7 @@ translate → render. 감지는 640×640으로 실행되며, 세로가 3.5:1을 
 - Google 백엔드는 비공식 `translate.googleapis.com` 엔드포인트를 사용하며
   속도 제한이 있을 수 있습니다. Azure는 본인의 키가 필요합니다.
 - OCR 엔진: Baberu(일본어·영어·중국어 간체), PP-OCRv5(한국어),
-  PP-OCRv6(중국어 번체).
+  PP-OCRv5(한국어).
 - 세로 텍스트는 키가 큰 CJK 블록용으로 렌더링되며, 말풍선 밖의 효과음 등은
   자체 텍스트 상자를 사용합니다.
 

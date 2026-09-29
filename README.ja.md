@@ -3,7 +3,7 @@
 **言語:** [English](README.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
 
 マンガ・コミックのページをブラウザ内で翻訳します。全パイプラインがローカルで動作します：
-吹き出し・テキスト検出（RT-DETR-v2）、OCR（日本語・英語・中国語簡体字はBaberu、韓国語はPP-OCRv5、中国語繁体字はPP-OCRv6）、
+吹き出し・テキスト検出（RT-DETR-v2）、OCR（日本語・英語・中国語はBaberu、韓国語はPP-OCRv5）、
 LaMaインペインティングによる文字消去、翻訳（Google / Azure / ローカルLLM）、
 そして元の吹き出しへの折り返し再描画。
 
@@ -135,9 +135,8 @@ background — オーケストレーション、キャプチャ、ブロック�
 モデル（Hugging Face、オンデマンドでダウンロード）：
 - `ogkalu/comic-text-and-bubble-detector` → `detector-v4-s_int8.onnx`
 - `genshiai-daichi/baberu-ocr` → `vision_int4.onnx`、`decoder_prefill_int8.onnx`、
-  `decoder_step_int8.onnx`（日本語、英語、中国語簡体字）
+  `decoder_step_int8.onnx`（日本語、英語、中国語簡体字・繁体字）
 - `PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx` → `inference.onnx`（韓国語）
-- `PaddlePaddle/PP-OCRv6_small_rec_onnx` → `inference.onnx`（中国語繁体字）
 - `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
 
 パイプラインステージ：capture → detect → blocks → OCR → mask → inpaint →
@@ -159,7 +158,7 @@ mask → inpaintはメインスレッドで実行します — WASM inpaintが�
 - Googleバックエンドは非公式の `translate.googleapis.com` エンドポイントを
   使用し、レート制限される場合があります；Azureは自分のキーが必要です。
 - OCRエンジン：Baberu（日本語・英語・中国語簡体字）、PP-OCRv5（韓国語）、
-  PP-OCRv6（中国語繁体字）。
+  PP-OCRv5（韓国語）。
 - 縦書きテキストは背の高いCJKブロック向けに描画されます；吹き出し外の
   描き文字等は独自のテキストボックスを使います。
 

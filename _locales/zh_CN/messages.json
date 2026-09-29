@@ -165,9 +165,6 @@
   "model_ko": {
     "message": "PP-OCRv5 OCR（韩语，2025 官方模型）"
   },
-  "model_zh_tw": {
-    "message": "PP-OCRv6 OCR（繁体中文）"
-  },
   "models": {
     "message": "模型"
   },

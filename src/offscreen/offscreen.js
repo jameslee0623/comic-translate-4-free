@@ -21,7 +21,6 @@ const baberu = new BaberuOCR();
 // created lazily and loaded on first use for that language.
 const ppocr = {
   'ocr-ppocr-ko': new PPOCRV5(),
-  'ocr-ppocrv6': new PPOCRV5(),
 };
 const inpainter = new Inpainter();
 
@@ -180,8 +179,7 @@ const handlers = {
   async [MSG.ML_OCR]({ crops, runId, sourceLang }) {
     throwIfCancelled(runId);
     // OCR engine follows the source language: Baberu for Japanese +
-    // English + Simplified Chinese, PP-OCRv5 Korean for Korean,
-    // PP-OCRv6 for Traditional Chinese.
+    // English + Simplified/Traditional Chinese, PP-OCRv5 Korean for Korean.
     const engine = ocrEngineForLang(sourceLang || 'ja');
     await ensureModel(engine);
     const inst = engine === 'ocr-baberu' ? baberu : ppocr[engine];
