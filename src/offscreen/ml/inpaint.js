@@ -65,10 +65,11 @@ export class Inpainter {
   // rgba: Uint8ClampedArray RGBA, mask01: Uint8Array 0/1 (same w/h).
   // Returns RGBA Uint8ClampedArray of the inpainted patch. Oversized patches
   // are tiled (see above); isCancelled is an optional () => bool checked
-  // between tiles.
-  async inpaintPatch(rgba, mask01, w, h, isCancelled) {
+  // between tiles, onProgress an optional (done, total) => void called per
+  // tile so long inpaints stay visible instead of looking stalled.
+  async inpaintPatch(rgba, mask01, w, h, isCancelled, onProgress) {
     if (w <= TILE_MAX && h <= TILE_MAX) return this.inpaintPatchSingle(rgba, mask01, w, h);
-    return this.inpaintPatchTiled(rgba, mask01, w, h, isCancelled);
+    return this.inpaintPatchTiled(rgba, mask01, w, h, isCancelled, onProgress);
   }
 
   // One LaMa run on a patch that fits in TILE_MAX. Unchanged port logic.
@@ -104,8 +105,10 @@ export class Inpainter {
   // overlap zone at its interior edges, so seams crossfade instead of
   // cutting. Only one tile's LaMa run is live at a time, bounding peak
   // WASM memory; out/wsum are plain JS arrays.
-  async inpaintPatchTiled(rgba, mask01, w, h, isCancelled) {
+  async inpaintPatchTiled(rgba, mask01, w, h, isCancelled, onProgress) {
     const xs = tileOrigins(w), ys = tileOrigins(h);
+    const total = xs.length * ys.length;
+    let done = 0;
     const out = new Uint8ClampedArray(w * h * 4);
     const wsum = new Float32Array(w * h);
     for (const { o: tx, n: tw } of xs) {
@@ -136,6 +139,8 @@ export class Inpainter {
             wsum[gi] = wn;
           }
         }
+        done++;
+        if (onProgress) { try { onProgress(done, total); } catch { /* progress must never break inpaint */ } }
       }
     }
     return out;

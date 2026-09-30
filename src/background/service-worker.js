@@ -83,6 +83,17 @@ function checkCancelled(runId) {
   if (isCancelled(runId)) throw Object.assign(new Error('cancelled'), { cancelled: true });
 }
 
+// Firefox runs the ML host in-process in this same page (background-ff.js),
+// so long tiled inpaints can report per-tile progress straight into the
+// run's progress bar. (On Chrome the handlers live in the offscreen document
+// and never see this hook.) Each run registers its own updater below.
+globalThis.__ctInpaintProgress = (runId, frac) => {
+  try {
+    const r = runs.get(runId);
+    if (r && typeof r.onInpaintProgress === 'function') r.onInpaintProgress(frac);
+  } catch { /* progress must never break the pipeline */ }
+};
+
 // ML call that honours cancellation: if the ML host aborted the work because
 // the run was cancelled (ML_CANCEL), surface the quiet 'cancelled' shape
 // instead of a scary host error.
@@ -615,6 +626,10 @@ async function runPipeline(tabId, opts = {}) {
       parMax = Math.max(parMax, 0.58 + 0.32 * (par.translate + par.mask + par.inpaint) / 3);
       setProgress(runId, branch, parMax);
     };
+    // Long tiled inpaints feed per-tile progress through this (Firefox only —
+    // the ML host shares this page). The pill keeps moving instead of looking
+    // stalled at one percentage for minutes.
+    runs.get(runId).onInpaintProgress = (frac) => parProgress('inpaint', frac);
     const runTranslate = async () => {
       parProgress('translate', 0);
       const t0t = performance.now();
@@ -832,11 +847,22 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       const prev = autoFired.get(tabId);
       const now = Date.now();
       if (prev && prev.url === url && now - prev.at < 120000) return; // same load, don't double-fire
+      // Same page and the run we started for it is still working: a late
+      // 'complete' (slow iframe, ad slot, …) is not a new page and must not
+      // kill the run and restart it from scratch. This matters more now that
+      // tiled inpaint can keep a run busy for many minutes. Backstop: if it
+      // has been wedged for >15min, let the restart through anyway.
+      if (prev && prev.url === url && prev.runId && now - prev.at < 900000) {
+        const pr = runs.get(prev.runId);
+        if (pr && pr.tabId === tabId && !pr.cancelled) return;
+      }
       // New page: drop whatever the tab was doing and start fresh immediately.
       // A stale run must never finish on top of the new page.
       await cancelRunsForTab(tabId);
-      autoFired.set(tabId, { url, at: now });
+      const rec = { url, at: now, runId: null };
+      autoFired.set(tabId, rec);
       const r = await runPipeline(tabId);
+      if (autoFired.get(tabId) === rec) rec.runId = r.runId;
       if (!r.ok && !r.cancelled) console.warn('[ct] auto-translate failed:', String(r.error).slice(0, 160));
     } catch (e) {
       console.warn('[ct] auto-translate error:', String((e && e.message) || e).slice(0, 120));

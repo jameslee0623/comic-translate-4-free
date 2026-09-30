@@ -195,15 +195,27 @@ const handlers = {
     throwIfCancelled(runId);
     const t0 = performance.now();
     const results = [];
+    // Long inpaints report progress: the Firefox background page sets
+    // globalThis.__ctInpaintProgress (same module scope there — see
+    // background-ff.js/service-worker.js). The Chrome offscreen document has
+    // no pipeline to report to, so the hook stays unset and this is a no-op.
+    // Without it a multi-minute tiled inpaint looks exactly like a stall.
+    const reportInpaint = (frac) => {
+      try { if (globalThis.__ctInpaintProgress) globalThis.__ctInpaintProgress(runId, frac); } catch { /* never break inpaint */ }
+    };
     try {
-      for (const p of patches) {
+      for (const [pi, p] of patches.entries()) {
         throwIfCancelled(runId);
         const rgbaRaw = await pixelTake(p.key);
         const maskRaw = await pixelTake(p.maskKey);
-        const out = await inpainter.inpaintPatch(new Uint8ClampedArray(rgbaRaw), new Uint8Array(maskRaw), p.width, p.height, () => cancelledRuns.has(runId));
+        const out = await inpainter.inpaintPatch(
+          new Uint8ClampedArray(rgbaRaw), new Uint8Array(maskRaw), p.width, p.height,
+          () => cancelledRuns.has(runId),
+          (done, total) => reportInpaint((pi + done / total) / patches.length));
         const resKey = p.key + ':out';
         await pixelPut(resKey, out.buffer);
         results.push({ id: p.id, key: resKey, width: p.width, height: p.height });
+        reportInpaint((pi + 1) / patches.length);
       }
     } finally {
       if (runId) cancelledRuns.delete(runId);
