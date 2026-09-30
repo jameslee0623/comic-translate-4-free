@@ -14,6 +14,9 @@
   "auto_translate": {
     "message": "ページ読み込み時に自動翻訳"
   },
+  "play_ding": {
+    "message": "翻訳が終わったら音を鳴らす"
+  },
   "automation": {
     "message": "自動化"
   },

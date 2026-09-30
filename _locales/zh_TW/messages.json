@@ -14,6 +14,9 @@
   "auto_translate": {
     "message": "頁面載入時自動翻譯"
   },
+  "play_ding": {
+    "message": "翻譯完成時播放提示音"
+  },
   "automation": {
     "message": "自動化"
   },

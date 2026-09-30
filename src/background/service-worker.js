@@ -852,22 +852,23 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       const prev = autoFired.get(tabId);
       const now = Date.now();
       if (prev && prev.url === url && now - prev.at < 120000) return; // same load, don't double-fire
-      // Same page and the run we started for it is still working: a late
-      // 'complete' (slow iframe, ad slot, …) is not a new page and must not
-      // kill the run and restart it from scratch. This matters more now that
-      // tiled inpaint can keep a run busy for many minutes. Backstop: if it
-      // has been wedged for >15min, let the restart through anyway.
-      if (prev && prev.url === url && prev.runId && now - prev.at < 900000) {
-        const pr = runs.get(prev.runId);
-        if (pr && pr.tabId === tabId && !pr.cancelled) return;
+      // Same page and a run for this tab is still working: a late 'complete'
+      // (slow iframe, ad slot, …) is not a new page and must not kill the run
+      // and restart it from scratch. This matters more now that tiled inpaint
+      // can keep a run busy for many minutes. Backstop: if it has been wedged
+      // for >15min, let the restart through anyway.
+      // (Checked against the live runs map — not a recorded run id — so the
+      // guard works while the run is in flight, which is when it matters.)
+      if (prev && prev.url === url && now - prev.at < 900000) {
+        for (const [, r] of runs) {
+          if (r.tabId === tabId && !r.cancelled) return;
+        }
       }
       // New page: drop whatever the tab was doing and start fresh immediately.
       // A stale run must never finish on top of the new page.
       await cancelRunsForTab(tabId);
-      const rec = { url, at: now, runId: null };
-      autoFired.set(tabId, rec);
+      autoFired.set(tabId, { url, at: now });
       const r = await runPipeline(tabId);
-      if (autoFired.get(tabId) === rec) rec.runId = r.runId;
       if (!r.ok && !r.cancelled) console.warn('[ct] auto-translate failed:', String(r.error).slice(0, 160));
     } catch (e) {
       console.warn('[ct] auto-translate error:', String((e && e.message) || e).slice(0, 120));

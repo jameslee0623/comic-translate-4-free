@@ -331,6 +331,39 @@
       '… ' + Math.round((progress || 0) * 100) + '%', true);
   }
 
+  // ------------------------------------------------------------ completion chime
+  // Short synthesized "ding" when a translation finishes. WebAudio only —
+  // no audio file to ship. Best-effort: if the browser's autoplay policy
+  // keeps the context suspended (no user interaction with the page yet),
+  // we stay silent rather than show an error.
+  let dingCtx = null;
+  async function maybeDing() {
+    try {
+      const { settings } = await chrome.storage.local.get('settings');
+      if (settings && settings.playDing === false) return; // default on
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      dingCtx = dingCtx || new AC();
+      if (dingCtx.state === 'suspended') {
+        try { await dingCtx.resume(); } catch { /* stay silent */ }
+      }
+      if (dingCtx.state !== 'running') return;
+      const t0 = dingCtx.currentTime;
+      for (const [freq, dt] of [[1046.5, 0], [1568.0, 0.14]]) { // C6 -> G6
+        const o = dingCtx.createOscillator(), g = dingCtx.createGain();
+        o.type = 'sine';
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, t0 + dt);
+        g.gain.exponentialRampToValueAtTime(0.22, t0 + dt + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 0.6);
+        o.connect(g);
+        g.connect(dingCtx.destination);
+        o.start(t0 + dt);
+        o.stop(t0 + dt + 0.65);
+      }
+    } catch { /* sound must never break the page */ }
+  }
+
   // ------------------------------------------------------------ overlay DOM
   let overlay = null, canvas = null, ctx = null, debugPanel = null, debugBody = null, dbgBtn = null;  const stageTabs = {};   // stage -> payload
   const stageOrder = ['capture', 'detect', 'blocks', 'ocr', 'mask', 'inpaint', 'translate', 'render'];
@@ -491,7 +524,7 @@
       if (!msg.direct) return false; // broadcasts are for the popup; the pill takes targeted copies
       const st = msg.stage;
       if (st === 'error') showPillError(msg.error || 'unknown error');
-      else if (st === 'done') showPill('comic-translate-4-free — done ✓');
+      else if (st === 'done') { showPill('comic-translate-4-free — done ✓'); maybeDing(); }
       else if (st === 'cancelled') showPill('comic-translate-4-free — cancelled');
       else if (st && st !== 'idle') pillProgress(st, msg.progress);
       return false;

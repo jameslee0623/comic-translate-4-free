@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS = {
   siteWhitelist: [], // hostnames with site access, e.g. ['example.com']
   allowAllSites: false, // site access: translate on any site (requests <all_urls> when enabled)
   autoTranslateOnLoad: true, // start the pipeline automatically on allowed page loads
+  playDing: true, // play a chime when a translation finishes (toggle in Options)
 };
 
 export const LANGS = [

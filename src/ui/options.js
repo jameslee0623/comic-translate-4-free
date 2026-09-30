@@ -134,7 +134,7 @@ const DEFAULTS = {
   localLlmModel: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC', // no UI yet; backend uses the default
   debugMode: false, detectionThreshold: 0.3,
   initFontSize: 40, minFontSize: 10, minImageSize: 500,
-  siteWhitelist: [], autoTranslateOnLoad: true,
+  siteWhitelist: [], autoTranslateOnLoad: true, playDing: true,
 };
 
 function fillLangs(sel, list, val) {
@@ -281,6 +281,7 @@ function applyToForm(s) {
   setVal('minImageSize', s.minImageSize);
   setChecked('debugMode', s.debugMode);
   setChecked('autoTranslate', s.autoTranslateOnLoad);
+  setChecked('playDing', s.playDing !== false);
   setChecked('allowAllSites', s.allowAllSites);
   whitelist = [...(s.siteWhitelist || [])];
   renderWhitelist();
@@ -323,7 +324,7 @@ $('threshold').oninput = e => { $('thresholdVal').textContent = Number(e.target.
 for (const id of ['sourceLang', 'targetLang', 'backend', 'azureKey', 'azureRegion',
     'lmStudioUrl', 'lmStudioApi', 'lmStudioKey',
     'threshold', 'initFontSize', 'minFontSize', 'minImageSize',
-    'debugMode', 'autoTranslate']) {
+    'debugMode', 'autoTranslate', 'playDing']) {
   const el = $(id);
   if (!el) continue;
   const evt = el.type === 'text' || el.type === 'password' || el.type === 'number' ? 'input' : 'change';
@@ -345,6 +346,7 @@ function collect() {
     minImageSize: parseInt($('minImageSize').value, 10) || 500,
     debugMode: $('debugMode').checked,
     siteWhitelist: [...whitelist], autoTranslateOnLoad: $('autoTranslate').checked,
+    playDing: $('playDing').checked,
     allowAllSites: $('allowAllSites').checked,
   };
 }
