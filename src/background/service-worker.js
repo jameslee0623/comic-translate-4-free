@@ -18,6 +18,7 @@ import {
   initPageCache, buildCacheKey, pageCacheGet, pageCachePut,
   pageCacheStats, clearPageCache,
 } from '../shared/page-cache.js';
+import { displayHost } from '../shared/site-access.js';
 
 // Translated-page cache is session-scoped: initPageCache() wipes the store on
 // every browser startup (via a chrome.storage.session marker) and the
@@ -194,15 +195,26 @@ async function getPipelineImage(tabId, settings, tabUrl) {
   } catch (e) { failures.push('download: ' + String((e && e.message) || e).slice(0, 120)); }
   let imgHost = '';
   try { imgHost = new URL(info.src).hostname; } catch { /* keep it empty */ }
+  // Name the base domain, not the exact host: on sites with random per-visit
+  // image subdomains the exact hostname is meaningless to the user, and the
+  // grant the popup requests covers the base.
+  const imgHostLabel = imgHost ? displayHost(imgHost) : '';
   // An HTTP status means the request went out — access was granted and the
   // SERVER refused it. Don't send the user on another grant-access errand.
   const serverRefused = /HTTP (401|403)/.test(failures.join(';'));
+  // A revisit of an already-translated page downloads the ORIGINAL url the
+  // content script stashed. Some hosts hand out expiring image links
+  // (keystamp=...), so on revisit that saved link is dead — the fix is a
+  // page reload for a fresh link, not another access grant.
+  const staleOriginal = !!info.translated;
   throw new Error(
     `couldn't read the page's picture (${failures.join('; ')}). ` +
     (serverRefused
-      ? `The image server${imgHost ? ' (' + imgHost + ')' : ''} refused the download even though access was granted — it is blocking requests that don't come from the page itself. Reload the page and try again; if it persists, this site can't be translated right now.`
+      ? `The image server${imgHostLabel ? ' (' + imgHostLabel + ')' : ''} refused the download${staleOriginal ? ' — the saved image link has likely expired' : ' even though access was granted'} — it is blocking requests that don't come from the page itself. Reload the page and try again; if it persists, this site can't be translated right now.`
       : imgHost
-        ? `The picture is hosted on ${imgHost} — open the extension popup on this page and click "Grant access to ${imgHost}".`
+        ? staleOriginal
+          ? `The picture lives on ${imgHostLabel} but its saved image link no longer loads (these links expire, or the access grant was revoked) — reload the page for a fresh link and translate again; if the popup offers it, grant access to ${imgHostLabel} first.`
+          : `The picture is hosted on ${imgHostLabel} — open the extension popup on this page and click "Grant access to ${imgHostLabel}".`
         : `If the picture is hosted on another site, open the extension popup on this page and click "Grant access".`));
 }
 

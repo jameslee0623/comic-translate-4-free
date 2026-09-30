@@ -1,5 +1,6 @@
 // Options page: read/write settings + model management + connection checks.
 import { BUILD } from '../shared/version.js';
+import { imageHostOrigins } from '../shared/site-access.js';
 const $ = id => document.getElementById(id);
 const LANGS = [
   ['ja', '日本語'], ['en', 'English'], ['zh-CN', '简体中文'],
@@ -215,7 +216,9 @@ $('wlAddBtn').onclick = async () => {
         const src = r && r.image && r.image.src;
         if (src && /^https?:\/\//i.test(src)) {
           const ih = new URL(src).hostname.toLowerCase();
-          if (ih && ih !== h) origins.push(`*://${ih}/*`);
+          // Base-domain grant: random per-visit image subdomains would
+          // otherwise need a new grant every visit.
+          if (ih && ih !== h) origins.push(...imageHostOrigins(ih));
         }
       }
     } catch { /* page-host origins are enough to try */ }

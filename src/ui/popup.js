@@ -1,5 +1,6 @@
 // Popup: trigger runs, show progress, backend + language quick-switch, whitelist.
 import { BUILD } from '../shared/version.js';
+import { baseDomain, imageHostOrigins, originAccessPatterns, displayHost } from '../shared/site-access.js';
 const $ = id => document.getElementById(id);
 // Stage labels come from i18n (stage_* keys), English fallback if missing.
 const STAGE_LABEL = {
@@ -219,14 +220,19 @@ let cachedImageHost = null;
 // A granted `*://host/*` satisfies the query, but be lenient like
 // hasHostAccess in the service worker: scheme-specific grants count too.
 async function hasOriginAccess(host) {
-  for (const p of [`*://${host}/*`, `http://${host}/*`, `https://${host}/*`]) {
+  // Accept an exact-host grant OR a base-domain grant (covers random
+  // per-visit subdomains); existing exact grants keep working.
+  for (const p of originAccessPatterns(host)) {
     if (await chrome.permissions.contains({ origins: [p] }).catch(() => false)) return true;
   }
   return false;
 }
 function requestSiteAccessNow(host) {
   const origins = [`*://${host}/*`, `*://*.${host}/*`];
-  if (cachedImageHost && cachedImageHost !== host) origins.push(`*://${cachedImageHost}/*`);
+  // The picture's host gets the base-domain treatment: hosts with random
+  // per-visit subdomains (e.g. *.hath.network) would otherwise need a fresh
+  // grant on every visit.
+  if (cachedImageHost && cachedImageHost !== host) origins.push(...imageHostOrigins(cachedImageHost));
   if (chrome.permissions && chrome.permissions.request) {
     return chrome.permissions.request({ origins }).catch(() => false);
   }
@@ -293,7 +299,10 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
     const missing = !pageHas ? currentHost : (!imgHas ? cachedImageHost : null);
     if (missing) {
       grantRow.style.display = '';
-      $('grantBtn').textContent = ctMsg('grant_access_to', [missing]) || `Grant access to ${missing}`;
+      // Name the base domain for the picture's host: the exact hostname is
+      // random per visit on some sites, and the grant covers the base.
+      const missingLabel = (missing === cachedImageHost) ? displayHost(missing) : missing;
+      $('grantBtn').textContent = ctMsg('grant_access_to', [missingLabel]) || `Grant access to ${missingLabel}`;
       $('grantBtn').onclick = () => {
         // Request synchronously in the click: no awaits before
         // permissions.request() or Firefox drops the user gesture.
