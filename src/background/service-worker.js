@@ -126,8 +126,18 @@ function bitmapToRGBA(bmp, maxDim) {
 
 // Direct download of the page image (needs the host permission the popup
 // requests on click). Full resolution, no viewport limits.
-async function fetchImagePixels(url) {
-  const res = await fetch(url);
+// The request mimics the page's own <img> load: some image hosts 403 requests
+// with no Referer (hotlink protection) or need the user's cookies, and the
+// fetch defaults (no referrer, no credentials) look like a bot.
+async function fetchImagePixels(url, referrer) {
+  const init = { credentials: 'include' };
+  if (referrer) {
+    init.referrer = referrer;
+    // Browser default: an <img> load sends the page origin as Referer for a
+    // cross-origin image host. Match it exactly.
+    init.referrerPolicy = 'strict-origin-when-cross-origin';
+  }
+  const res = await fetch(url, init);
   if (!res.ok) throw new Error('image download failed: HTTP ' + res.status);
   return bitmapToRGBA(await createImageBitmap(await res.blob()), 2560);
 }
@@ -137,7 +147,7 @@ async function fetchImagePixels(url) {
 // sends CORS headers). Tier 1b: background fetch of the image URL (needs the
 // host permission the popup requests on click). If neither can read the
 // picture we throw an actionable error; there is no screenshot fallback.
-async function getPipelineImage(tabId, settings) {
+async function getPipelineImage(tabId, settings, tabUrl) {
   const minSize = settings.minImageSize || 500;
   const tooSmall = (w, h) => {
     if (Math.max(w, h) < minSize) {
@@ -178,17 +188,22 @@ async function getPipelineImage(tabId, settings) {
   // page this is the ORIGINAL url, so the pixels — and the cache key — are
   // the originals, not the render).
   try {
-    const { rgba, w, h } = await fetchImagePixels(info.src);
+    const { rgba, w, h } = await fetchImagePixels(info.src, tabUrl);
     tooSmall(w, h);
     return { rgba, w, h, mode: 'replace', tier: 'worker-fetch' };
   } catch (e) { failures.push('download: ' + String((e && e.message) || e).slice(0, 120)); }
   let imgHost = '';
   try { imgHost = new URL(info.src).hostname; } catch { /* keep it empty */ }
+  // An HTTP status means the request went out — access was granted and the
+  // SERVER refused it. Don't send the user on another grant-access errand.
+  const serverRefused = /HTTP (401|403)/.test(failures.join(';'));
   throw new Error(
     `couldn't read the page's picture (${failures.join('; ')}). ` +
-    (imgHost
-      ? `The picture is hosted on ${imgHost} — open the extension popup on this page and click "Grant access to ${imgHost}".`
-      : `If the picture is hosted on another site, open the extension popup on this page and click "Grant access".`));
+    (serverRefused
+      ? `The image server${imgHost ? ' (' + imgHost + ')' : ''} refused the download even though access was granted — it is blocking requests that don't come from the page itself. Reload the page and try again; if it persists, this site can't be translated right now.`
+      : imgHost
+        ? `The picture is hosted on ${imgHost} — open the extension popup on this page and click "Grant access to ${imgHost}".`
+        : `If the picture is hosted on another site, open the extension popup on this page and click "Grant access".`));
 }
 
 // ---------------------------------------------------------------- pixel helpers
@@ -407,7 +422,9 @@ async function runPipeline(tabId) {
     // content.js guards against double-injection; the canvas stays empty until render.
     // Gate on the host permission first: without it injection always fails, and
     // the error below names the fix instead of a cryptic browser message.
-    const tabHost = hostOf((await chrome.tabs.get(tabId).catch(() => null))?.url || '');
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    const tabUrl = (tab && tab.url) || '';
+    const tabHost = hostOf(tabUrl);
     if (tabHost && !(await hasHostAccess(tabHost))) throw hostAccessError(tabHost);
     try {
       await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
@@ -424,7 +441,7 @@ async function runPipeline(tabId) {
     // ---- 1. capture: the page's own picture (min-size gated), else viewport
     setProgress(runId, 'capture', 0.02);
     let t0 = performance.now();
-    const { rgba, w, h, mode, tier } = await getPipelineImage(tabId, settings);
+    const { rgba, w, h, mode, tier } = await getPipelineImage(tabId, settings, tabUrl);
     timings.capture = Math.round(performance.now() - t0);
     const capMean = meanBrightness(rgba);
     if (capMean < 0.004) {
