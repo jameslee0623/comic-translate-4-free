@@ -21,10 +21,10 @@
   input[type=checkbox] { accent-color: #1a73e8; width: 16px; height: 16px; }
   .check-result { font-size: 12px; margin-left: 8px; }
   .check-result.ok { color: #7ee787; } .check-result.err { color: #ff7b72; }
-  #whitelist { list-style: none; padding: 0; margin: 8px 0; }
-  #whitelist li { display: flex; gap: 10px; align-items: center; padding: 6px 10px; border: 1px solid #2e2e33; border-radius: 6px; margin: 4px 0; background: #1b1b1f; }
-  #whitelist li span { flex: 1; font-family: monospace; }
-  #whitelist li button { padding: 3px 10px; font-size: 12px; }
+  #allowedSites { list-style: none; padding: 0; margin: 8px 0; }
+  #allowedSites li { display: flex; gap: 10px; align-items: center; padding: 6px 10px; border: 1px solid #2e2e33; border-radius: 6px; margin: 4px 0; background: #1b1b1f; }
+  #allowedSites li span { flex: 1; font-family: monospace; }
+  #allowedSites li button { padding: 3px 10px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -34,7 +34,7 @@
   <p style="color:#8a8a90;font-size:12px" data-i18n="whitelist_desc">Translation only runs on sites you allow. Add a site from the popup or type its hostname here.</p>
   <div class="row"><label data-i18n="allow_all_sites" style="text-transform:uppercase">Allow all sites</label><input type="checkbox" id="allowAllSites"></div>
   <p class="hint" data-i18n="allow_all_desc">Translate on any website without allowing each one first. This grants the extension access to all websites.</p>
-  <ul id="whitelist"></ul>
+  <ul id="allowedSites"></ul>
   <div class="row"><input type="text" id="wlAdd" data-i18n-ph="wl_placeholder" placeholder="e.g. example.com" style="width:220px"><button id="wlAddBtn" data-i18n="add">Add</button></div>
 
   <h2 data-i18n="languages">Languages</h2>

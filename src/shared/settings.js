@@ -186,10 +186,3 @@ export async function getSettings() {
   } catch { /* best effort */ }
   return s;
 }
-
-export async function setSettings(patch) {
-  const cur = await getSettings();
-  const next = { ...cur, ...patch };
-  await chrome.storage.local.set({ settings: next });
-  return next;
-}

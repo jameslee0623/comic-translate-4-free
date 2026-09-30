@@ -187,6 +187,11 @@ page couldn't run the parallel branches without freezing.)
   pages or long sessions the engine can run out of memory and report
   "no available backend found". Restarting the browser frees memory; Chrome is
   unaffected since it runs the models in a separate process.
+- Chrome: translating dozens of images in one session can crash the browser
+  (observed at around 35 cached images).
+- The page cache is session-scoped: it is wiped when the browser starts, so
+  after a restart (including after a crash) re-sent images run the full
+  pipeline again instead of hitting the cache.
 - Local LLM backend is experimental (needs WebGPU + multi-GB downloads).
 - Google backend uses the unofficial `translate.googleapis.com` endpoint and
   may be rate-limited; Azure needs your own key.

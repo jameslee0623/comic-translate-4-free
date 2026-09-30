@@ -106,22 +106,19 @@ const handlers = {
     const announce = payload => chrome.runtime.sendMessage(
       { type: MSG.MODEL_PROGRESS, fileId, ...payload }).catch(() => {});
     try {
-      console.log('[ct-dl] start', fileId);
       const total = await downloadFileToIdb(spec.id, spec.url, (loaded, totalBytes) => {
         chrome.runtime.sendMessage({
           type: MSG.MODEL_PROGRESS, id: spec.group, fileId: spec.id,
           loaded, total: totalBytes,
         }).catch(() => {});
       });
-      console.log('[ct-dl] bytes done', total);
       // Drop any session built from the old bytes so the fresh file is used.
       resetGroup(spec.group);
-      console.log('[ct-dl] announcing done');
       announce({ done: true });
-      console.log('[ct-dl] returning');
       return { ok: true, bytes: total };
     } catch (e) {
-      console.log('[ct-dl] ERROR', String((e && e.message) || e).slice(0, 200));
+      console.error('[ct-dl] download failed for', fileId + ':',
+        String((e && e.message) || e).slice(0, 200));
       announce({ error: String((e && e.message) || e) });
       throw e;
     }

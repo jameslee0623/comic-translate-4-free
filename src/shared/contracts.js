@@ -30,27 +30,14 @@ export const MSG = {
   RUN_STARTED: 'ct/run-started',         // {runId} (marks the tab's current run; stale renders are ignored)
   RENDER: 'ct/render',                   // {runId, image:ArrayBuffer,width,height, blocks:[TextBlock]}
   DEBUG_STAGE: 'ct/debug-stage',          // {runId, stage, title, payload}
-  CLOSE_OVERLAY: 'ct/close-overlay',     // {}
-  // content -> SW
-  OVERLAY_CLOSED: 'ct/overlay-closed',   // {}
-};
-
-// Pipeline stage ids (also used for debug tabs + progress labels).
-export const STAGES = [
-  'capture', 'detect', 'blocks', 'ocr', 'mask', 'inpaint', 'translate', 'render',
-];
-
-export const STAGE_LABEL = {
-  capture: 'Capture', detect: 'Detection', blocks: 'Text blocks', ocr: 'OCR',
-  mask: 'Mask', inpaint: 'Inpaint', translate: 'Translate', render: 'Render',
 };
 
 // IndexedDB: db 'ct-db', store 'models' (keyPath 'id').
 // Record: {id, data:ArrayBuffer, bytes, downloadedAt}
 // v2 adds store 'page-cache' (keyPath 'id') for translated pages; see
 // shared/page-cache.js for its record shape.
-export const IDB_NAME = 'ct-db';
-export const IDB_STORE = 'models';
+const IDB_NAME = 'ct-db';
+const IDB_STORE = 'models';
 export const PAGE_CACHE_STORE = 'page-cache';
 
 export function openDb() {

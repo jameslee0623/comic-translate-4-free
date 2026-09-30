@@ -368,5 +368,17 @@
   "all_sites_on": {
     "message": "すべてのサイトが許可されています ✓",
     "description": "site access"
+  },
+  "pill_dismiss": {
+    "message": "閉じる",
+    "description": "Dismiss link on the error pill"
+  },
+  "pill_err_page_changed": {
+    "message": "翻訳完了前にページ画像が変更されました — ページを再読み込みして再試行してください",
+    "description": "Pill error: pill_err_page_changed"
+  },
+  "pill_err_render_mode": {
+    "message": "予期しない描画モードです — ページを再読み込みして再試行してください",
+    "description": "Pill error: pill_err_render_mode"
   }
 }

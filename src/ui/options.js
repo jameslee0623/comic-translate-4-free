@@ -1,6 +1,7 @@
 // Options page: read/write settings + model management + connection checks.
 import { BUILD } from '../shared/version.js';
 import { imageHostOrigins } from '../shared/site-access.js';
+import { DEFAULT_SETTINGS } from '../shared/settings.js';
 const $ = id => document.getElementById(id);
 const LANGS = [
   ['ja', '日本語'], ['en', 'English'], ['zh-CN', '简体中文'],
@@ -126,23 +127,15 @@ const TARGET_LANGS = [
   ['yo', 'Yoruba'],
   ['zu', 'Zulu'],
 ];
-const DEFAULTS = {
-  sourceLang: 'ja', targetLang: 'en', translationBackend: 'google',
-  azureKey: '', azureRegion: '',
-  lmStudioUrl: 'http://127.0.0.1:1234', lmStudioKey: '', lmStudioApi: 'lmstudio-v1',
-  lmStudioModelId: '', // auto-managed, not shown in the UI
-  localLlmModel: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC', // no UI yet; backend uses the default
-  debugMode: false, detectionThreshold: 0.3,
-  initFontSize: 40, minFontSize: 10, minImageSize: 500,
-  siteWhitelist: [], autoTranslateOnLoad: true, playDing: true,
-};
+// Defaults live in shared/settings.js — single source of truth.
+const DEFAULTS = DEFAULT_SETTINGS;
 
 function fillLangs(sel, list, val) {
   sel.innerHTML = list.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
   sel.value = list.some(([c]) => c === val) ? val : list[0][0];
 }
 
-let whitelist = [];
+let allowedSites = [];
 
 // Full settings as last loaded — collect() spreads this first so auto-managed
 // fields with no UI (e.g. lmStudioModelId) survive every save.
@@ -179,21 +172,21 @@ window.addEventListener('pagehide', () => {
   try { persistSettings(collect()).catch(() => {}); } catch { /* ignore */ }
 });
 
-function renderWhitelist() {
-  const ul = $('whitelist');
+function renderSiteList() {
+  const ul = $('allowedSites');
   ul.innerHTML = '';
-  if (!whitelist.length) {
+  if (!allowedSites.length) {
     const emptyMsg = ctMsg('whitelist_empty') || 'empty — translation is disabled everywhere until you add a site';
     ul.innerHTML = `<li style="color:#8a8a90">${emptyMsg}</li>`;
     return;
   }
-  for (const h of whitelist) {
+  for (const h of allowedSites) {
     const li = document.createElement('li');
     const span = document.createElement('span');
     span.textContent = h;
     const b = document.createElement('button');
     b.textContent = ctMsg('remove') || 'Remove';
-    b.onclick = () => { whitelist = whitelist.filter(x => x !== h); renderWhitelist(); saveNow(); };
+    b.onclick = () => { allowedSites = allowedSites.filter(x => x !== h); renderSiteList(); saveNow(); };
     li.appendChild(span); li.appendChild(b);
     ul.appendChild(li);
   }
@@ -202,9 +195,9 @@ function renderWhitelist() {
 $('wlAddBtn').onclick = async () => {
   let h = $('wlAdd').value.trim().toLowerCase();
   h = h.replace(/^https?:\/\//, '').split('/')[0];
-  if (h && !whitelist.includes(h)) {
+  if (h && !allowedSites.includes(h)) {
     // Same grant the popup does on add: without a host permission the site
-    // is whitelisted but translation can never start on it. Best effort:
+    // is allowed but translation can never start on it. Best effort:
     // if the site is open in a tab, also cover the picture's host — the
     // picture often lives on a CDN host different from the page host.
     const origins = [`*://${h}/*`, `*://*.${h}/*`];
@@ -225,10 +218,10 @@ $('wlAddBtn').onclick = async () => {
     if (chrome.permissions && chrome.permissions.request) {
       await chrome.permissions.request({ origins }).catch(() => false);
     }
-    whitelist.push(h);
+    allowedSites.push(h);
   }
   $('wlAdd').value = '';
-  renderWhitelist();
+  renderSiteList();
   saveNow();
 };
 
@@ -283,8 +276,8 @@ function applyToForm(s) {
   setChecked('autoTranslate', s.autoTranslateOnLoad);
   setChecked('playDing', s.playDing !== false);
   setChecked('allowAllSites', s.allowAllSites);
-  whitelist = [...(s.siteWhitelist || [])];
-  renderWhitelist();
+  allowedSites = [...(s.siteWhitelist || [])];
+  renderSiteList();
 }
 
 async function load() {
@@ -345,7 +338,7 @@ function collect() {
     minFontSize: parseInt($('minFontSize').value, 10) || 10,
     minImageSize: parseInt($('minImageSize').value, 10) || 500,
     debugMode: $('debugMode').checked,
-    siteWhitelist: [...whitelist], autoTranslateOnLoad: $('autoTranslate').checked,
+    siteWhitelist: [...allowedSites], autoTranslateOnLoad: $('autoTranslate').checked,
     playDing: $('playDing').checked,
     allowAllSites: $('allowAllSites').checked,
   };

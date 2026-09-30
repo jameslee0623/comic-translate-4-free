@@ -67,3 +67,26 @@ export function displayHost(host) {
   const base = baseDomain(h);
   return base && base !== h ? '*.' + base : h;
 }
+
+/**
+ * Hostname of an http(s) URL, lowercased. null for anything else.
+ */
+export function hostOf(url) {
+  try {
+    const u = new URL(url || '');
+    if (!/^https?:$/.test(u.protocol)) return null;
+    return u.hostname.toLowerCase();
+  } catch { return null; }
+}
+
+/**
+ * Exact hostname or parent-domain match against the site-access list:
+ * 'example.com' covers 'img.example.com'.
+ */
+export function isSiteAllowed(host, list) {
+  const h = (host || '').toLowerCase();
+  return (list || []).some(e => {
+    const w = String(e || '').toLowerCase().trim();
+    return w && (h === w || h.endsWith('.' + w));
+  });
+}

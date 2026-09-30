@@ -1,6 +1,6 @@
 // Popup: trigger runs, show progress, backend + language quick-switch, whitelist.
 import { BUILD } from '../shared/version.js';
-import { baseDomain, imageHostOrigins, originAccessPatterns, displayHost } from '../shared/site-access.js';
+import { baseDomain, imageHostOrigins, originAccessPatterns, displayHost, hostOf, isSiteAllowed } from '../shared/site-access.js';
 const $ = id => document.getElementById(id);
 // Stage labels come from i18n (stage_* keys), English fallback if missing.
 const STAGE_LABEL = {
@@ -195,21 +195,6 @@ async function refresh() {
   await refreshSite(settings || {});
 }
 
-function hostOfUrl(url) {
-  try {
-    const u = new URL(url || '');
-    return /^https?:$/.test(u.protocol) ? u.hostname.toLowerCase() : null;
-  } catch { return null; }
-}
-
-function isWhitelisted(host, list) {
-  const h = (host || '').toLowerCase();
-  return (list || []).some(e => {
-    const w = String(e || '').toLowerCase().trim();
-    return w && (h === w || h.endsWith('.' + w));
-  });
-}
-
 // The picture often lives on a CDN host different from the page host; without
 // permission for it the extension can't download the picture's pixels.
 // cachedImageHost is filled in (best effort) when the popup opens, so the
@@ -240,7 +225,7 @@ function requestSiteAccessNow(host) {
 }
 
 async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => [null]);
-  currentHost = tab ? hostOfUrl(tab.url) : null;
+  currentHost = tab ? hostOf(tab.url) : null;
   // Learn the page picture's host now (not on click) so the grant click can
   // request it without any awaits first — pictures often live on a CDN host
   // different from the page host, and the pipeline's download tier needs
@@ -266,7 +251,7 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
     return;
   }
   const allowAll = !!settings.allowAllSites;
-  const ok = allowAll || isWhitelisted(currentHost, list);
+  const ok = allowAll || isSiteAllowed(currentHost, list);
   const hostHtml = `<b>${currentHost}</b>`;
   const statusHtml = allowAll
     ? `<span class="ok">${ctMsg('all_sites_on') || 'all sites allowed ✓'}</span>`
@@ -314,7 +299,7 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
     const { settings: s } = await chrome.storage.local.get('settings');
     const cur = { ...(s || {}) };
     const wl = new Set(cur.siteWhitelist || []);
-    if (isWhitelisted(currentHost, [...wl])) {
+    if (isSiteAllowed(currentHost, [...wl])) {
       // remove the entry that matches
       for (const e of [...wl]) {
         const w = String(e).toLowerCase();
@@ -344,7 +329,7 @@ $('translateBtn').onclick = async () => {
     // Best-effort one-time permission so the worker can download the page's
     // picture at full resolution (covers the picture's host too).
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const host = tab && hostOfUrl(tab.url);
+    const host = tab && hostOf(tab.url);
     if (host) await requestSiteAccessNow(host);
   } catch { /* optional; the pipeline reports what it can't read */ }
   const r = await chrome.runtime.sendMessage({ type: 'ct/translate-page' }).catch(e => ({ ok: false, error: String(e) }));

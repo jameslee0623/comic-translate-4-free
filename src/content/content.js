@@ -310,25 +310,55 @@
   }
   function showPillError(text) {
     const p = ensurePill();
-    p.innerHTML = 'comic-translate-4-free — error: ' + esc(text) +
-      ' <a href="#" id="ct-pill-x" style="color:#8ab4f8;margin-left:8px">dismiss</a>';
+    const errLabel = stageLabel('error');
+    p.innerHTML = 'comic-translate-4-free — ' + esc(errLabel) + ': ' + esc(text) +
+      ' <a href="#" id="ct-pill-x" style="color:#8ab4f8;margin-left:8px">' +
+      esc(dismissLabel()) + '</a>';
     p.style.display = 'block';
     p.style.borderColor = '#a33';
     const x = document.getElementById('ct-pill-x');
     if (x) x.onclick = e => { e.preventDefault(); p.style.display = 'none'; };
   }
-  const PILL_STAGE = {
+  // Stage labels come from the shared stage_* i18n keys (also used by the
+  // popup), English fallback if a locale is missing one.
+  const PILL_STAGE_FALLBACK = {
     capture: 'Capturing', detect: 'Detecting bubbles', blocks: 'Building blocks',
     ocr: 'Reading text', mask: 'Masking', translate: 'Translating',
     inpaint: 'Inpainting', render: 'Rendering',
   };
+  function stageLabel(stage) {
+    try {
+      const m = chrome.i18n.getMessage('stage_' + stage);
+      if (m) return m;
+    } catch { /* extension contexts without i18n */ }
+    return PILL_STAGE_FALLBACK[stage] || stage;
+  }
+  function dismissLabel() {
+    try {
+      const m = chrome.i18n.getMessage('pill_dismiss');
+      if (m) return m;
+    } catch { /* fall through */ }
+    return 'dismiss';
+  }
+  // Generic pill message lookup with English fallback map for new keys.
+  const PILL_MSG_FALLBACK = {
+    pill_err_page_changed: 'the page image changed before translation finished — reload the page to retry',
+    pill_err_render_mode: 'unexpected render mode — reload the page to retry',
+  };
+  function pillMsg(key) {
+    try {
+      const m = chrome.i18n.getMessage(key);
+      if (m) return m;
+    } catch { /* fall through */ }
+    return PILL_MSG_FALLBACK[key] || key;
+  }
   function pillProgress(stage, progress) {
     // Sticky for the whole run: the old non-sticky call armed a 4s auto-hide
     // on every update, so long stages (inpaint, translate) left the page with
     // no visible progress between updates. done/cancelled still auto-hide;
     // errors stay until dismissed.
-    showPill('comic-translate-4-free — ' + esc(PILL_STAGE[stage] || stage) +
-      '… ' + Math.round((progress || 0) * 100) + '%', true);
+    showPill('comic-translate-4-free — ' + esc(stageLabel(stage)) +
+      ' ' + Math.round((progress || 0) * 100) + '%', true);
   }
 
   // ------------------------------------------------------------ completion chime
@@ -365,7 +395,7 @@
   }
 
   // ------------------------------------------------------------ overlay DOM
-  let overlay = null, canvas = null, ctx = null, debugPanel = null, debugBody = null, dbgBtn = null;  const stageTabs = {};   // stage -> payload
+  let overlay = null, debugPanel = null, debugBody = null, dbgBtn = null;  const stageTabs = {};   // stage -> payload
   const stageOrder = ['capture', 'detect', 'blocks', 'ocr', 'mask', 'inpaint', 'translate', 'render'];
   let currentRunId = null;
   let latestRunId = null;   // run the service worker last started for this tab
@@ -403,11 +433,6 @@
     overlay.appendChild(bar);
     const wrap = document.createElement('div');
     wrap.style.cssText = 'flex:1;display:flex;min-height:0;width:100%;justify-content:flex-end;';
-    canvas = document.createElement('canvas');
-    // Vestigial: nothing ever paints into the overlay canvas (the translated
-    // page replaces the <img> in place). Kept hidden so it takes no space.
-    canvas.style.cssText = 'display:none;';
-    wrap.appendChild(canvas);
     debugPanel = document.createElement('div');
     debugPanel.style.cssText = 'display:none;pointer-events:auto;width:340px;max-height:calc(100vh - 60px);overflow:auto;background:rgba(18,18,24,0.96);color:#ddd;font:12px sans-serif;border-left:1px solid #333;flex-direction:column;';
     const tabBar = document.createElement('div');
@@ -426,12 +451,11 @@
     wrap.appendChild(debugPanel);
     overlay.appendChild(wrap);
     document.documentElement.appendChild(overlay);
-    ctx = canvas.getContext('2d');
   }
 
   function closeOverlay() {
     if (overlay) overlay.remove();
-    overlay = null; canvas = null; ctx = null; debugPanel = null; debugBody = null;
+    overlay = null; debugPanel = null; debugBody = null;
     for (const k of Object.keys(stageTabs)) delete stageTabs[k];
     chrome.runtime.sendMessage({ type: 'ct/overlay-closed' }).catch(() => {});
   }
@@ -523,9 +547,9 @@
     if (msg.type === 'ct/run-progress') {
       if (!msg.direct) return false; // broadcasts are for the popup; the pill takes targeted copies
       const st = msg.stage;
-      if (st === 'error') showPillError(msg.error || 'unknown error');
-      else if (st === 'done') { showPill('comic-translate-4-free — done ✓'); maybeDing(); }
-      else if (st === 'cancelled') showPill('comic-translate-4-free — cancelled');
+      if (st === 'error') showPillError(msg.error || stageLabel('error'));
+      else if (st === 'done') { showPill('comic-translate-4-free — ' + esc(stageLabel('done')) + ' ✓'); maybeDing(); }
+      else if (st === 'cancelled') showPill('comic-translate-4-free — ' + esc(stageLabel('cancelled')));
       else if (st && st !== 'idle') pillProgress(st, msg.progress);
       return false;
     }
@@ -597,10 +621,10 @@
             if (replaced) {
               if (overlay) overlay.style.display = 'none';
             } else {
-              showPillError('the page image changed before translation finished — reload the page to retry');
+              showPillError(pillMsg('pill_err_page_changed'));
             }
           } else {
-            showPillError('unexpected render mode — reload the page to retry');
+            showPillError(pillMsg('pill_err_render_mode'));
           }
           const allTimings = { ...(timings || {}) };
           allTimings.render = Math.round(performance.now() - renderT0);

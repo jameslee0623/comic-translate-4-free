@@ -368,5 +368,17 @@
   "all_sites_on": {
     "message": "已允許所有網站 ✓",
     "description": "site access"
+  },
+  "pill_dismiss": {
+    "message": "關閉",
+    "description": "Dismiss link on the error pill"
+  },
+  "pill_err_page_changed": {
+    "message": "翻譯完成前頁面圖片發生了變化 — 請重新載入頁面後重試",
+    "description": "Pill error: pill_err_page_changed"
+  },
+  "pill_err_render_mode": {
+    "message": "未預期的渲染模式 — 請重新載入頁面後重試",
+    "description": "Pill error: pill_err_render_mode"
   }
 }

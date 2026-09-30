@@ -368,5 +368,17 @@
   "all_sites_on": {
     "message": "모든 사이트 허용됨 ✓",
     "description": "site access"
+  },
+  "pill_dismiss": {
+    "message": "닫기",
+    "description": "Dismiss link on the error pill"
+  },
+  "pill_err_page_changed": {
+    "message": "번역이 끝나기 전에 페이지 이미지가 변경되었습니다 — 페이지를 새로고침하고 다시 시도하세요",
+    "description": "Pill error: pill_err_page_changed"
+  },
+  "pill_err_render_mode": {
+    "message": "예상치 못한 렌더링 모드입니다 — 페이지를 새로고침하고 다시 시도하세요",
+    "description": "Pill error: pill_err_render_mode"
   }
 }

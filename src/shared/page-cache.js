@@ -22,8 +22,8 @@ import { openDb, PAGE_CACHE_STORE } from './contracts.js';
 import { BUILD } from './version.js';
 import { MODEL_GROUPS } from './model-specs.js';
 
-export const PAGE_CACHE_MAX_ENTRIES = 200;
-export const PAGE_CACHE_MAX_BYTES = 512 * 1024 * 1024; // 512 MB
+const PAGE_CACHE_MAX_ENTRIES = 200;
+const PAGE_CACHE_MAX_BYTES = 512 * 1024 * 1024; // 512 MB
 const SESSION_MARKER = 'ct-page-cache-session';
 
 // ---- startup wipe -----------------------------------------------------------

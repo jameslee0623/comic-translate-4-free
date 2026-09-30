@@ -1,7 +1,7 @@
 // Background service worker: pipeline orchestration, model management,
 // translation APIs, capture, debug emission. ML inference itself lives in
 // the offscreen document; pure-JS stages (blocks, mask) run here.
-import { MSG, STAGES, STAGE_LABEL } from '../shared/contracts.js';
+import { MSG } from '../shared/contracts.js';
 import { MODEL_GROUPS, getModelStatus, deleteModelGroup } from '../shared/model-specs.js';
 import { getSettings } from '../shared/settings.js';
 import {
@@ -18,7 +18,7 @@ import {
   initPageCache, buildCacheKey, pageCacheGet, pageCachePut,
   pageCacheStats, clearPageCache,
 } from '../shared/page-cache.js';
-import { displayHost } from '../shared/site-access.js';
+import { displayHost, hostOf, isSiteAllowed } from '../shared/site-access.js';
 
 // Translated-page cache is session-scoped: initPageCache() wipes the store on
 // every browser startup (via a chrome.storage.session marker) and the
@@ -34,22 +34,6 @@ const CONTENT_SCRIPT_FILES = (typeof window !== 'undefined' && window.document)
   : ['src/content/content.js'];
 
 // ---------------------------------------------------------------- site access
-function hostOf(url) {
-  try {
-    const u = new URL(url || '');
-    if (!/^https?:$/.test(u.protocol)) return null;
-    return u.hostname.toLowerCase();
-  } catch { return null; }
-}
-
-// Exact hostname or parent-domain match: 'example.com' covers 'img.example.com'.
-function isWhitelisted(host, list) {
-  const h = (host || '').toLowerCase();
-  return (list || []).some(e => {
-    const w = String(e || '').toLowerCase().trim();
-    return w && (h === w || h.endsWith('.' + w));
-  });
-}
 
 // scripting.executeScript needs a host permission for the tab's origin. That
 // permission is only granted when the user adds the site through the popup
@@ -847,7 +831,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       if (!settings.autoTranslateOnLoad) return;
       if (!tab || !tab.active) return; // translate what you're looking at
       const host = hostOf(tab.url || '');
-      if (!host || (!settings.allowAllSites && !isWhitelisted(host, settings.siteWhitelist || []))) return;
+      if (!host || (!settings.allowAllSites && !isSiteAllowed(host, settings.siteWhitelist || []))) return;
       const url = tab.url;
       const prev = autoFired.get(tabId);
       const now = Date.now();
@@ -919,7 +903,7 @@ async function handleTranslateImage(tabId, srcUrl) {
     const settings = await getSettings();
     const host = hostOf(tab.url);
     if (!host) return;
-    if (!settings.allowAllSites && !isWhitelisted(host, settings.siteWhitelist || [])) {
+    if (!settings.allowAllSites && !isSiteAllowed(host, settings.siteWhitelist || [])) {
       // Unreachable in practice (the menu patterns mirror this gate);
       // best-effort: surface it on the page's pill when a content script
       // can be injected (the menu click is a user gesture).
@@ -963,7 +947,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const settings = await getSettings();
           const host = hostOf(tab.url);
           if (!host) throw new Error('cannot determine the site of this tab');
-          if (!settings.allowAllSites && !isWhitelisted(host, settings.siteWhitelist || [])) {
+          if (!settings.allowAllSites && !isSiteAllowed(host, settings.siteWhitelist || [])) {
             throw new Error(`"${host}" is not in your site access list — allow it from the popup or Options, or turn on "Allow all sites"`);
           }
           // Awaited (not fire-and-forget): the worker stays alive for the whole run.

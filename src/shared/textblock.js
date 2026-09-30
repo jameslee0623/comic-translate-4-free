@@ -23,11 +23,6 @@ export function makeTextBlock(o = {}) {
   };
 }
 
-export function xywh(b) {
-  const [x1, y1, x2, y2] = b.xyxy;
-  return [x1, y1, x2 - x1, y2 - y1];
-}
-
 export function center(b) {
   const [x1, y1, x2, y2] = b.xyxy;
   return [(x1 + x2) / 2, (y1 + y2) / 2];
@@ -60,11 +55,6 @@ export function clampBox(xyxy, w, h) {
   return [x1, y1, x2, y2];
 }
 
-export function expandBox(xyxy, px, py, w, h) {
-  const [x1, y1, x2, y2] = xyxy;
-  return clampBox([x1 - px, y1 - py, x2 + px, y2 + py], w, h);
-}
-
 // adjust_text_line_coordinates port: expand by x%/y% of box size, clamp to image.
 export function adjustTextLineCoords(xyxy, expXpct, expYpct, imgW, imgH) {
   const [x1, y1, x2, y2] = xyxy;
@@ -75,7 +65,7 @@ export function adjustTextLineCoords(xyxy, expXpct, expYpct, imgW, imgH) {
   return [nx1, ny1, nx2, ny2];
 }
 
-export function boxArea(xyxy) {
+function boxArea(xyxy) {
   return Math.max(0, xyxy[2] - xyxy[0]) * Math.max(0, xyxy[3] - xyxy[1]);
 }
 

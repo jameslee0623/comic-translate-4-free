@@ -99,9 +99,6 @@ export async function pruneModelIds(ids) {
     } catch { /* best effort */ }
   }
 }
-export async function pruneRemovedModels() {
-  await pruneModelIds(PRUNED_MODEL_IDS);
-}
 
 // ---- chunked model storage ----
 // A model file is stored as N fixed-size IDB records plus a small manifest:
@@ -185,7 +182,6 @@ export async function downloadFileToIdb(fileId, url, onProgress) {
     await new Promise(r => setTimeout(r, 0));
   }
   try { await reader.cancel(); } catch { /* stream already closed */ }
-  console.log('[ct-dl] stream done, loaded=' + loaded);
   await flushChunk();
   if (spec && spec.bytes && loaded !== spec.bytes) {
     await deleteChunks(db, fileId, idx); // don't leave a bad partial file
@@ -193,9 +189,7 @@ export async function downloadFileToIdb(fileId, url, onProgress) {
       `downloaded ${fileId} is ${loaded} bytes but should be ${spec.bytes} — ` +
       `the download was truncated or is the wrong file. Please try again.`);
   }
-  console.log('[ct-dl] chunks written: ' + idx);
   await idbPut(db, { id: fileId, bytes: loaded, chunks: idx, downloadedAt: Date.now() });
-  console.log('[ct-dl] manifest written');
   return loaded;
 }
 
