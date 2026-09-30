@@ -200,7 +200,20 @@
     imgs.sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight));
     const im = imgs[0];
     mainImgEl = im;
-    return { src: im.currentSrc || im.src, w: im.naturalWidth, h: im.naturalHeight };
+    const cur = im.currentSrc || im.src || '';
+    // Already translated in place: the <img> now shows our rendered data URL
+    // (the real url was kept in dataset.ctOriginal). Report the ORIGINAL url:
+    // a multi-MB data URL in this message can break tabs.sendMessage (the
+    // worker then reports "no picture found"), and the worker must download
+    // the original — page-canvas pixels would be the already-translated
+    // image, which would translate the translation and poison the page-cache
+    // key so revisits never hit the cache.
+    const wasTranslated = !!im.dataset.ctOriginal && /^data:/i.test(cur);
+    return {
+      src: wasTranslated ? im.dataset.ctOriginal : cur,
+      w: im.naturalWidth, h: im.naturalHeight,
+      translated: wasTranslated,
+    };
   }
 
   // Direct pixels via page canvas. Throws (tainted canvas) when the image
@@ -263,8 +276,12 @@
     inpaint: 'Inpainting', render: 'Rendering',
   };
   function pillProgress(stage, progress) {
+    // Sticky for the whole run: the old non-sticky call armed a 4s auto-hide
+    // on every update, so long stages (inpaint, translate) left the page with
+    // no visible progress between updates. done/cancelled still auto-hide;
+    // errors stay until dismissed.
     showPill('comic-translate-4-free — ' + esc(PILL_STAGE[stage] || stage) +
-      '… ' + Math.round((progress || 0) * 100) + '%');
+      '… ' + Math.round((progress || 0) * 100) + '%', true);
   }
 
   // ------------------------------------------------------------ overlay DOM

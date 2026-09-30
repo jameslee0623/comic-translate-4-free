@@ -152,20 +152,31 @@ async function getPipelineImage(tabId, settings) {
   }
   tooSmall(info.w || 0, info.h || 0);
   const failures = [];
-  // Tier 1a: pixels straight from the page.
-  try {
-    const p = await chrome.tabs.sendMessage(tabId, { type: 'ct/get-image-pixels' });
-    if (p && p.ok) {
-      const rgba = new Uint8ClampedArray(p.data);
-      // A blank (all-black) capture fed to the detector yields 2 bogus
-      // full-page boxes, so validate the pixels before accepting them.
-      if (meanBrightness(rgba) >= 0.004) return { rgba, w: p.w, h: p.h, mode: 'replace', tier: 'page-canvas' };
-      failures.push('page canvas returned blank pixels');
-    } else {
-      failures.push('page canvas: ' + String((p && p.error) || 'no pixels').slice(0, 100));
-    }
-  } catch (e) { failures.push('page canvas: ' + String((e && e.message) || e).slice(0, 100)); }
-  // Tier 1b: background fetch of the image URL.
+  // Tier 1a: pixels straight from the page. Skipped when the page already
+  // shows our translated render (info.translated): the canvas would hand back
+  // the translated pixels, so the pipeline would translate the translation
+  // and the page-cache key would never match. The download tier below fetches
+  // the ORIGINAL url the content script reported, so pixels and cache key
+  // stay correct and revisits hit the cache.
+  if (!info.translated) {
+    try {
+      const p = await chrome.tabs.sendMessage(tabId, { type: 'ct/get-image-pixels' });
+      if (p && p.ok) {
+        const rgba = new Uint8ClampedArray(p.data);
+        // A blank (all-black) capture fed to the detector yields 2 bogus
+        // full-page boxes, so validate the pixels before accepting them.
+        if (meanBrightness(rgba) >= 0.004) return { rgba, w: p.w, h: p.h, mode: 'replace', tier: 'page-canvas' };
+        failures.push('page canvas returned blank pixels');
+      } else {
+        failures.push('page canvas: ' + String((p && p.error) || 'no pixels').slice(0, 100));
+      }
+    } catch (e) { failures.push('page canvas: ' + String((e && e.message) || e).slice(0, 100)); }
+  } else {
+    failures.push('page canvas skipped (already showing the translated render)');
+  }
+  // Tier 1b: background fetch of the image URL (for an already-translated
+  // page this is the ORIGINAL url, so the pixels — and the cache key — are
+  // the originals, not the render).
   try {
     const { rgba, w, h } = await fetchImagePixels(info.src);
     tooSmall(w, h);
