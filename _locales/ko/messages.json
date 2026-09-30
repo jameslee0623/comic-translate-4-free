@@ -132,18 +132,6 @@
   "lmstudio_url": {
     "message": "LM Studio 서버 URL"
   },
-  "localllm_llama": {
-    "message": "Llama 3.2 3B"
-  },
-  "localllm_model": {
-    "message": "로컬 LLM 모델(WebLLM)"
-  },
-  "localllm_qwen": {
-    "message": "Qwen2.5 1.5B"
-  },
-  "localllm_smol": {
-    "message": "SmolLM2 1.7B(가장 작음)"
-  },
   "max_font_size": {
     "message": "최대 글꼴 크기(px)"
   },

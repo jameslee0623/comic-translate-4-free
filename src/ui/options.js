@@ -130,7 +130,7 @@ const DEFAULTS = {
   azureKey: '', azureRegion: '',
   lmStudioUrl: 'http://localhost:1234/v1', lmStudioKey: '', lmStudioApi: 'openai',
   lmStudioModelId: '', // auto-managed, not shown in the UI
-  localLlmModel: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC',
+  localLlmModel: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC', // no UI yet; backend uses the default
   debugMode: false, detectionThreshold: 0.3,
   initFontSize: 40, minFontSize: 10, minImageSize: 500,
   siteWhitelist: [], autoTranslateOnLoad: true,
@@ -241,7 +241,6 @@ async function load() {
   $('lmStudioUrl').value = s.lmStudioUrl;
   $('lmStudioApi').value = s.lmStudioApi || 'openai';
   $('lmStudioKey').value = s.lmStudioKey;
-  $('localLlmModel').value = s.localLlmModel;
   $('threshold').value = s.detectionThreshold;
   $('thresholdVal').textContent = Number(s.detectionThreshold).toFixed(2);
   $('initFontSize').value = s.initFontSize;
@@ -261,7 +260,7 @@ $('threshold').oninput = e => { $('thresholdVal').textContent = Number(e.target.
 
 // Every control auto-saves; no Save button.
 for (const id of ['sourceLang', 'targetLang', 'backend', 'azureKey', 'azureRegion',
-    'lmStudioUrl', 'lmStudioApi', 'lmStudioKey', 'localLlmModel',
+    'lmStudioUrl', 'lmStudioApi', 'lmStudioKey',
     'threshold', 'initFontSize', 'minFontSize', 'minImageSize',
     'debugMode', 'autoTranslate']) {
   const el = $(id);
@@ -279,7 +278,6 @@ function collect() {
     lmStudioUrl: $('lmStudioUrl').value.trim() || DEFAULTS.lmStudioUrl,
     lmStudioApi: $('lmStudioApi').value,
     lmStudioKey: $('lmStudioKey').value.trim(),
-    localLlmModel: $('localLlmModel').value,
     detectionThreshold: parseFloat($('threshold').value),
     initFontSize: parseInt($('initFontSize').value, 10) || 40,
     minFontSize: parseInt($('minFontSize').value, 10) || 10,
