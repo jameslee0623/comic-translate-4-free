@@ -327,7 +327,7 @@
     "message": "在本会话中再次访问的页面将从临时缓存即时加载。关闭浏览器时缓存会自动清除。"
   },
   "pagecache_stats": {
-    "message": "$COUNT$ 个页面 · $SIZE$",
+    "message": "$COUNT$ 张图片 · $SIZE$",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -344,7 +344,7 @@
     "message": "清除中…"
   },
   "pagecache_cleared": {
-    "message": "已清除缓存（$COUNT$ 个页面，释放 $SIZE$）",
+    "message": "已清除缓存（$COUNT$ 张图片，释放 $SIZE$）",
     "placeholders": {
       "count": {
         "content": "$1"

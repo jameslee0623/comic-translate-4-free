@@ -327,7 +327,7 @@
     "message": "Pages you revisit in this browser session load instantly from a temporary cache. The cache is cleared automatically when the browser closes."
   },
   "pagecache_stats": {
-    "message": "$COUNT$ pages · $SIZE$",
+    "message": "$COUNT$ images · $SIZE$",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -344,7 +344,7 @@
     "message": "Clearing…"
   },
   "pagecache_cleared": {
-    "message": "Cache cleared ($COUNT$ pages, $SIZE$ freed)",
+    "message": "Cache cleared ($COUNT$ images, $SIZE$ freed)",
     "placeholders": {
       "count": {
         "content": "$1"

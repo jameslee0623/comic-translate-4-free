@@ -426,7 +426,7 @@ async function refreshCacheStats() {
   } catch { /* background unreachable — show zeros */ }
   $('cacheStats').textContent =
     ctMsg('pagecache_stats', [String(st.count), fmtBytes(st.bytes)]) ||
-    `${st.count} pages · ${fmtBytes(st.bytes)}`;
+    `${st.count} images · ${fmtBytes(st.bytes)}`;
 }
 
 async function onClearCacheClick() {
@@ -439,7 +439,7 @@ async function onClearCacheClick() {
     if (r && r.ok) {
       $('cacheStats').textContent =
         ctMsg('pagecache_cleared', [String(r.count), fmtBytes(r.bytes)]) ||
-        `Cache cleared (${r.count} pages, ${fmtBytes(r.bytes)} freed)`;
+        `Cache cleared (${r.count} images, ${fmtBytes(r.bytes)} freed)`;
       setTimeout(refreshCacheStats, 4000);
     } else {
       throw new Error((r && r.error) || 'unknown error');

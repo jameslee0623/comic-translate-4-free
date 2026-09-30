@@ -327,7 +327,7 @@
     "message": "このセッション中に再訪したページは一時キャッシュから即座に読み込まれます。ブラウザを閉じるとキャッシュは自動的に削除されます。"
   },
   "pagecache_stats": {
-    "message": "$COUNT$ ページ · $SIZE$",
+    "message": "$COUNT$ 枚の画像 · $SIZE$",
     "placeholders": {
       "count": {
         "content": "$1"
@@ -344,7 +344,7 @@
     "message": "削除中…"
   },
   "pagecache_cleared": {
-    "message": "キャッシュを削除しました（$COUNT$ ページ、$SIZE$ 解放）",
+    "message": "キャッシュを削除しました（$COUNT$ 枚の画像、$SIZE$ 解放）",
     "placeholders": {
       "count": {
         "content": "$1"
