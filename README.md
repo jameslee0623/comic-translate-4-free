@@ -40,6 +40,8 @@ inpainter, ~350 MB total). They are cached in the browser (IndexedDB) and never
 re-downloaded. The byte size of each file is verified after download; a
 truncated or wrong file is flagged with a ⚠ and can be re-downloaded.
 
+![Downloading the models from the Options page](docs/images/options-models.png)
+
 ## Use
 
 1. **Allow the site first** — translation only runs on sites you explicitly
@@ -47,15 +49,23 @@ truncated or wrong file is flagged with a ⚠ and can be re-downloaded.
    (or add hostnames in Options, or turn on **Allow all sites** to skip this
    step everywhere). This is a hard gate: the pipeline refuses
    to run anywhere else.
-2. Open a manga page on an allowed site.
-3. Click the extension icon → **Translate this page**. On first use per site,
-   Chrome asks for a one-time permission so the extension can download the
-   page image at full resolution.
-4. A status pill in the corner of the page shows live progress
+2. Open a manga page on an allowed site — it starts translating
+   automatically as soon as the page finishes loading, no button click
+   needed (toggleable in Options under "Auto-translate on page load").
+   On first use per site, Chrome asks for a one-time permission so the
+   extension can download the page image at full resolution.
+3. A status pill in the top-right corner of the page shows live progress
    (Capturing → Detecting → OCR → …). When done, the page's own picture is
    replaced in place with the translated version — original text inpainted
-   out, translation rendered back into the bubbles. If the page has no clear
-   main image, the translation shows in an overlay instead.
+   out, translation rendered back into the bubbles.
+
+To translate one specific picture instead of the page's main image,
+right-click it and choose **Send to comic-translate-4-free**. This sends
+that exact image through the pipeline — even when it is smaller than the
+minimum image size — and still replaces it in place. The menu item only
+appears on sites you have allowed.
+
+![The extension popup](docs/images/popup.png)
 
 The pipeline input is the page's largest image, gated by the minimum image
 size setting (default 500px): smaller pictures are skipped with a clear
@@ -67,18 +77,21 @@ from a temporary on-disk cache (the inpainted image + translated text, so
 font-size changes re-render without re-translating). The cache is cleared
 automatically when the browser closes, and is never used in incognito windows.
 
-**Options** (right-click the icon → Options): site access, source/target
-languages, translation backend (Google free / Azure Translator / LM Studio /
-experimental local LLM), connection-test buttons for Azure and LM Studio,
+**Options** (right-click the icon → Options): site access, auto-translate on
+page load, source/target languages, translation backend (Google free / Azure
+Translator / LM Studio), connection-test buttons for Azure and LM Studio,
 detection threshold, minimum image size (default 500px — smaller captures are
-skipped), font sizes, debug mode.
+skipped), font sizes, debug mode, and the translated-page cache controls.
 
 ### LM Studio
 
-Run LM Studio with its OpenAI-compatible server enabled (default
-`http://localhost:1234`, server path `/v1`). Select **LM Studio (local)** as
-the backend in Options, set the server URL, then press
-**Check LM Studio connection** to verify.
+Run LM Studio with its local server enabled (default
+`http://127.0.0.1:1234`). Select **LM Studio (local server)** as the backend
+in Options, set the server URL and the API flavour — **LM Studio REST API v1**
+(posts to `/api/v1/chat`) or **OpenAI-compatible** (posts to
+`/v1/chat/completions`) — then press **Check LM Studio connection** to
+verify. The loaded model is detected automatically and remembered, so there
+is no model-name field to fill in.
 
 ## Build from source
 
@@ -164,6 +177,11 @@ page couldn't run the parallel branches without freezing.)
 
 ## Known limitations
 
+- No good OCR for Korean — source languages are Japanese, English, and
+  Simplified/Traditional Chinese.
+- Auto-translate handles a single picture per page (the page's main image).
+  To translate any other picture on the page, right-click it and choose
+  **Send to comic-translate-4-free**.
 - Local LLM backend is experimental (needs WebGPU + multi-GB downloads).
 - Google backend uses the unofficial `translate.googleapis.com` endpoint and
   may be rate-limited; Azure needs your own key.
