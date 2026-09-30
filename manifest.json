@@ -41,7 +41,8 @@
     "storage",
     "tabs",
     "unlimitedStorage",
-    "offscreen"
+    "offscreen",
+    "contextMenus"
   ],
   "version": "0.3.0",
   "default_locale": "en"

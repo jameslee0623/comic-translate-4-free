@@ -59,6 +59,10 @@
   "check_lmstudio": {
     "message": "LM Studio 연결 확인"
   },
+  "ctx_send_image": {
+    "message": "comic-translate-4-free로 보내기",
+    "description": "Context menu item on images: send this image to the translation pipeline"
+  },
   "debug": {
     "message": "디버그"
   },

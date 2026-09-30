@@ -48,7 +48,8 @@
     "scripting",
     "storage",
     "tabs",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "contextMenus"
   ],
   "version": "0.3.0",
   "default_locale": "en"

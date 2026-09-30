@@ -216,11 +216,43 @@
     };
   }
 
-  // Direct pixels via page canvas. Throws (tainted canvas) when the image
-  // host sends no CORS headers — the worker then tries a direct fetch.
-  function mainImagePixels() {
-    const im = mainImgEl && mainImgEl.isConnected ? mainImgEl : null;
-    if (!im) throw new Error('no main image');
+  // The image the user right-clicked ("Send to comic-translate-4-free"): match
+  // by live src, by the translated data URL now shown, or by the stashed
+  // original (re-send of an already-translated image). No size filter — the
+  // manual send bypasses the minimum image size on purpose.
+  function findImageBySrc(srcUrl) {
+    if (!srcUrl) return null;
+    const im = [...document.images].find(im => {
+      if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
+      const cur = im.currentSrc || im.src || '';
+      return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
+    });
+    if (!im) return null;
+    const cur = im.currentSrc || im.src || '';
+    const wasTranslated = !!im.dataset.ctOriginal && /^data:/i.test(cur);
+    return {
+      src: wasTranslated ? im.dataset.ctOriginal : cur,
+      w: im.naturalWidth, h: im.naturalHeight,
+      translated: wasTranslated,
+    };
+  }
+
+  // Direct pixels via page canvas. With srcUrl, captures that specific image
+  // (the manual-send path); otherwise the main image. Throws (tainted
+  // canvas) when the image host sends no CORS headers — the worker then
+  // tries a direct fetch.
+  function mainImagePixels(srcUrl) {
+    let im = null;
+    if (srcUrl) {
+      im = [...document.images].find(im => {
+        if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
+        const cur = im.currentSrc || im.src || '';
+        return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
+      });
+    } else {
+      im = mainImgEl && mainImgEl.isConnected ? mainImgEl : null;
+    }
+    if (!im) throw new Error(srcUrl ? 'image not found on page' : 'no main image');
     const c = document.createElement('canvas');
     c.width = im.naturalWidth; c.height = im.naturalHeight;
     const cx = c.getContext('2d');
@@ -234,6 +266,21 @@
     // The stored element can go stale over a long pipeline (page re-rendered
     // the <img>); re-find it before giving up.
     if (!im) { findMainImage(); im = mainImgEl && mainImgEl.isConnected ? mainImgEl : null; }
+    if (!im) return false;
+    if (!im.dataset.ctOriginal) im.dataset.ctOriginal = im.currentSrc || im.src;
+    im.removeAttribute('srcset');
+    im.src = dataUrl;
+    return true;
+  }
+
+  // In-place replace for the manual-send path: swap the <img> matching
+  // srcUrl (live src, shown data URL, or stashed original).
+  function replaceImageBySrc(srcUrl, dataUrl) {
+    const im = [...document.images].find(im => {
+      if (!im.isConnected) return false;
+      const cur = im.currentSrc || im.src || '';
+      return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
+    });
     if (!im) return false;
     if (!im.dataset.ctOriginal) im.dataset.ctOriginal = im.currentSrc || im.src;
     im.removeAttribute('srcset');
@@ -430,8 +477,13 @@
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
       return false;
     }
+    if (msg.type === 'ct/find-image-by-src') {
+      try { sendResponse({ ok: true, image: findImageBySrc(msg.srcUrl) }); }
+      catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
+      return false;
+    }
     if (msg.type === 'ct/get-image-pixels') {
-      try { sendResponse({ ok: true, ...mainImagePixels() }); }
+      try { sendResponse({ ok: true, ...mainImagePixels(msg.srcUrl) }); }
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
       return false;
     }
@@ -504,7 +556,11 @@
           if (mode === 'replace') {
             // In-place: swap the page's original <img> for the translated one.
             // No overlay mask — the translation lives in the page itself.
-            replaced = replaceMainImage(work.toDataURL('image/png'));
+            // The manual-send path names the exact <img> (msg.srcUrl); the
+            // auto path replaces the detected main image.
+            const dataUrl = work.toDataURL('image/png');
+            replaced = msg.srcUrl ? replaceImageBySrc(msg.srcUrl, dataUrl)
+                                  : replaceMainImage(dataUrl);
             if (replaced) {
               if (overlay) overlay.style.display = 'none';
             } else {

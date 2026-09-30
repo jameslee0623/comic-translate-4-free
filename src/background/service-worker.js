@@ -148,7 +148,10 @@ async function fetchImagePixels(url, referrer) {
 // sends CORS headers). Tier 1b: background fetch of the image URL (needs the
 // host permission the popup requests on click). If neither can read the
 // picture we throw an actionable error; there is no screenshot fallback.
-async function getPipelineImage(tabId, settings, tabUrl) {
+async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
+  // Manual send (right-click "Send to comic-translate-4-free"): translate
+  // this exact image, bypassing the minimum image size — the user picked it.
+  const manualSrc = opts.srcUrl || null;
   const minSize = settings.minImageSize || 500;
   const tooSmall = (w, h) => {
     if (Math.max(w, h) < minSize) {
@@ -156,12 +159,18 @@ async function getPipelineImage(tabId, settings, tabUrl) {
     }
   };
   let info = null;
-  try { info = (await chrome.tabs.sendMessage(tabId, { type: 'ct/find-image' }))?.image || null; }
+  try {
+    info = manualSrc
+      ? (await chrome.tabs.sendMessage(tabId, { type: 'ct/find-image-by-src', srcUrl: manualSrc }))?.image || null
+      : (await chrome.tabs.sendMessage(tabId, { type: 'ct/find-image' }))?.image || null;
+  }
   catch { info = null; }
   if (!info || !info.src) {
-    throw new Error('no picture found on this page — the extension translates the page\'s own picture, not a screenshot of the page');
+    throw new Error(manualSrc
+      ? 'could not find that image on the page anymore — it may have been removed or the page reloaded'
+      : 'no picture found on this page — the extension translates the page\'s own picture, not a screenshot of the page');
   }
-  tooSmall(info.w || 0, info.h || 0);
+  if (!manualSrc) tooSmall(info.w || 0, info.h || 0);
   const failures = [];
   // Tier 1a: pixels straight from the page. Skipped when the page already
   // shows our translated render (info.translated): the canvas would hand back
@@ -171,7 +180,8 @@ async function getPipelineImage(tabId, settings, tabUrl) {
   // stay correct and revisits hit the cache.
   if (!info.translated) {
     try {
-      const p = await chrome.tabs.sendMessage(tabId, { type: 'ct/get-image-pixels' });
+      const p = await chrome.tabs.sendMessage(tabId,
+        manualSrc ? { type: 'ct/get-image-pixels', srcUrl: manualSrc } : { type: 'ct/get-image-pixels' });
       if (p && p.ok) {
         const rgba = new Uint8ClampedArray(p.data);
         // A blank (all-black) capture fed to the detector yields 2 bogus
@@ -190,7 +200,7 @@ async function getPipelineImage(tabId, settings, tabUrl) {
   // the originals, not the render).
   try {
     const { rgba, w, h } = await fetchImagePixels(info.src, tabUrl);
-    tooSmall(w, h);
+    if (!manualSrc) tooSmall(w, h);
     return { rgba, w, h, mode: 'replace', tier: 'worker-fetch' };
   } catch (e) { failures.push('download: ' + String((e && e.message) || e).slice(0, 120)); }
   let imgHost = '';
@@ -382,11 +392,14 @@ async function isIncognitoTab(tabId) {
 
 // Send the render payload to the page and verify it landed. Shared by the
 // live pipeline and the page-cache hit path (which re-sends a stored entry).
-async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timings, debug) {
+// extra.srcUrl names the exact <img> for the manual-send path; the auto
+// path omits it and the page replaces its detected main image.
+async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timings, debug, extra = {}) {
   const renderRes = await chrome.tabs.sendMessage(tabId, {
     type: MSG.RENDER, runId, mode,
     imageDataUrl, width: w, height: h,
     blocks, timings, debug,
+    ...(extra.srcUrl ? { srcUrl: extra.srcUrl } : {}),
   });
   // Surface a content-side render failure instead of silently reporting
   // "done" while the original image is still on the page.
@@ -403,20 +416,23 @@ async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timing
 // page already knows (RUN_STARTED went out before capture), and the message
 // shape is identical to the live pipeline's — the content script can't tell
 // the difference, and re-composites the text with the CURRENT font settings.
-async function renderFromPageCache(tabId, runId, entry, settings, timings) {
+async function renderFromPageCache(tabId, runId, entry, settings, timings, srcUrl) {
   checkCancelled(runId);
   setProgress(runId, 'render', 0.96);
   const t0 = performance.now();
   await sendRender(tabId, runId, entry.mode || 'replace',
     entry.imageDataUrl, entry.width, entry.height, entry.blocks,
     { ...timings, cacheHit: Math.round(performance.now() - t0) },
-    settings.debugMode);
+    settings.debugMode, { srcUrl });
   setProgress(runId, 'done', 1);
   return { runId, ok: true, cached: true };
 }
 
 // ---------------------------------------------------------------- pipeline
-async function runPipeline(tabId) {
+// opts.srcUrl: manual send (right-click) — translate this exact image,
+// bypassing the minimum image size. Otherwise the auto path.
+async function runPipeline(tabId, opts = {}) {
+  const manualSrc = opts.srcUrl || null;
   const runId = 'run-' + Date.now().toString(36) + '-' + (runSeq++) + '-' + Math.random().toString(36).slice(2, 8);
   runs.set(runId, { cancelled: false, tabId });
   const settings = await getSettings();
@@ -457,7 +473,7 @@ async function runPipeline(tabId) {
     // ---- 1. capture: the page's own picture (min-size gated), else viewport
     setProgress(runId, 'capture', 0.02);
     let t0 = performance.now();
-    const { rgba, w, h, mode, tier } = await getPipelineImage(tabId, settings, tabUrl);
+    const { rgba, w, h, mode, tier } = await getPipelineImage(tabId, settings, tabUrl, { srcUrl: manualSrc });
     timings.capture = Math.round(performance.now() - t0);
     const capMean = meanBrightness(rgba);
     if (capMean < 0.004) {
@@ -485,7 +501,7 @@ async function runPipeline(tabId) {
       console.warn('[ct] page-cache lookup failed:', String((e && e.message) || e).slice(0, 120));
     }
     if (cacheHit) {
-      return await renderFromPageCache(tabId, runId, cacheHit, settings, timings);
+      return await renderFromPageCache(tabId, runId, cacheHit, settings, timings, manualSrc);
     }
 
     // ---- 2. detection (+ tall-image slicing)
@@ -737,7 +753,7 @@ async function runPipeline(tabId) {
     // and let a stale render reach the tab.
     checkCancelled(runId);
     timings.total = Math.round(performance.now() - pipelineT0);
-    await sendRender(tabId, runId, mode, finalDataUrl, w, h, blocks, timings, settings.debugMode);
+    await sendRender(tabId, runId, mode, finalDataUrl, w, h, blocks, timings, settings.debugMode, { srcUrl: manualSrc });
     // ---- 9. page cache: remember this translated page for instant revisits.
     // Best-effort — a cache failure must never fail the run. Skipped in
     // incognito; a cancelled run never reaches this point (it throws above).
@@ -829,6 +845,81 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 // ---------------------------------------------------------------- message router
+// ------------------------------------------- right-click "send this image"
+// The menu item appears on images on sites that pass the site-access gate:
+// documentUrlPatterns mirrors the whitelist (omitted entirely when "Allow
+// all sites" is on, since the gate passes everywhere then; no item at all
+// when nothing is allowed). A click sends that exact image through the
+// pipeline — bypassing the minimum image size — and the translated picture
+// replaces it in place. The page cache keys on image content, so it works
+// for manual sends too.
+const CTX_MENU_ID = 'ct-send-image';
+function menuPatternsFor(settings) {
+  if (settings.allowAllSites) return null;
+  const hosts = settings.siteWhitelist || [];
+  if (!hosts.length) return [];
+  return hosts.flatMap(h => [`*://${h}/*`, `*://*.${h}/*`]);
+}
+async function refreshContextMenu() {
+  if (!chrome.contextMenus || !chrome.contextMenus.create) return;
+  try {
+    await chrome.contextMenus.removeAll();
+    const settings = await getSettings().catch(() => ({}));
+    const patterns = menuPatternsFor(settings);
+    if (patterns && !patterns.length) return; // nothing allowed: no menu item
+    const props = {
+      id: CTX_MENU_ID,
+      title: chrome.i18n.getMessage('ctx_send_image') || 'Send to comic-translate-4-free',
+      contexts: ['image'],
+    };
+    if (patterns) props.documentUrlPatterns = patterns;
+    await chrome.contextMenus.create(props);
+  } catch (e) {
+    console.warn('[ct] context menu setup failed:', String((e && e.message) || e).slice(0, 120));
+  }
+}
+// Manual send: the right-clicked image goes through the pipeline like a page
+// run — same gate, same stages, same page cache, in-place replace.
+async function handleTranslateImage(tabId, srcUrl) {
+  try {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    if (!tab || /^chrome:\/\//.test(tab.url || '')) return;
+    const settings = await getSettings();
+    const host = hostOf(tab.url);
+    if (!host) return;
+    if (!settings.allowAllSites && !isWhitelisted(host, settings.siteWhitelist || [])) {
+      // Unreachable in practice (the menu patterns mirror this gate);
+      // best-effort: surface it on the page's pill when a content script
+      // can be injected (the menu click is a user gesture).
+      try {
+        await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
+        await chrome.tabs.sendMessage(tabId, {
+          type: MSG.RUN_PROGRESS, direct: true, stage: 'error',
+          error: `"${host}" is not in your site access list — allow it from the popup or Options, or turn on "Allow all sites"`,
+        });
+      } catch { /* no page access: stay silent */ }
+      return;
+    }
+    // Any in-flight run for this tab is dropped first — the new request wins.
+    await cancelRunsForTab(tabId);
+    await runPipeline(tabId, { srcUrl });
+  } catch (e) {
+    console.warn('[ct] manual image send failed:', String((e && e.message) || e).slice(0, 160));
+  }
+}
+if (chrome.contextMenus && chrome.contextMenus.onClicked) {
+  chrome.contextMenus.onClicked.addListener((info, tab) => {
+    if (!info || info.menuItemId !== CTX_MENU_ID) return;
+    if (!tab || tab.id == null || !info.srcUrl) return;
+    // Return the promise so the worker stays alive for the run.
+    return handleTranslateImage(tab.id, info.srcUrl);
+  });
+}
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.settings) refreshContextMenu().catch(() => {});
+});
+refreshContextMenu().catch(() => {});
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
     try {
