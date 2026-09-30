@@ -200,7 +200,7 @@ const handlers = {
         throwIfCancelled(runId);
         const rgbaRaw = await pixelTake(p.key);
         const maskRaw = await pixelTake(p.maskKey);
-        const out = await inpainter.inpaintPatch(new Uint8ClampedArray(rgbaRaw), new Uint8Array(maskRaw), p.width, p.height);
+        const out = await inpainter.inpaintPatch(new Uint8ClampedArray(rgbaRaw), new Uint8Array(maskRaw), p.width, p.height, () => cancelledRuns.has(runId));
         const resKey = p.key + ':out';
         await pixelPut(resKey, out.buffer);
         results.push({ id: p.id, key: resKey, width: p.width, height: p.height });
