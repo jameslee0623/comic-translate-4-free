@@ -83,6 +83,10 @@
   <div id="models"></div>
   <p class="hint" data-i18n="models_hint">Models are downloaded from Hugging Face once and cached in the browser (IndexedDB).</p>
 
+  <h2 data-i18n="pagecache_title">Translated page cache</h2>
+  <p style="color:#8a8a90;font-size:12px" data-i18n="pagecache_desc">Pages you revisit in this browser session load instantly from a temporary cache. The cache is cleared automatically when the browser closes.</p>
+  <div class="row"><span id="cacheStats" style="color:#9a9aa0;font-size:12px"></span><button id="clearCache" data-i18n="pagecache_clear">Clear cache</button></div>
+
   <h2 data-i18n="support_title">Support this project</h2>
   <p style="color:#8a8a90;font-size:12px;margin:0 0 4px" data-i18n="support_hint">This extension is free and open source. If it saves you time, you can support its ongoing development.</p>
   <div class="row">
@@ -99,6 +103,6 @@
 
   <div class="foot" style="margin-top:28px;color:#666;font-size:12px"><span data-i18n="appName">comic-translate-4-free</span> <span id="version"></span></div>
   <script src="i18n.js"></script>
-  <script src="options.js"></script>
+  <script type="module" src="options.js"></script>
 </body>
 </html>

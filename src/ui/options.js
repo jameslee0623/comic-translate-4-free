@@ -1,5 +1,5 @@
 // Options page: read/write settings + model management + connection checks.
-const BUILD = '20260929y'; // keep in sync with popup.js; shown in the footer
+import { BUILD } from '../shared/version.js';
 const $ = id => document.getElementById(id);
 const LANGS = [
   ['ja', '日本語'], ['en', 'English'], ['zh-CN', '简体中文'],
@@ -253,6 +253,8 @@ async function load() {
   renderWhitelist();
   formLoaded = true;
   refreshModels();
+  $('clearCache').onclick = onClearCacheClick;
+  refreshCacheStats();
 }
 
 $('threshold').oninput = e => { $('thresholdVal').textContent = Number(e.target.value).toFixed(2); autoSave(); };
@@ -347,6 +349,47 @@ chrome.runtime.onMessage.addListener(msg => {
       `(${(msg.loaded / 1048576).toFixed(0)}/${(msg.total / 1048576).toFixed(0)} MB)</span>`;
   }
 });
+
+// ---- translated page cache ----
+function fmtBytes(n) {
+  n = Number(n) || 0;
+  if (n < 1024) return `${n} B`;
+  if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1048576).toFixed(1)} MB`;
+}
+
+async function refreshCacheStats() {
+  let st = { count: 0, bytes: 0 };
+  try {
+    const r = await chrome.runtime.sendMessage({ type: 'ct/page-cache-stats' });
+    if (r && r.ok) st = r;
+  } catch { /* background unreachable — show zeros */ }
+  $('cacheStats').textContent =
+    ctMsg('pagecache_stats', [String(st.count), fmtBytes(st.bytes)]) ||
+    `${st.count} pages · ${fmtBytes(st.bytes)}`;
+}
+
+async function onClearCacheClick() {
+  const btn = $('clearCache');
+  btn.disabled = true;
+  const old = btn.textContent;
+  btn.textContent = ctMsg('pagecache_clearing') || 'Clearing…';
+  try {
+    const r = await chrome.runtime.sendMessage({ type: 'ct/clear-page-cache' });
+    if (r && r.ok) {
+      $('cacheStats').textContent =
+        ctMsg('pagecache_cleared', [String(r.count), fmtBytes(r.bytes)]) ||
+        `Cache cleared (${r.count} pages, ${fmtBytes(r.bytes)} freed)`;
+      setTimeout(refreshCacheStats, 4000);
+    } else {
+      throw new Error((r && r.error) || 'unknown error');
+    }
+  } catch (e) {
+    $('cacheStats').textContent = `✗ ${String((e && e.message) || e).slice(0, 100)}`;
+  }
+  btn.textContent = old;
+  btn.disabled = false;
+}
 
 async function refreshModels() {
   const r = await chrome.runtime.sendMessage({ type: 'ct/get-models' }).catch(e => ({ ok: false, error: 'sendMessage failed: ' + String((e && e.message) || e) }));

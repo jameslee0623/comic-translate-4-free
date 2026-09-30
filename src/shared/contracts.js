@@ -12,6 +12,8 @@ export const MSG = {
   DELETE_MODEL: 'ct/delete-model',       // {id} -> {ok}
   CHECK_AZURE: 'ct/check-azure',         // {} -> {ok, detail} | {ok:false, error}
   CHECK_LMSTUDIO: 'ct/check-lmstudio',   // {} -> {ok, detail} | {ok:false, error}
+  PAGE_CACHE_STATS: 'ct/page-cache-stats', // {} -> {ok, count, bytes}
+  CLEAR_PAGE_CACHE: 'ct/clear-page-cache', // {} -> {ok, count, bytes}
   // SW -> popup (broadcast)
   MODEL_PROGRESS: 'ct/model-progress',   // {id, loaded, total}
   RUN_PROGRESS: 'ct/run-progress',       // {runId, stage, progress}
@@ -45,13 +47,24 @@ export const STAGE_LABEL = {
 
 // IndexedDB: db 'ct-db', store 'models' (keyPath 'id').
 // Record: {id, data:ArrayBuffer, bytes, downloadedAt}
+// v2 adds store 'page-cache' (keyPath 'id') for translated pages; see
+// shared/page-cache.js for its record shape.
 export const IDB_NAME = 'ct-db';
 export const IDB_STORE = 'models';
+export const PAGE_CACHE_STORE = 'page-cache';
 
 export function openDb() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(IDB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE, { keyPath: 'id' });
+    const req = indexedDB.open(IDB_NAME, 2);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(PAGE_CACHE_STORE)) {
+        db.createObjectStore(PAGE_CACHE_STORE, { keyPath: 'id' });
+      }
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });

@@ -14,6 +14,15 @@ import { generateMask } from '../offscreen/ml/mask.js';
 import { mergePaddedBoxes } from '../offscreen/ml/inpaint.js';
 import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL } from './translators.js';
 import { mlHostAlive, ensureMlHost, callMl, makeCanvas, canvasToBlob, directHandlers } from './ml-bridge.js';
+import {
+  initPageCache, buildCacheKey, pageCacheGet, pageCachePut,
+  pageCacheStats, clearPageCache,
+} from '../shared/page-cache.js';
+
+// Translated-page cache is session-scoped: initPageCache() wipes the store on
+// every browser startup (via a chrome.storage.session marker) and the
+// get/put/stats helpers await that check before touching the store.
+initPageCache();
 
 // Content script path for scripting.executeScript.
 // Chrome: service worker, paths relative to extension root.
@@ -321,6 +330,53 @@ function broadcastError(runId, error) {
   }
 }
 
+// ---------------------------------------------------------------- page cache
+// Incognito tabs never touch the page cache — no reads, no writes. When the
+// tab can't be inspected we err on the side of not caching.
+async function isIncognitoTab(tabId) {
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    return !!tab.incognito;
+  } catch {
+    return true;
+  }
+}
+
+// Send the render payload to the page and verify it landed. Shared by the
+// live pipeline and the page-cache hit path (which re-sends a stored entry).
+async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timings, debug) {
+  const renderRes = await chrome.tabs.sendMessage(tabId, {
+    type: MSG.RENDER, runId, mode,
+    imageDataUrl, width: w, height: h,
+    blocks, timings, debug,
+  });
+  // Surface a content-side render failure instead of silently reporting
+  // "done" while the original image is still on the page.
+  if (!renderRes || renderRes.ok === false) {
+    throw new Error('render failed: ' + String((renderRes && renderRes.error) || 'no response from page'));
+  }
+  if (renderRes.replaced === false) {
+    throw new Error('render failed: could not find the page image to replace');
+  }
+  return renderRes;
+}
+
+// Cache hit: re-send the stored translated page. The runId is the one the
+// page already knows (RUN_STARTED went out before capture), and the message
+// shape is identical to the live pipeline's — the content script can't tell
+// the difference, and re-composites the text with the CURRENT font settings.
+async function renderFromPageCache(tabId, runId, entry, settings, timings) {
+  checkCancelled(runId);
+  setProgress(runId, 'render', 0.96);
+  const t0 = performance.now();
+  await sendRender(tabId, runId, entry.mode || 'replace',
+    entry.imageDataUrl, entry.width, entry.height, entry.blocks,
+    { ...timings, cacheHit: Math.round(performance.now() - t0) },
+    settings.debugMode);
+  setProgress(runId, 'done', 1);
+  return { runId, ok: true, cached: true };
+}
+
 // ---------------------------------------------------------------- pipeline
 async function runPipeline(tabId) {
   const runId = 'run-' + Date.now().toString(36) + '-' + (runSeq++) + '-' + Math.random().toString(36).slice(2, 8);
@@ -368,6 +424,25 @@ async function runPipeline(tabId) {
     }
     await emitDebug(runId, tabId, settings, 'capture',
       { title: `Captured page — ${tier}, mean brightness ${capMean.toFixed(3)}`, image: await rgbaToDataURL(rgba, w, h), w, h, ms: timings.capture });
+
+    // ---- 1b. page cache: a page translated earlier in this session renders
+    // instantly — no detection, OCR, inpaint, or translation. The stored entry
+    // is re-sent as ct/render, so the content script re-composites the text
+    // with the CURRENT font settings; font-size tweaks never invalidate it.
+    // An early return inside try still runs the finally below (runs.delete +
+    // dropping staged pixel payloads), so cleanup is unchanged.
+    checkCancelled(runId);
+    let cacheHit = null;
+    try {
+      if (!(await isIncognitoTab(tabId))) {
+        cacheHit = await pageCacheGet(await buildCacheKey(rgba, w, h, settings));
+      }
+    } catch (e) {
+      console.warn('[ct] page-cache lookup failed:', String((e && e.message) || e).slice(0, 120));
+    }
+    if (cacheHit) {
+      return await renderFromPageCache(tabId, runId, cacheHit, settings, timings);
+    }
 
     // ---- 2. detection (+ tall-image slicing)
     checkCancelled(runId);
@@ -618,18 +693,18 @@ async function runPipeline(tabId) {
     // and let a stale render reach the tab.
     checkCancelled(runId);
     timings.total = Math.round(performance.now() - pipelineT0);
-    const renderRes = await chrome.tabs.sendMessage(tabId, {
-      type: MSG.RENDER, runId, mode,
-      imageDataUrl: finalDataUrl, width: w, height: h,
-      blocks, timings, debug: settings.debugMode,
-    });
-    // Surface a content-side render failure instead of silently reporting
-    // "done" while the original image is still on the page.
-    if (!renderRes || renderRes.ok === false) {
-      throw new Error('render failed: ' + String((renderRes && renderRes.error) || 'no response from page'));
-    }
-    if (renderRes.replaced === false) {
-      throw new Error('render failed: could not find the page image to replace');
+    await sendRender(tabId, runId, mode, finalDataUrl, w, h, blocks, timings, settings.debugMode);
+    // ---- 9. page cache: remember this translated page for instant revisits.
+    // Best-effort — a cache failure must never fail the run. Skipped in
+    // incognito; a cancelled run never reaches this point (it throws above).
+    try {
+      if (!(await isIncognitoTab(tabId))) {
+        await pageCachePut(await buildCacheKey(rgba, w, h, settings), {
+          imageDataUrl: finalDataUrl, width: w, height: h, blocks, mode,
+        });
+      }
+    } catch (e) {
+      console.warn('[ct] page-cache write failed:', String((e && e.message) || e).slice(0, 120));
     }
     setProgress(runId, 'done', 1);
     result = { runId, ok: true };
@@ -739,6 +814,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case MSG.CHECK_LMSTUDIO: {
           const s = await getSettings();
           sendResponse(await checkLmStudio(s));
+          break;
+        }
+        case MSG.PAGE_CACHE_STATS: {
+          sendResponse({ ok: true, ...(await pageCacheStats()) });
+          break;
+        }
+        case MSG.CLEAR_PAGE_CACHE: {
+          const st = await pageCacheStats();
+          await clearPageCache();
+          sendResponse({ ok: true, count: st.count, bytes: st.bytes });
           break;
         }
         case MSG.CANCEL_RUN: {

@@ -333,5 +333,39 @@
   },
   "support_hint": {
     "message": "この拡張機能は無料でオープンソースです。役に立ったなら、開発の支援をいただけると助かります。"
+  },
+  "pagecache_title": {
+    "message": "翻訳済みページのキャッシュ"
+  },
+  "pagecache_desc": {
+    "message": "このセッション中に再訪したページは一時キャッシュから即座に読み込まれます。ブラウザを閉じるとキャッシュは自動的に削除されます。"
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$ ページ · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clear": {
+    "message": "キャッシュを削除"
+  },
+  "pagecache_clearing": {
+    "message": "削除中…"
+  },
+  "pagecache_cleared": {
+    "message": "キャッシュを削除しました（$COUNT$ ページ、$SIZE$ 解放）",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
   }
 }

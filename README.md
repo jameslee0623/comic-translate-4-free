@@ -61,6 +61,11 @@ size setting (default 500px): smaller pictures are skipped with a clear
 error. The extension reads the page's own image directly — it never
 screenshots the webpage.
 
+**Page cache:** pages you revisit in the same browser session load instantly
+from a temporary on-disk cache (the inpainted image + translated text, so
+font-size changes re-render without re-translating). The cache is cleared
+automatically when the browser closes, and is never used in incognito windows.
+
 **Options** (right-click the icon → Options): site whitelist, source/target
 languages, translation backend (Google free / Azure Translator / LM Studio /
 experimental local LLM), connection-test buttons for Azure and LM Studio,

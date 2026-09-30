@@ -333,5 +333,39 @@
   },
   "support_hint": {
     "message": "本扩展程序免费开源。如果它帮到了你，欢迎支持它的持续开发。"
+  },
+  "pagecache_title": {
+    "message": "已翻译页面缓存"
+  },
+  "pagecache_desc": {
+    "message": "在本会话中再次访问的页面将从临时缓存即时加载。关闭浏览器时缓存会自动清除。"
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$ 个页面 · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clear": {
+    "message": "清除缓存"
+  },
+  "pagecache_clearing": {
+    "message": "清除中…"
+  },
+  "pagecache_cleared": {
+    "message": "已清除缓存（$COUNT$ 个页面，释放 $SIZE$）",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
   }
 }

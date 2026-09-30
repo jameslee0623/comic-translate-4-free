@@ -333,5 +333,39 @@
   },
   "support_hint": {
     "message": "This extension is free and open source. If it saves you time, you can support its ongoing development."
+  },
+  "pagecache_title": {
+    "message": "Translated page cache"
+  },
+  "pagecache_desc": {
+    "message": "Pages you revisit in this browser session load instantly from a temporary cache. The cache is cleared automatically when the browser closes."
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$ pages · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clear": {
+    "message": "Clear cache"
+  },
+  "pagecache_clearing": {
+    "message": "Clearing…"
+  },
+  "pagecache_cleared": {
+    "message": "Cache cleared ($COUNT$ pages, $SIZE$ freed)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
   }
 }

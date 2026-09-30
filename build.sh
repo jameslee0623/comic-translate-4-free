@@ -4,7 +4,7 @@
 set -euo pipefail
 SRC="$(cd "$(dirname "$0")" && pwd)"
 VERSION="$(python3 -c "import json;print(json.load(open('$SRC/manifest.json'))['version'])")"
-BUILD="$(grep -o "const BUILD = '[^']*'" "$SRC/src/ui/options.js" | cut -d"'" -f2)"
+BUILD="$(grep -o "const BUILD = '[^']*'" "$SRC/src/shared/version.js" | cut -d"'" -f2)"
 NAME="comic-translate-4-free-v${VERSION}-${BUILD}"
 DIST="$SRC/dist"
 OUT="$DIST/${NAME}.zip"

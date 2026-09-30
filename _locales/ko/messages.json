@@ -333,5 +333,39 @@
   },
   "support_hint": {
     "message": "이 확장 프로그램은 무료이며 오픈 소스입니다. 도움이 되었다면 개발을 후원해 주세요."
+  },
+  "pagecache_title": {
+    "message": "번역된 페이지 캐시"
+  },
+  "pagecache_desc": {
+    "message": "이 세션에서 다시 방문한 페이지는 임시 캐시에서 즉시 로드됩니다. 브라우저를 닫으면 캐시가 자동으로 삭제됩니다."
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$페이지 · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clear": {
+    "message": "캐시 지우기"
+  },
+  "pagecache_clearing": {
+    "message": "지우는 중…"
+  },
+  "pagecache_cleared": {
+    "message": "캐시를 지웠습니다($COUNT$페이지, $SIZE$ 확보)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
   }
 }
