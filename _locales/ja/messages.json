@@ -9,7 +9,7 @@
     "message": "comic-translate-4-free"
   },
   "auto_hint": {
-    "message": "オンにすると、ホワイトリスト登録済みページの読み込み完了後に自動で翻訳が始まります — ボタンクリック不要。（ヒント：ポップアップからサイトを追加すると、画像読み取りの権限も取得できます。）"
+    "message": "オンにすると、許可したページは読み込み完了後すぐに自動で翻訳を開始します — ボタンのクリックは不要です。（ヒント：ポップアップからサイトを許可すると、画像を読み取る権限が付与されます。）"
   },
   "auto_translate": {
     "message": "ページ読み込み時に自動翻訳"
@@ -106,7 +106,7 @@
     }
   },
   "grant_warning": {
-    "message": "ホワイトリスト登録済みですが、このサイトへのアクセス権がありません — 翻訳を開始できません。"
+    "message": "許可済みですが、このサイトへのアクセス権がありません — 翻訳を開始できません。"
   },
   "languages": {
     "message": "言語"
@@ -154,7 +154,7 @@
     "message": "サイトを検出できません"
   },
   "not_whitelisted": {
-    "message": "未登録"
+    "message": "未許可"
   },
   "options_settings": {
     "message": "オプションと設定"
@@ -183,7 +183,7 @@
     }
   },
   "site_whitelist": {
-    "message": "サイトホワイトリスト"
+    "message": "サイトアクセス"
   },
   "source_lang": {
     "message": "翻訳元言語"
@@ -198,22 +198,22 @@
     "message": "翻訳バックエンド"
   },
   "whitelist_add": {
-    "message": "このサイトをホワイトリストに追加"
+    "message": "このサイトを許可"
   },
   "whitelist_desc": {
-    "message": "翻訳はホワイトリスト登録済みサイトでのみ実行されます。ポップアップからサイトを追加するか、ホスト名をここに入力してください。"
+    "message": "翻訳は許可したサイトでのみ実行されます。ポップアップからサイトを追加するか、ホスト名をここに入力してください。"
   },
   "whitelist_remove": {
-    "message": "ホワイトリストから削除"
+    "message": "このサイトの許可を取り消す"
   },
   "whitelisted": {
-    "message": "登録済み ✓"
+    "message": "許可済み ✓"
   },
   "wl_placeholder": {
     "message": "例: example.com"
   },
   "whitelist_empty": {
-    "message": "空 — サイトを追加するまで、すべての場所で翻訳は無効です"
+    "message": "空 — サイトを許可するまで、翻訳はどこでも無効です"
   },
   "remove": {
     "message": "削除"
@@ -349,5 +349,17 @@
         "content": "$2"
       }
     }
+  },
+  "allow_all_sites": {
+    "message": "すべてのサイトを許可",
+    "description": "site access"
+  },
+  "allow_all_desc": {
+    "message": "各サイトを個別に許可することなく、どのウェブサイトでも翻訳します。拡張機能にすべてのウェブサイトへのアクセスを許可します。",
+    "description": "site access"
+  },
+  "all_sites_on": {
+    "message": "すべてのサイトが許可されています ✓",
+    "description": "site access"
   }
 }

@@ -9,7 +9,7 @@
     "message": "comic-translate-4-free"
   },
   "auto_hint": {
-    "message": "When on, whitelisted pages start translating automatically as soon as they finish loading — no button click needed. (Tip: add a site from the popup so the extension gets permission to read its images.)"
+    "message": "When on, allowed pages start translating automatically as soon as they finish loading — no button click needed. (Tip: allow a site from the popup so the extension gets permission to read its images.)"
   },
   "auto_translate": {
     "message": "Auto-translate on page load"
@@ -106,7 +106,7 @@
     }
   },
   "grant_warning": {
-    "message": "Whitelisted, but the extension has no access to this site — translation can't start."
+    "message": "Allowed, but the extension has no access to this site — translation can't start."
   },
   "languages": {
     "message": "Languages"
@@ -154,7 +154,7 @@
     "message": "no site detected"
   },
   "not_whitelisted": {
-    "message": "not whitelisted"
+    "message": "not allowed"
   },
   "options_settings": {
     "message": "Options & settings"
@@ -183,7 +183,7 @@
     }
   },
   "site_whitelist": {
-    "message": "Site whitelist"
+    "message": "Site access"
   },
   "source_lang": {
     "message": "Source language"
@@ -198,22 +198,22 @@
     "message": "Translation backend"
   },
   "whitelist_add": {
-    "message": "Add this site to whitelist"
+    "message": "Allow this site"
   },
   "whitelist_desc": {
-    "message": "Translation only runs on whitelisted sites. Add a site from the popup or type its hostname here."
+    "message": "Translation only runs on sites you allow. Add a site from the popup or type its hostname here."
   },
   "whitelist_remove": {
-    "message": "Remove from whitelist"
+    "message": "Disallow this site"
   },
   "whitelisted": {
-    "message": "whitelisted ✓"
+    "message": "allowed ✓"
   },
   "wl_placeholder": {
     "message": "e.g. example.com"
   },
   "whitelist_empty": {
-    "message": "empty — translation is disabled everywhere until you add a site"
+    "message": "empty — translation is disabled everywhere until you allow a site"
   },
   "remove": {
     "message": "Remove"
@@ -349,5 +349,17 @@
         "content": "$2"
       }
     }
+  },
+  "allow_all_sites": {
+    "message": "Allow all sites",
+    "description": "site access"
+  },
+  "allow_all_desc": {
+    "message": "Translate on any website without allowing each one first. This grants the extension access to all websites.",
+    "description": "site access"
+  },
+  "all_sites_on": {
+    "message": "all sites allowed ✓",
+    "description": "site access"
   }
 }

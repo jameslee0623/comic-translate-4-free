@@ -9,7 +9,7 @@
     "message": "comic-translate-4-free"
   },
   "auto_hint": {
-    "message": "开启后，白名单页面加载完成后会自动开始翻译 — 无需点击按钮。（提示：从弹出窗口添加网站，以便扩展获得读取其图片的权限。）"
+    "message": "开启后，允许的页面将在加载完成后立即自动开始翻译 — 无需点击按钮。（提示：从弹出窗口允许网站，扩展程序即可获得读取其图片的权限。）"
   },
   "auto_translate": {
     "message": "页面加载时自动翻译"
@@ -106,7 +106,7 @@
     }
   },
   "grant_warning": {
-    "message": "已在白名单中，但扩展无权访问此网站 — 无法开始翻译。"
+    "message": "已允许，但扩展程序无权访问此网站 — 无法开始翻译。"
   },
   "languages": {
     "message": "语言"
@@ -154,7 +154,7 @@
     "message": "未检测到网站"
   },
   "not_whitelisted": {
-    "message": "未在白名单"
+    "message": "未允许"
   },
   "options_settings": {
     "message": "选项与设置"
@@ -183,7 +183,7 @@
     }
   },
   "site_whitelist": {
-    "message": "网站白名单"
+    "message": "网站访问"
   },
   "source_lang": {
     "message": "源语言"
@@ -198,22 +198,22 @@
     "message": "翻译后端"
   },
   "whitelist_add": {
-    "message": "将此网站加入白名单"
+    "message": "允许此网站"
   },
   "whitelist_desc": {
-    "message": "翻译仅在白名单网站上运行。从弹出窗口添加网站，或在此处输入其主机名。"
+    "message": "翻译仅在您允许的网站上运行。从弹出窗口添加网站，或在此处输入其主机名。"
   },
   "whitelist_remove": {
-    "message": "从白名单移除"
+    "message": "取消允许此网站"
   },
   "whitelisted": {
-    "message": "已在白名单 ✓"
+    "message": "已允许 ✓"
   },
   "wl_placeholder": {
     "message": "例如 example.com"
   },
   "whitelist_empty": {
-    "message": "为空 — 在您添加网站之前，所有地方的翻译均处于禁用状态"
+    "message": "为空 — 在您允许某个网站之前，翻译功能将被禁用"
   },
   "remove": {
     "message": "移除"
@@ -349,5 +349,17 @@
         "content": "$2"
       }
     }
+  },
+  "allow_all_sites": {
+    "message": "允许所有网站",
+    "description": "site access"
+  },
+  "allow_all_desc": {
+    "message": "无需逐个允许，即可在任何网站上翻译。这将授予扩展程序访问所有网站的权限。",
+    "description": "site access"
+  },
+  "all_sites_on": {
+    "message": "已允许所有网站 ✓",
+    "description": "site access"
   }
 }

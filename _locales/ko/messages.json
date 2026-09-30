@@ -9,7 +9,7 @@
     "message": "comic-translate-4-free"
   },
   "auto_hint": {
-    "message": "켜면 허용된 사이트의 페이지가 로드되자마자 자동으로 번역을 시작합니다 — 버튼 클릭 불필요. (팁: 팝업에서 사이트를 추가하면 이미지 읽기 권한도 함께 얻습니다.)"
+    "message": "켜면 허용된 페이지가 로드 완료 즉시 자동으로 번역을 시작합니다 — 버튼 클릭이 필요 없습니다. (팁: 팝업에서 사이트를 허용하면 이미지를 읽을 권한이 부여됩니다.)"
   },
   "auto_translate": {
     "message": "페이지 로드 시 자동 번역"
@@ -106,7 +106,7 @@
     }
   },
   "grant_warning": {
-    "message": "허용 목록에 있지만 이 사이트에 대한 액세스 권한이 없어 번역을 시작할 수 없습니다."
+    "message": "허용되었지만 이 사이트에 대한 액세스 권한이 없습니다 — 번역을 시작할 수 없습니다."
   },
   "languages": {
     "message": "언어"
@@ -154,7 +154,7 @@
     "message": "사이트를 감지할 수 없음"
   },
   "not_whitelisted": {
-    "message": "미등록"
+    "message": "허용 안 됨"
   },
   "options_settings": {
     "message": "옵션 및 설정"
@@ -183,7 +183,7 @@
     }
   },
   "site_whitelist": {
-    "message": "사이트 허용 목록"
+    "message": "사이트 액세스"
   },
   "source_lang": {
     "message": "원본 언어"
@@ -198,22 +198,22 @@
     "message": "번역 백엔드"
   },
   "whitelist_add": {
-    "message": "이 사이트를 허용 목록에 추가"
+    "message": "이 사이트 허용"
   },
   "whitelist_desc": {
-    "message": "번역은 허용 목록에 등록된 사이트에서만 실행됩니다. 팝업에서 사이트를 추가하거나 호스트 이름을 여기에 입력하세요."
+    "message": "번역은 허용한 사이트에서만 실행됩니다. 팝업에서 사이트를 추가하거나 호스트 이름을 여기에 입력하세요."
   },
   "whitelist_remove": {
-    "message": "허용 목록에서 제거"
+    "message": "이 사이트 허용 취소"
   },
   "whitelisted": {
-    "message": "등록됨 ✓"
+    "message": "허용됨 ✓"
   },
   "wl_placeholder": {
     "message": "예: example.com"
   },
   "whitelist_empty": {
-    "message": "비어 있음 — 사이트를 추가하기 전까지 모든 곳에서 번역이 비활성화됩니다"
+    "message": "비어 있음 — 사이트를 허용하기 전까지 번역이 비활성화됩니다"
   },
   "remove": {
     "message": "제거"
@@ -349,5 +349,17 @@
         "content": "$2"
       }
     }
+  },
+  "allow_all_sites": {
+    "message": "모든 사이트 허용",
+    "description": "site access"
+  },
+  "allow_all_desc": {
+    "message": "각 사이트를 따로 허용하지 않고 모든 웹사이트에서 번역합니다. 확장 프로그램에 모든 웹사이트에 대한 액세스 권한을 부여합니다.",
+    "description": "site access"
+  },
+  "all_sites_on": {
+    "message": "모든 사이트 허용됨 ✓",
+    "description": "site access"
   }
 }

@@ -32,7 +32,7 @@ const CONTENT_SCRIPT_FILES = (typeof window !== 'undefined' && window.document)
   ? ['../content/content.js']
   : ['src/content/content.js'];
 
-// ---------------------------------------------------------------- site whitelist
+// ---------------------------------------------------------------- site access
 function hostOf(url) {
   try {
     const u = new URL(url || '');
@@ -68,7 +68,7 @@ async function hasHostAccess(host) {
 
 function hostAccessError(host) {
   return new Error(
-    `"${host}" is whitelisted but the extension has no access to it, so nothing can be translated. ` +
+    `"${host}" is allowed but the extension has no access to it, so nothing can be translated. ` +
     `Open the extension popup on this site and click "Grant access".`);
 }
 
@@ -425,7 +425,11 @@ async function runPipeline(tabId) {
     const tab = await chrome.tabs.get(tabId).catch(() => null);
     const tabUrl = (tab && tab.url) || '';
     const tabHost = hostOf(tabUrl);
-    if (tabHost && !(await hasHostAccess(tabHost))) throw hostAccessError(tabHost);
+    if (tabHost && !(await hasHostAccess(tabHost))) {
+      throw settings.allowAllSites
+        ? new Error('"Allow all sites" is on, but the extension no longer has access to all sites (the permission may have been revoked) — reopen Options → Site access and turn it back on.')
+        : hostAccessError(tabHost);
+    }
     try {
       await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
     } catch (e) {
@@ -782,7 +786,7 @@ async function detectSliced(rgba, w, h, threshold, runId, pxKeys) {
 }
 
 // ---------------------------------------------------------------- auto-translate on page load
-// Fires the pipeline automatically when a whitelisted page finishes loading —
+// Fires the pipeline automatically when an allowed page finishes loading —
 // no button click needed. One run per page load; only for the active tab.
 const autoFired = new Map(); // tabId -> {url, at}
 chrome.tabs.onRemoved.addListener(tabId => autoFired.delete(tabId));
@@ -795,7 +799,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       if (!settings.autoTranslateOnLoad) return;
       if (!tab || !tab.active) return; // translate what you're looking at
       const host = hostOf(tab.url || '');
-      if (!host || !isWhitelisted(host, settings.siteWhitelist || [])) return;
+      if (!host || (!settings.allowAllSites && !isWhitelisted(host, settings.siteWhitelist || []))) return;
       const url = tab.url;
       const prev = autoFired.get(tabId);
       const now = Date.now();
@@ -824,8 +828,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const settings = await getSettings();
           const host = hostOf(tab.url);
           if (!host) throw new Error('cannot determine the site of this tab');
-          if (!isWhitelisted(host, settings.siteWhitelist || [])) {
-            throw new Error(`"${host}" is not in your site whitelist — add it from the popup or Options to translate here`);
+          if (!settings.allowAllSites && !isWhitelisted(host, settings.siteWhitelist || [])) {
+            throw new Error(`"${host}" is not in your site access list — allow it from the popup or Options, or turn on "Allow all sites"`);
           }
           // Awaited (not fire-and-forget): the worker stays alive for the whole run.
           // Any in-flight run for this tab is dropped first — the new request wins.

@@ -229,6 +229,21 @@ $('wlAddBtn').onclick = async () => {
   saveNow();
 };
 
+$('allowAllSites').onchange = e => {
+  const on = e.target.checked;
+  // "Allow all sites" needs the <all_urls> host permission. Request it
+  // synchronously in the gesture — no awaits before permissions.request()
+  // or Firefox drops the user gesture and the prompt never appears.
+  const p = on
+    ? chrome.permissions.request({ origins: ['<all_urls>'] })
+    : chrome.permissions.remove({ origins: ['<all_urls>'] }).catch(() => true);
+  Promise.resolve(p).then(granted => {
+    // If the user dismissed/denied the prompt, revert the checkbox.
+    if (on && !granted) e.target.checked = false;
+    saveNow();
+  }).catch(() => { if (on) e.target.checked = false; saveNow(); });
+};
+
 async function load() {
   const { settings } = await chrome.storage.local.get('settings');
   const s = { ...DEFAULTS, ...(settings || {}) };
@@ -249,6 +264,7 @@ async function load() {
   $('minImageSize').value = s.minImageSize;
   $('debugMode').checked = s.debugMode;
   $('autoTranslate').checked = s.autoTranslateOnLoad;
+  $('allowAllSites').checked = !!s.allowAllSites;
   whitelist = [...(s.siteWhitelist || [])];
   renderWhitelist();
   formLoaded = true;
@@ -285,6 +301,7 @@ function collect() {
     minImageSize: parseInt($('minImageSize').value, 10) || 500,
     debugMode: $('debugMode').checked,
     siteWhitelist: [...whitelist], autoTranslateOnLoad: $('autoTranslate').checked,
+    allowAllSites: $('allowAllSites').checked,
   };
 }
 

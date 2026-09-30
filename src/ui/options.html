@@ -30,8 +30,10 @@
 <body>
   <h1><span data-i18n="appName">comic-translate-4-free</span> — <span data-i18n="options_title">Options</span> <span id="saved" data-i18n="saved">Saved ✓</span></h1>
 
-  <h2 data-i18n="site_whitelist">Site whitelist</h2>
-  <p style="color:#8a8a90;font-size:12px" data-i18n="whitelist_desc">Translation only runs on whitelisted sites. Add a site from the popup or type its hostname here.</p>
+  <h2 data-i18n="site_whitelist">Site access</h2>
+  <p style="color:#8a8a90;font-size:12px" data-i18n="whitelist_desc">Translation only runs on sites you allow. Add a site from the popup or type its hostname here.</p>
+  <div class="row"><label data-i18n="allow_all_sites">Allow all sites</label><input type="checkbox" id="allowAllSites"></div>
+  <p class="hint" data-i18n="allow_all_desc">Translate on any website without allowing each one first. This grants the extension access to all websites.</p>
   <ul id="whitelist"></ul>
   <div class="row"><input type="text" id="wlAdd" data-i18n-ph="wl_placeholder" placeholder="e.g. example.com" style="width:220px"><button id="wlAddBtn" data-i18n="add">Add</button></div>
 
@@ -66,7 +68,7 @@
 
   <h2 data-i18n="automation">Automation</h2>
   <div class="row"><label data-i18n="auto_translate">Auto-translate on page load</label><input type="checkbox" id="autoTranslate"></div>
-  <p class="hint" data-i18n="auto_hint">When on, whitelisted pages start translating automatically as soon as they finish loading — no button click needed. (Tip: add a site from the popup so the extension gets permission to read its images.)</p>
+  <p class="hint" data-i18n="auto_hint">When on, allowed pages start translating automatically as soon as they finish loading — no button click needed. (Tip: allow a site from the popup so the extension gets permission to read its images.)</p>
 
   <h2 data-i18n="debug">Debug</h2>
   <div class="row"><label data-i18n="debug_mode">Debug mode (stage inspector)</label><input type="checkbox" id="debugMode"></div>

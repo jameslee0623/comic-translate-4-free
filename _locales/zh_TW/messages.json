@@ -9,7 +9,7 @@
     "message": "comic-translate-4-free"
   },
   "auto_hint": {
-    "message": "開啟後，白名單頁面載入完成後會自動開始翻譯 — 無需點擊按鈕。（提示：從彈出視窗新增網站，以便擴充功能取得讀取其圖片的權限。）"
+    "message": "開啟後，允許的頁面將在載入完成後立即自動開始翻譯 — 無需點擊按鈕。（提示：從彈出視窗允許網站，擴充功能即可獲得讀取其圖片的權限。）"
   },
   "auto_translate": {
     "message": "頁面載入時自動翻譯"
@@ -106,7 +106,7 @@
     }
   },
   "grant_warning": {
-    "message": "已在白名單中，但擴充功能無權存取此網站 — 無法開始翻譯。"
+    "message": "已允許，但擴充功能無權存取此網站 — 無法開始翻譯。"
   },
   "languages": {
     "message": "語言"
@@ -154,7 +154,7 @@
     "message": "未偵測到網站"
   },
   "not_whitelisted": {
-    "message": "不在白名單"
+    "message": "未允許"
   },
   "options_settings": {
     "message": "選項與設定"
@@ -183,7 +183,7 @@
     }
   },
   "site_whitelist": {
-    "message": "網站白名單"
+    "message": "網站存取"
   },
   "source_lang": {
     "message": "來源語言"
@@ -198,22 +198,22 @@
     "message": "翻譯後端"
   },
   "whitelist_add": {
-    "message": "將此網站加入白名單"
+    "message": "允許此網站"
   },
   "whitelist_desc": {
-    "message": "翻譯僅在白名單網站上執行。從彈出視窗新增網站，或在此輸入其主機名稱。"
+    "message": "翻譯僅在您允許的網站上執行。從彈出視窗新增網站，或在此處輸入其主機名稱。"
   },
   "whitelist_remove": {
-    "message": "從白名單移除"
+    "message": "取消允許此網站"
   },
   "whitelisted": {
-    "message": "已在白名單 ✓"
+    "message": "已允許 ✓"
   },
   "wl_placeholder": {
     "message": "例如 example.com"
   },
   "whitelist_empty": {
-    "message": "為空 — 在您新增網站之前，所有地方的翻譯均處於停用狀態"
+    "message": "為空 — 在您允許某個網站之前，翻譯功能將被停用"
   },
   "remove": {
     "message": "移除"
@@ -349,5 +349,17 @@
         "content": "$2"
       }
     }
+  },
+  "allow_all_sites": {
+    "message": "允許所有網站",
+    "description": "site access"
+  },
+  "allow_all_desc": {
+    "message": "無需逐個允許，即可在任何網站上翻譯。這將授予擴充功能存取所有網站的權限。",
+    "description": "site access"
+  },
+  "all_sites_on": {
+    "message": "已允許所有網站 ✓",
+    "description": "site access"
   }
 }

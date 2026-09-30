@@ -17,8 +17,9 @@ export const DEFAULT_SETTINGS = {
   initFontSize: 40,
   minFontSize: 10,
   minImageSize: 500, // skip images smaller than this (max dimension, px)
-  siteWhitelist: [], // hostnames allowed to translate, e.g. ['example.com']
-  autoTranslateOnLoad: true, // start the pipeline automatically on whitelisted page loads
+  siteWhitelist: [], // hostnames with site access, e.g. ['example.com']
+  allowAllSites: false, // site access: translate on any site (requests <all_urls> when enabled)
+  autoTranslateOnLoad: true, // start the pipeline automatically on allowed page loads
 };
 
 export const LANGS = [

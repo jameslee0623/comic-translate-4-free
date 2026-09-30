@@ -258,18 +258,27 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
     btn.classList.remove('remind');
     return;
   }
-  const ok = isWhitelisted(currentHost, list);
+  const allowAll = !!settings.allowAllSites;
+  const ok = allowAll || isWhitelisted(currentHost, list);
   const hostHtml = `<b>${currentHost}</b>`;
-  const statusHtml = ok
-    ? `<span class="ok">${ctMsg('whitelisted') || 'whitelisted ✓'}</span>`
-    : `<span class="warn">${ctMsg('not_whitelisted') || 'not whitelisted'}</span>`;
+  const statusHtml = allowAll
+    ? `<span class="ok">${ctMsg('all_sites_on') || 'all sites allowed ✓'}</span>`
+    : ok
+      ? `<span class="ok">${ctMsg('whitelisted') || 'allowed ✓'}</span>`
+      : `<span class="warn">${ctMsg('not_whitelisted') || 'not allowed'}</span>`;
   // site_this = "this site: $HOST$ — $STATUS$" (word order localized per locale)
   $('site').innerHTML = ctMsg('site_this', [hostHtml, statusHtml]) || `this site: ${hostHtml} — ${statusHtml}`;
-  btn.textContent = ctMsg(ok ? 'whitelist_remove' : 'whitelist_add') || (ok ? 'Remove from whitelist' : 'Add this site to whitelist');
-  btn.disabled = false;
-  // Light the button up until the site is whitelisted — it's the reminder.
-  btn.classList.toggle('remind', !ok);
-  // Whitelisted but missing host access: offer the one-click grant. This covers
+  if (allowAll) {
+    // Per-site allow/disallow is meaningless when every site is allowed.
+    btn.style.display = 'none';
+  } else {
+    btn.style.display = '';
+    btn.textContent = ctMsg(ok ? 'whitelist_remove' : 'whitelist_add') || (ok ? 'Disallow this site' : 'Allow this site');
+    btn.disabled = false;
+    // Light the button up until the site is allowed — it's the reminder.
+    btn.classList.toggle('remind', !ok);
+  }
+  // Allowed but missing host access: offer the one-click grant. This covers
   // BOTH the page host (needed for script injection) and the picture's host
   // (needed for the download tier) — the picture often lives on a CDN. After
   // the first grant the content script can inject, so the picture host becomes

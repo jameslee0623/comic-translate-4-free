@@ -42,11 +42,12 @@ truncated or wrong file is flagged with a ⚠ and can be re-downloaded.
 
 ## Use
 
-1. **Whitelist the site first** — translation only runs on sites you explicitly
-   allow. Click the extension icon and press **Add this site to whitelist**
-   (or add hostnames in Options). This is a hard gate: the pipeline refuses
+1. **Allow the site first** — translation only runs on sites you explicitly
+   allow. Click the extension icon and press **Allow this site**
+   (or add hostnames in Options, or turn on **Allow all sites** to skip this
+   step everywhere). This is a hard gate: the pipeline refuses
    to run anywhere else.
-2. Open a manga page on a whitelisted site.
+2. Open a manga page on an allowed site.
 3. Click the extension icon → **Translate this page**. On first use per site,
    Chrome asks for a one-time permission so the extension can download the
    page image at full resolution.
@@ -66,7 +67,7 @@ from a temporary on-disk cache (the inpainted image + translated text, so
 font-size changes re-render without re-translating). The cache is cleared
 automatically when the browser closes, and is never used in incognito windows.
 
-**Options** (right-click the icon → Options): site whitelist, source/target
+**Options** (right-click the icon → Options): site access, source/target
 languages, translation backend (Google free / Azure Translator / LM Studio /
 experimental local LLM), connection-test buttons for Azure and LM Studio,
 detection threshold, minimum image size (default 500px — smaller captures are
