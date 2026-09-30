@@ -27,7 +27,7 @@
     "message": "e.g. japaneast"
   },
   "backend": {
-    "message": "Translation engine"
+    "message": "Translating engine"
   },
   "backend_azure": {
     "message": "Azure Translator"
@@ -199,7 +199,7 @@
     "message": "Translate this page"
   },
   "translation_backend": {
-    "message": "Translation engine"
+    "message": "Translating engine"
   },
   "whitelist_add": {
     "message": "Allow this site"
