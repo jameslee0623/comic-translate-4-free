@@ -174,3 +174,9 @@ page couldn't run the parallel branches without freezing.)
 
 Bundled libraries, ported code, and runtime-downloaded models are listed with
 their licenses in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+## Support this project
+
+If this extension is useful to you, consider supporting its development:
+
+<script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support this project', '#72a4f2', 'S5X627XJQW');kofiwidget2.draw();</script>

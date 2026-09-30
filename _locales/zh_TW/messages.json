@@ -324,5 +324,14 @@
   },
   "not_downloaded": {
     "message": "未下載"
+  },
+  "support_project": {
+    "message": "❤️ 支持本專案"
+  },
+  "support_title": {
+    "message": "支持本專案"
+  },
+  "support_hint": {
+    "message": "本擴充功能免費開源。如果它幫到了你，歡迎支持它的持續開發。"
   }
 }

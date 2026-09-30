@@ -167,3 +167,9 @@ translate 順序；單一執行緒的背景頁面無法在不卡死的情況下�
 
 綑綁的函式庫、移植的程式碼、執行時下載的模型及其授權，
 見 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+
+## 支持本專案
+
+如果這個擴充功能對你有幫助，歡迎支持它的開發：
+
+<script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support this project', '#72a4f2', 'S5X627XJQW');kofiwidget2.draw();</script>

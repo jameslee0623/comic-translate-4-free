@@ -324,5 +324,14 @@
   },
   "not_downloaded": {
     "message": "未ダウンロード"
+  },
+  "support_project": {
+    "message": "❤️ このプロジェクトを支援"
+  },
+  "support_title": {
+    "message": "このプロジェクトを支援"
+  },
+  "support_hint": {
+    "message": "この拡張機能は無料でオープンソースです。役に立ったなら、開発の支援をいただけると助かります。"
   }
 }

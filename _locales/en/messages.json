@@ -324,5 +324,14 @@
   },
   "not_downloaded": {
     "message": "not downloaded"
+  },
+  "support_project": {
+    "message": "❤️ Support this project"
+  },
+  "support_title": {
+    "message": "Support this project"
+  },
+  "support_hint": {
+    "message": "This extension is free and open source. If it saves you time, you can support its ongoing development."
   }
 }

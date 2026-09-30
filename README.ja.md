@@ -168,3 +168,9 @@ mask → inpaintはメインスレッドで実行します — WASM inpaintが�
 
 バンドルされたライブラリ、移植コード、実行時にダウンロードされるモデルは
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) にライセンスと共に記載しています。
+
+## このプロジェクトを支援
+
+この拡張機能が役に立ったなら、開発の支援をいただけると助かります：
+
+<script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support this project', '#72a4f2', 'S5X627XJQW');kofiwidget2.draw();</script>

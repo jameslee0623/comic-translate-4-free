@@ -167,3 +167,9 @@ translate 顺序；单线程的后台页面无法在不卡死的情况下运行�
 
 捆绑的库、移植的代码、运行时下载的模型及其许可证，
 见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+
+## 支持本项目
+
+如果这个扩展对你有帮助，欢迎支持它的开发：
+
+<script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support this project', '#72a4f2', 'S5X627XJQW');kofiwidget2.draw();</script>

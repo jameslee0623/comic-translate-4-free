@@ -16,11 +16,11 @@ mkdir -p "$DIST/chrome" "$DIST/firefox"
 
 # Shared file set (node_modules, build tooling, and the other manifest excluded).
 rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '*.zip' \
-  --exclude 'build.sh' --exclude 'manifest.firefox.json' --exclude '.git' \
+  --exclude '.DS_Store' --exclude 'build.sh' --exclude 'manifest.firefox.json' --exclude '.git' \
   "$SRC/" "$DIST/chrome/"
 
 rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '*.zip' \
-  --exclude 'build.sh' --exclude 'manifest.json' --exclude 'manifest.firefox.json' --exclude '.git' \
+  --exclude '.DS_Store' --exclude 'build.sh' --exclude 'manifest.json' --exclude 'manifest.firefox.json' --exclude '.git' \
   "$SRC/" "$DIST/firefox/"
 cp "$SRC/manifest.firefox.json" "$DIST/firefox/manifest.json"
 
