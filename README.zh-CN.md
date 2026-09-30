@@ -172,4 +172,4 @@ translate 顺序；单线程的后台页面无法在不卡死的情况下运行�
 
 如果这个扩展对你有帮助，欢迎支持它的开发：
 
-<script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support this project', '#72a4f2', 'S5X627XJQW');kofiwidget2.draw();</script>
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S5X627XJQW)

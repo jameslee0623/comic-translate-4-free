@@ -179,4 +179,4 @@ their licenses in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 If this extension is useful to you, consider supporting its development:
 
-<script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script><script type='text/javascript'>kofiwidget2.init('Support this project', '#72a4f2', 'S5X627XJQW');kofiwidget2.draw();</script>
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S5X627XJQW)
