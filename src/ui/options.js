@@ -159,13 +159,13 @@ function autoSave() {
   if (!formLoaded) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
-    await chrome.storage.local.set({ settings: collect() });
+    await persistSettings(collect());
     flashSaved();
   }, 400);
 }
 function saveNow() {
   clearTimeout(saveTimer);
-  return chrome.storage.local.set({ settings: collect() }).then(flashSaved);
+  return persistSettings(collect()).then(flashSaved);
 }
 
 // Flush any pending debounced save if the page is closed before the timer fires.
@@ -175,7 +175,7 @@ let formLoaded = false;
 window.addEventListener('pagehide', () => {
   if (!formLoaded) return;
   clearTimeout(saveTimer);
-  try { chrome.storage.local.set({ settings: collect() }).catch(() => {}); } catch { /* ignore */ }
+  try { persistSettings(collect()).catch(() => {}); } catch { /* ignore */ }
 });
 
 function renderWhitelist() {
@@ -234,9 +234,14 @@ $('allowAllSites').onchange = e => {
   // "Allow all sites" needs the <all_urls> host permission. Request it
   // synchronously in the gesture — no awaits before permissions.request()
   // or Firefox drops the user gesture and the prompt never appears.
-  const p = on
-    ? chrome.permissions.request({ origins: ['<all_urls>'] })
-    : chrome.permissions.remove({ origins: ['<all_urls>'] }).catch(() => true);
+  let p;
+  try {
+    p = on
+      ? chrome.permissions.request({ origins: ['<all_urls>'] })
+      : chrome.permissions.remove({ origins: ['<all_urls>'] }).catch(() => true);
+  } catch {
+    p = Promise.resolve(false);
+  }
   Promise.resolve(p).then(granted => {
     // If the user dismissed/denied the prompt, revert the checkbox.
     if (on && !granted) e.target.checked = false;
@@ -244,34 +249,70 @@ $('allowAllSites').onchange = e => {
   }).catch(() => { if (on) e.target.checked = false; saveNow(); });
 };
 
+// Write the settings object into every form control. Used by load() and by
+// the storage-change listener below. Text/number inputs the user is actively
+// editing are left alone — their in-progress value wins and auto-save will
+// persist it.
+function setVal(id, v) {
+  const el = $(id);
+  if (el && document.activeElement !== el) el.value = v;
+}
+function setChecked(id, v) {
+  const el = $(id);
+  if (el) el.checked = !!v;
+}
+function applyToForm(s) {
+  if (s.translationBackend === 'local-llm') s.translationBackend = 'google'; // backend retired from UI
+  fillLangs($('sourceLang'), LANGS, s.sourceLang);
+  fillLangs($('targetLang'), TARGET_LANGS, s.targetLang);
+  setVal('backend', s.translationBackend);
+  setVal('azureKey', s.azureKey || '');
+  setVal('azureRegion', s.azureRegion || '');
+  setVal('lmStudioUrl', s.lmStudioUrl || '');
+  setVal('lmStudioApi', s.lmStudioApi || 'lmstudio-v1');
+  setVal('lmStudioKey', s.lmStudioKey || '');
+  setVal('threshold', s.detectionThreshold);
+  $('thresholdVal').textContent = Number(s.detectionThreshold).toFixed(2);
+  setVal('initFontSize', s.initFontSize);
+  setVal('minFontSize', s.minFontSize);
+  setVal('minImageSize', s.minImageSize);
+  setChecked('debugMode', s.debugMode);
+  setChecked('autoTranslate', s.autoTranslateOnLoad);
+  setChecked('allowAllSites', s.allowAllSites);
+  whitelist = [...(s.siteWhitelist || [])];
+  renderWhitelist();
+}
+
 async function load() {
   const { settings } = await chrome.storage.local.get('settings');
   const s = { ...DEFAULTS, ...(settings || {}) };
-  if (s.translationBackend === 'local-llm') s.translationBackend = 'google'; // backend retired from UI
   lastSettings = s;
-  fillLangs($('sourceLang'), LANGS, s.sourceLang);
-  fillLangs($('targetLang'), TARGET_LANGS, s.targetLang);
-  $('backend').value = s.translationBackend;
-  $('azureKey').value = s.azureKey;
-  $('azureRegion').value = s.azureRegion;
-  $('lmStudioUrl').value = s.lmStudioUrl;
-  $('lmStudioApi').value = s.lmStudioApi || 'lmstudio-v1';
-  $('lmStudioKey').value = s.lmStudioKey;
-  $('threshold').value = s.detectionThreshold;
-  $('thresholdVal').textContent = Number(s.detectionThreshold).toFixed(2);
-  $('initFontSize').value = s.initFontSize;
-  $('minFontSize').value = s.minFontSize;
-  $('minImageSize').value = s.minImageSize;
-  $('debugMode').checked = s.debugMode;
-  $('autoTranslate').checked = s.autoTranslateOnLoad;
-  $('allowAllSites').checked = !!s.allowAllSites;
-  whitelist = [...(s.siteWhitelist || [])];
-  renderWhitelist();
+  applyToForm(s);
   formLoaded = true;
   refreshModels();
   $('clearCache').onclick = onClearCacheClick;
   refreshCacheStats();
 }
+
+// All writes go through here so we can tell our own storage.onChanged echo
+// apart from genuine remote changes (e.g. from the popup).
+let lastLocalWrite = 0;
+function persistSettings(s) {
+  lastLocalWrite = Date.now();
+  return chrome.storage.local.set({ settings: s });
+}
+
+// Sync with the popup (or any other writer): if settings change elsewhere,
+// update the form. lastSettings is refreshed too, because collect() spreads
+// it — without this, the next auto-save would clobber the remote change
+// with stale values.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local' || !changes.settings) return;
+  if (Date.now() - lastLocalWrite < 800) return; // our own echo
+  const s = { ...DEFAULTS, ...((changes.settings && changes.settings.newValue) || {}) };
+  lastSettings = s;
+  if (formLoaded) applyToForm(s);
+});
 
 $('threshold').oninput = e => { $('thresholdVal').textContent = Number(e.target.value).toFixed(2); autoSave(); };
 
@@ -316,7 +357,7 @@ function checkingText() { return ctMsg('checking') || 'checking…'; }
 $('checkAzure').onclick = async () => {
   const btn = $('checkAzure'), out = $('azureResult');
   btn.disabled = true; out.className = 'check-result'; out.textContent = checkingText();
-  await chrome.storage.local.set({ settings: collect() });
+  await persistSettings(collect());
   const r = await chrome.runtime.sendMessage({ type: 'ct/check-azure' }).catch(e => ({ ok: false, error: String(e) }));
   setCheckResult(out, r);
   btn.disabled = false;
@@ -325,7 +366,7 @@ $('checkAzure').onclick = async () => {
 $('checkLmStudio').onclick = async () => {
   const btn = $('checkLmStudio'), out = $('lmStudioResult');
   btn.disabled = true; out.className = 'check-result'; out.textContent = checkingText();
-  await chrome.storage.local.set({ settings: collect() });
+  await persistSettings(collect());
   const r = await chrome.runtime.sendMessage({ type: 'ct/check-lmstudio' }).catch(e => ({ ok: false, error: String(e) }));
   setCheckResult(out, r);
   btn.disabled = false;

@@ -189,6 +189,7 @@ async function refresh() {
     if (settings.sourceLang) $('sourceLang').value = settings.sourceLang;
     if (settings.targetLang && TARGET_LANGS.some(([c]) => c === settings.targetLang)) $('targetLang').value = settings.targetLang;
     else $('targetLang').value = 'en';
+    $('allowAllSites').checked = !!(settings && settings.allowAllSites);
   }
   await refreshSite(settings || {});
 }
@@ -349,6 +350,34 @@ $('backend').onchange = async e => {
 
 $('sourceLang').onchange = e => saveLang('sourceLang', e.target.value);
 $('targetLang').onchange = e => saveLang('targetLang', e.target.value);
+
+// Allow-all-sites toggle. The <all_urls> request must run synchronously in
+// the change gesture — no awaits before it — or Firefox drops the transient
+// activation and the prompt silently never appears.
+$('allowAllSites').onchange = e => {
+  const on = e.target.checked;
+  let p;
+  try {
+    p = on
+      ? chrome.permissions.request({ origins: ['<all_urls>'] })
+      : chrome.permissions.remove({ origins: ['<all_urls>'] }).catch(() => true);
+  } catch {
+    p = Promise.resolve(false);
+  }
+  Promise.resolve(p).then(async granted => {
+    if (on && !granted) { e.target.checked = false; return; } // denied: revert
+    const { settings } = await chrome.storage.local.get('settings');
+    await chrome.storage.local.set({ settings: { ...(settings || {}), allowAllSites: on } });
+    refresh();
+  }).catch(() => { if (on) e.target.checked = false; });
+};
+
+// Sync with the Options page (and any other settings writer): re-render when
+// settings change elsewhere. Our own writes echo back through here too, but
+// refresh() only reads, so re-running it is harmless.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.settings) refresh().catch(() => {});
+});
 
 $('options').onclick = e => {
   e.preventDefault();
