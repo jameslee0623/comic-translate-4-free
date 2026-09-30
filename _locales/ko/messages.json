@@ -199,7 +199,7 @@
     "message": "이 페이지 번역"
   },
   "translation_backend": {
-    "message": "번역 백엔드"
+    "message": "번역 엔진"
   },
   "whitelist_add": {
     "message": "이 사이트 허용"

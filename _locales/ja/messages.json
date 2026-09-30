@@ -199,7 +199,7 @@
     "message": "このページを翻訳"
   },
   "translation_backend": {
-    "message": "翻訳バックエンド"
+    "message": "翻訳エンジン"
   },
   "whitelist_add": {
     "message": "このサイトを許可"
