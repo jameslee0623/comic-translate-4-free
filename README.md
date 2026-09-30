@@ -56,15 +56,15 @@ truncated or wrong file is flagged with a ⚠ and can be re-downloaded.
    out, translation rendered back into the bubbles. If the page has no clear
    main image, the translation shows in an overlay instead.
 
-The pipeline input is the page's largest image, gated by the minimum image
-size setting (default 500px): smaller pictures are skipped with a clear
-error. The extension reads the page's own image directly — it never
-screenshots the webpage.
+The pipeline translates every picture on the page (up to 50 per run,
+biggest first), gated by the minimum image size setting (default 400px):
+smaller pictures are skipped with a clear error. The extension reads the
+page's own image directly — it never screenshots the webpage.
 
 **Options** (right-click the icon → Options): site whitelist, source/target
 languages, translation backend (Google free / Azure Translator / LM Studio /
 experimental local LLM), connection-test buttons for Azure and LM Studio,
-detection threshold, minimum image size (default 500px — smaller captures are
+detection threshold, minimum image size (default 400px — smaller captures are
 skipped), font sizes, debug mode.
 
 ### LM Studio

@@ -186,25 +186,54 @@
     return { render_xyxy: area.map(v => Math.round(v)), render_font_size: Math.round(size * 10) / 10, auto_font_size: Math.round(autoSize * 10) / 10, vertical };
   }
 
-  // ------------------------------------------------------------ main image
-  // The page's own picture: largest fully-loaded <img> on the page.
-  let mainImgEl = null;
-
-  function findMainImage() {
+  // ------------------------------------------------------------ page images
+  // Multi-pic support: every qualifying <img> gets a stable uid
+  // (data-ct-uid). The worker translates each image and replaces it by uid,
+  // so any single-webpage layout (long strips, galleries, grids) works.
+  let imgUidSeq = 0;
+  function ensureImgUid(im) {
+    if (!im.dataset.ctUid) im.dataset.ctUid = 'ct' + (++imgUidSeq) + '_' + (imgUidSeq * 7919 + ((im.naturalWidth || 0) * 31 + (im.naturalHeight || 0)) % 7919);
+    return im.dataset.ctUid;
+  }
+  function collectPageImages(minSide) {
+    const min = minSide || 120;
     const imgs = [...document.images].filter(im => {
       if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
       const r = im.getBoundingClientRect();
-      return r.width >= 120 && r.height >= 120;
+      return r.width >= min && r.height >= min;
     });
-    if (!imgs.length) { mainImgEl = null; return null; }
+    // biggest first (stable order for progress + debug labels)
     imgs.sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight));
-    const im = imgs[0];
-    mainImgEl = im;
-    return { src: im.currentSrc || im.src, w: im.naturalWidth, h: im.naturalHeight };
+    return imgs.map(im => ({ uid: ensureImgUid(im), src: im.currentSrc || im.src, w: im.naturalWidth, h: im.naturalHeight }));
+  }
+  function imgElByUid(uid) {
+    if (!uid) return null;
+    const el = document.querySelector('img[data-ct-uid="' + uid + '"]');
+    if (el && el.isConnected) return el;
+    return null;
+  }
+  // Legacy single-image path (popup pre-flight, old worker): largest image.
+  let mainImgEl = null;
+
+  function findMainImage() {
+    const list = collectPageImages(120);
+    if (!list.length) { mainImgEl = null; return null; }
+    mainImgEl = imgElByUid(list[0].uid);
+    return list[0];
   }
 
   // Direct pixels via page canvas. Throws (tainted canvas) when the image
   // host sends no CORS headers — the worker then tries a direct fetch.
+  function imagePixelsByUid(uid) {
+    const im = imgElByUid(uid);
+    if (!im) throw new Error('image left the page before translation finished — reload the page to retry');
+    const c = document.createElement('canvas');
+    c.width = im.naturalWidth; c.height = im.naturalHeight;
+    const cx = c.getContext('2d');
+    cx.drawImage(im, 0, 0);
+    const d = cx.getImageData(0, 0, c.width, c.height);
+    return { data: d.data.buffer, w: c.width, h: c.height };
+  }
   function mainImagePixels() {
     const im = mainImgEl && mainImgEl.isConnected ? mainImgEl : null;
     if (!im) throw new Error('no main image');
@@ -216,6 +245,16 @@
     return { data: d.data.buffer, w: c.width, h: c.height };
   }
 
+  function replaceImageByUid(uid, dataUrl) {
+    let im = imgElByUid(uid);
+    // The stored element can go stale over a long pipeline (page re-rendered
+    // the <img>); uid lookup re-queries, so this covers re-renders too.
+    if (!im) return false;
+    if (!im.dataset.ctOriginal) im.dataset.ctOriginal = im.currentSrc || im.src;
+    im.removeAttribute('srcset');
+    im.src = dataUrl;
+    return true;
+  }
   function replaceMainImage(dataUrl) {
     let im = mainImgEl && mainImgEl.isConnected ? mainImgEl : null;
     // The stored element can go stale over a long pipeline (page re-rendered
@@ -413,6 +452,36 @@
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
       return false;
     }
+    if (msg.type === 'ct/list-images') {
+      try {
+        const minSide = (msg && msg.minSide) || 120;
+        const images = collectPageImages(minSide);
+        sendResponse({ ok: true, images, total: document.images.length });
+      } catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
+      return false;
+    }
+    if (msg.type === 'ct/run-summary') {
+      // End-of-run report from the worker: the popup may be closed already,
+      // so the page pill carries the outcome (translated / skipped / ignored).
+      const n = (msg && msg.images) || 0;
+      const failed = (msg && msg.failed) || [];
+      const ignored = (msg && msg.ignored) || 0;
+      if (failed.length) {
+        showPillError(`run finished — ${n} translated, ${failed.length} not: ` +
+          failed.slice(0, 2).join('; ') + (failed.length > 2 ? ' …' : '') +
+          ' — full list in the popup');
+      } else if (ignored) {
+        showPill(`comic-translate-4-free — done ✓ (${n} translated, ${ignored} tiny/hidden images skipped)`);
+      } else {
+        showPill('comic-translate-4-free — done ✓');
+      }
+      return false;
+    }
+    if (msg.type === 'ct/get-image-pixels-by-uid') {
+      try { sendResponse({ ok: true, ...imagePixelsByUid(msg.uid) }); }
+      catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
+      return false;
+    }
     if (msg.type === 'ct/get-image-pixels') {
       try { sendResponse({ ok: true, ...mainImagePixels() }); }
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
@@ -456,7 +525,7 @@
       (async () => {
         try {
           currentRunId = msg.runId;
-          const { imageDataUrl, width, height, blocks, timings, debug, mode } = msg;
+          const { imageDataUrl, width, height, blocks, timings, debug, mode, uid } = msg;
           // Compose the final translated page on a scratch canvas.
           const renderT0 = performance.now();
           const work = document.createElement('canvas');
@@ -487,7 +556,9 @@
           if (mode === 'replace') {
             // In-place: swap the page's original <img> for the translated one.
             // No overlay mask — the translation lives in the page itself.
-            replaced = replaceMainImage(work.toDataURL('image/png'));
+            // Multi-pic: replace by uid when known, else the legacy main image.
+            replaced = uid ? replaceImageByUid(uid, work.toDataURL('image/png'))
+              : replaceMainImage(work.toDataURL('image/png'));
             if (replaced) {
               if (overlay) overlay.style.display = 'none';
             } else {

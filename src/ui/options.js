@@ -132,7 +132,7 @@ const DEFAULTS = {
   lmStudioModelId: '', // auto-managed, not shown in the UI
   localLlmModel: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC',
   debugMode: false, detectionThreshold: 0.3,
-  initFontSize: 40, minFontSize: 10, minImageSize: 500,
+  initFontSize: 40, minFontSize: 10, minImageSize: 400,
   siteWhitelist: [], autoTranslateOnLoad: true,
 };
 
@@ -281,7 +281,7 @@ function collect() {
     detectionThreshold: parseFloat($('threshold').value),
     initFontSize: parseInt($('initFontSize').value, 10) || 40,
     minFontSize: parseInt($('minFontSize').value, 10) || 10,
-    minImageSize: parseInt($('minImageSize').value, 10) || 500,
+    minImageSize: parseInt($('minImageSize').value, 10) || 400,
     debugMode: $('debugMode').checked,
     siteWhitelist: [...whitelist], autoTranslateOnLoad: $('autoTranslate').checked,
   };
