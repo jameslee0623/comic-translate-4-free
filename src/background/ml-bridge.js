@@ -38,6 +38,32 @@ export async function ensureMlHost() {
   if (!await mlHostAlive()) throw new Error('ML host failed to start');
 }
 
+// ORT's wasm backend aborts with "Aborted(InternalError: out of memory)"
+// when its linear memory can't grow, which InferenceSession.create reports
+// as "no available backend found". The raw text means nothing to a user, so
+// translate that signature into an actionable message. `type` names the model
+// group that was running so the message says which stage ran out of memory.
+const ML_GROUP_FOR_TYPE = {
+  [MSG.ML_DETECT]: 'text detector',
+  [MSG.ML_OCR]: 'OCR',
+  [MSG.ML_INPAINT]: 'inpainter',
+  [MSG.ML_ENSURE]: 'model',
+};
+const OOM_RE = /out of memory|no available backend|aborted\s*\(/i;
+function mlHostError(type, raw) {
+  const m = String((raw && raw.message) || raw || '');
+  if (OOM_RE.test(m)) {
+    const group = ML_GROUP_FOR_TYPE[type] || 'translation engine';
+    // Firefox runs the sessions in-process in the background page; Chrome
+    // gives them a dedicated offscreen process, so Firefox hits this sooner.
+    const where = directHandlers()
+      ? ' On Firefox the translation models share the background page\u2019s memory (Chrome runs them in a separate process), so large pages hit this limit sooner.'
+      : '';
+    return new Error(`Out of memory while running the ${group} — the image is too large for the available memory. Restart the browser to free memory and try a smaller image.${where}`);
+  }
+  return new Error('ML host error: ' + m.slice(0, 160));
+}
+
 // Call one ML_* handler. Mirrors the old callOffscreen contract: resolves
 // with the handler's payload, throws a human message on failure.
 export async function callMl(msg) {
@@ -49,10 +75,10 @@ export async function callMl(msg) {
     try {
       res = await fn(msg);
     } catch (e) {
-      throw new Error('ML host error: ' + String((e && e.message) || e).slice(0, 160));
+      throw mlHostError(msg.type, e);
     }
     if (!res) throw new Error('ML host did not respond');
-    if (res.ok === false) throw new Error(res.error || 'ML host error');
+    if (res.ok === false) throw mlHostError(msg.type, res.error);
     return res;
   }
   await ensureMlHost();
@@ -63,7 +89,7 @@ export async function callMl(msg) {
     throw new Error('ML host unreachable: ' + String(e).slice(0, 120));
   }
   if (!res) throw new Error('ML host did not respond');
-  if (res.ok === false) throw new Error(res.error || 'ML host error');
+  if (res.ok === false) throw mlHostError(msg.type, res.error);
   return res;
 }
 

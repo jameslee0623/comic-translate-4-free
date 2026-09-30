@@ -172,6 +172,10 @@ translate 順序；單一執行緒的背景頁面無法在不卡死的情況下�
 - 自動翻譯每頁只處理一張圖片（頁面的主圖）。
   要翻譯頁面上的其他圖片，請在該圖片上按右鍵並選擇
   **Send to comic-translate-4-free**。
+- Firefox：AI 模型在瀏覽器的背景頁面內執行（Firefox 沒有離屏文件），
+  與其他所有內容共用記憶體。在非常大的頁面或長時間使用後，引擎可能記憶體不足
+  並報告 "no available backend found"。重新啟動瀏覽器可釋放記憶體；Chrome 不受影響，
+  因為它在獨立處理程序中執行模型。
 - 本機 LLM 後端為實驗性（需要 WebGPU + 數 GB 下載）。
 - Google 後端使用非官方 `translate.googleapis.com` 端點，
   可能被限速；Azure 需要您自己的金鑰。

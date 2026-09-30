@@ -172,6 +172,10 @@ translate 顺序；单线程的后台页面无法在不卡死的情况下运行�
 - 自动翻译每页只处理一张图片（页面的主图）。
   要翻译页面上的其他图片，请右键点击它并选择
   **Send to comic-translate-4-free**。
+- Firefox：AI 模型在浏览器的后台页面内运行（Firefox 没有离屏文档），
+  与其他所有内容共享内存。在非常大的页面或长时间使用后，引擎可能内存不足
+  并报告 "no available backend found"。重启浏览器可释放内存；Chrome 不受影响，
+  因为它在独立进程中运行模型。
 - 本地 LLM 后端为实验性（需要 WebGPU + 数 GB 下载）。
 - Google 后端使用非官方 `translate.googleapis.com` 端点，
   可能被限流；Azure 需要您自己的密钥。

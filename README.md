@@ -182,6 +182,11 @@ page couldn't run the parallel branches without freezing.)
 - Auto-translate handles a single picture per page (the page's main image).
   To translate any other picture on the page, right-click it and choose
   **Send to comic-translate-4-free**.
+- Firefox: the AI models run inside the browser's background page (Firefox has
+  no offscreen documents), sharing memory with everything else. On very large
+  pages or long sessions the engine can run out of memory and report
+  "no available backend found". Restarting the browser frees memory; Chrome is
+  unaffected since it runs the models in a separate process.
 - Local LLM backend is experimental (needs WebGPU + multi-GB downloads).
 - Google backend uses the unofficial `translate.googleapis.com` endpoint and
   may be rate-limited; Azure needs your own key.
