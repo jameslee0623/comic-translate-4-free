@@ -493,8 +493,10 @@ async function runPipeline(tabId, opts = {}) {
         `the page's picture could not be read. Reload the page and try again; ` +
         `if it persists, the site may be blocking pixel access.`);
     }
+    // The data-URL image is only built in debug mode — in normal runs this
+    // PNG encode of the full page is pure overhead.
     await emitDebug(runId, tabId, settings, 'capture',
-      { title: `Captured page — ${tier}, mean brightness ${capMean.toFixed(3)}`, image: await rgbaToDataURL(rgba, w, h), w, h, ms: timings.capture });
+      { title: `Captured page — ${tier}, mean brightness ${capMean.toFixed(3)}`, image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null, w, h, ms: timings.capture });
 
     // ---- 1b. page cache: a page translated earlier in this session renders
     // instantly — no detection, OCR, inpaint, or translation. The stored entry
@@ -544,7 +546,7 @@ async function runPipeline(tabId, opts = {}) {
       title: `Detection — ${detections.length} boxes @ ≥${settings.detectionThreshold}` +
         (detectInputMean != null ? ` (detector input mean ${detectInputMean})` : ''),
       boxes: detections, w, h, threshold: settings.detectionThreshold, ms: timings.detect,
-      image: await rgbaToDataURL(rgba, w, h),
+      image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null,
     });
 
     // ---- 3. text blocks
@@ -591,18 +593,21 @@ async function runPipeline(tabId, opts = {}) {
         ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
         for (const res of r.results) {
           blocks[res.id].text = res.text;
-          ocrStats.set(res.id, { chars: res.chars, chunks: res.chunks, hitCeiling: res.hitCeiling, stopped: res.stopped });
+          ocrStats.set(res.id, { chars: res.chars, chunks: res.chunks, hitCeiling: res.hitCeiling, stopped: res.stopped, skipped: !!res.skipped });
         }
       }
       timings.ocr = ocrMs;
       setProgress(runId, 'ocr', 0.55);
       const ocrThumbs = [];
-      for (const c of crops.slice(0, 40)) {
-        ocrThumbs.push({
-          id: c.id, text: blocks[c.id].text,
-          ...(ocrStats.get(c.id) || {}),
-          thumb: await rgbaToDataURL(c.data, c.width, c.height, 200),
-        });
+      // Thumbnails are debug-panel only — skip the 40 canvas encodes in normal runs.
+      if (settings.debugMode) {
+        for (const c of crops.slice(0, 40)) {
+          ocrThumbs.push({
+            id: c.id, text: blocks[c.id].text,
+            ...(ocrStats.get(c.id) || {}),
+            thumb: await rgbaToDataURL(c.data, c.width, c.height, 200),
+          });
+        }
       }
       const ocrTextCount = blocks.filter(b => b.text && b.text.trim()).length;
       const clippedCount = [...ocrStats.values()].filter(s => s.hitCeiling).length;
@@ -654,7 +659,7 @@ async function runPipeline(tabId, opts = {}) {
       parProgress('mask', 1);
       await emitDebug(runId, tabId, settings, 'mask', {
         title: `Mask — ${entries.length} block masks`,
-        mask: await rgbaToDataURL(maskToRGBA(fullMask, w, h), w, h), ms: maskMs,
+        mask: settings.debugMode ? await rgbaToDataURL(maskToRGBA(fullMask, w, h), w, h) : null, ms: maskMs,
       });
       return { fullMask, entries, maskMs };
     };
@@ -693,7 +698,7 @@ async function runPipeline(tabId, opts = {}) {
       parProgress('inpaint', 1);
       await emitDebug(runId, tabId, settings, 'inpaint', {
         title: `Inpaint — ${patches.length} patches`,
-        image: await rgbaToDataURL(inpainted, w, h), ms: inpaintMs,
+        image: settings.debugMode ? await rgbaToDataURL(inpainted, w, h) : null, ms: inpaintMs,
       });
       return { inpainted, inpaintMs, maskMs, totalInpaintMs };
     };

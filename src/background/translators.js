@@ -10,40 +10,56 @@ function langName(code) {
 }
 
 async function googleFree(texts, src, dst) {
-  const out = [];
-  for (const t of texts) {
-    const url = 'https://translate.googleapis.com/translate_a/single?client=gtx' +
-      `&sl=${encodeURIComponent(src)}&tl=${encodeURIComponent(dst)}&dt=t&q=${encodeURIComponent(t)}`;
-    // The gtx endpoint is unofficial and rate-limits aggressively (HTTP 500 /
-    // 429 in bursts). One failure must not kill the whole page: retry with
-    // exponential backoff + jitter before giving up on this text.
-    const delays = [1500, 4000, 10000];
-    let resp = null, lastErr = null;
-    for (let attempt = 0; attempt <= delays.length; attempt++) {
-      try {
-        resp = await fetch(url);
-      } catch (e) {
-        lastErr = e;
-        resp = null;
-      }
-      if (resp && resp.ok) break;
-      const retryable = !resp || resp.status === 429 || resp.status >= 500;
-      if (!retryable || attempt === delays.length) break;
-      const wait = delays[attempt] + Math.random() * 800;
-      await sleep(wait);
+  // The gtx endpoint is unofficial and rate-limits aggressively (HTTP 500 /
+  // 429 in bursts). Requests run with a small worker pool (3 lanes) instead
+  // of one-at-a-time; each lane keeps the original ~120ms pacing between its
+  // own requests, so total rate is ~3x the old sequential rate, not Nx.
+  const out = new Array(texts.length);
+  let next = 0;
+  async function lane() {
+    for (;;) {
+      const i = next++;
+      if (i >= texts.length) return;
+      out[i] = await googleOne(texts[i], src, dst);
+      await sleep(120); // per-lane pacing, as before
+    }
+  }
+  const lanes = [];
+  for (let k = 0; k < Math.min(3, texts.length); k++) lanes.push(lane());
+  await Promise.all(lanes);
+  return out;
+}
+
+async function googleOne(t, src, dst) {
+  const url = 'https://translate.googleapis.com/translate_a/single?client=gtx' +
+    `&sl=${encodeURIComponent(src)}&tl=${encodeURIComponent(dst)}&dt=t&q=${encodeURIComponent(t)}`;
+  // The gtx endpoint is unofficial and rate-limits aggressively (HTTP 500 /
+  // 429 in bursts). One failure must not kill the whole page: retry with
+  // exponential backoff + jitter before giving up on this text.
+  const delays = [1500, 4000, 10000];
+  let resp = null, lastErr = null;
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      resp = await fetch(url);
+    } catch (e) {
+      lastErr = e;
       resp = null;
     }
-    if (!resp) throw new Error('google translate: network error — ' + String(lastErr).slice(0, 120));
-    if (!resp.ok) {
-      throw new Error(
-        `google translate: HTTP ${resp.status} after retries (unofficial endpoint — ` +
-        `Google is rate-limiting right now; wait a few minutes or switch to Azure / LM Studio)`);
-    }
-    const data = await resp.json();
-    out.push(((data && data[0]) || []).map(seg => (seg && seg[0]) || '').join(''));
-    await sleep(120); // be gentle with the unofficial endpoint
+    if (resp && resp.ok) break;
+    const retryable = !resp || resp.status === 429 || resp.status >= 500;
+    if (!retryable || attempt === delays.length) break;
+    const wait = delays[attempt] + Math.random() * 800;
+    await sleep(wait);
+    resp = null;
   }
-  return out;
+  if (!resp) throw new Error('google translate: network error — ' + String(lastErr).slice(0, 120));
+  if (!resp.ok) {
+    throw new Error(
+      `google translate: HTTP ${resp.status} after retries (unofficial endpoint — ` +
+      `Google is rate-limiting right now; wait a few minutes or switch to Azure / LM Studio)`);
+  }
+  const data = await resp.json();
+  return (((data && data[0]) || []).map(seg => (seg && seg[0]) || '').join(''));
 }
 
 function azureLang(code) {
@@ -66,9 +82,24 @@ async function azure(texts, settings) {
   if (!key) throw new Error('azure translator: API key not set — add it in Options');
   if (!region) throw new Error('azure translator: region not set — add it in Options');
   const to = azureLang(settings.targetLang);
-  const out = [];
-  for (let i = 0; i < texts.length; i += 25) {
-    const batch = texts.slice(i, i + 25);
+  // The 25-text batches used to run one at a time; now 3 batches fly in
+  // parallel (official paid API — no rate-limit gentleness needed).
+  const batches = [];
+  for (let i = 0; i < texts.length; i += 25) batches.push(texts.slice(i, i + 25));
+  const out = new Array(batches.length);
+  let next = 0;
+  async function lane() {
+    for (;;) {
+      const bi = next++;
+      if (bi >= batches.length) return;
+      out[bi] = await azureBatch(batches[bi], key, region, to);
+    }
+  }
+  const lanes = [];
+  for (let k = 0; k < Math.min(3, batches.length); k++) lanes.push(lane());
+  await Promise.all(lanes);
+
+  async function azureBatch(batch, key, region, to) {
     const url = `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=${encodeURIComponent(to)}`;
     let resp;
     try {
@@ -90,9 +121,12 @@ async function azure(texts, settings) {
       throw new Error(`azure translator: HTTP ${resp.status} ${body.slice(0, 160)}`);
     }
     const data = await resp.json();
-    for (const r of data) out.push((r.translations && r.translations[0] && r.translations[0].text) || '');
+    const r = [];
+    for (const d of data) r.push((d.translations && d.translations[0] && d.translations[0].text) || '');
+    return r;
   }
-  return out;
+
+  return out.flat();
 }
 
 function lmStudioBase(settings) {

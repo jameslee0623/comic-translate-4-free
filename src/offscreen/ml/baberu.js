@@ -323,6 +323,13 @@ export class BaberuOCR {
     return (await this._decode(rgba, w, h)).text;
   }
 
+  // NOTE (2026-09-30): batched multi-crop decode was prototyped here and
+  // reverted. The Baberu ONNX graphs bake batch=1 into every input
+  // (decoder_step: input_ids [1,1], past_* [1,2,'past_len',64]; vision and
+  // prefill likewise — verified by parsing the model files, only past_len is
+  // symbolic). Batching needs a re-export with dynamic batch axes, which is
+  // a model-side project, not a code change.
+
   // Chunked OCR for crops whose text runs past the model's ~64-char training
   // cap. Returns { text, chunks, hitCeiling, firstPass, stopped }: `chunks` is
   // how many decodes produced `text` (1 = no split), `firstPass` is the plain

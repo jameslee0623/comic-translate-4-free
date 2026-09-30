@@ -170,11 +170,33 @@ const handlers = {
     throwIfCancelled(runId);
     const t0 = performance.now();
     const results = [];
+    // Stddev of a crop's grayscale pixels, sampled every 4th pixel. A
+    // near-uniform crop (detector false positive on flat background) scores
+    // ~1-2 from JPEG noise alone; real text — even faint — scores 30+ from
+    // stroke contrast, so 3.0 is far below any readable text.
+    const cropStddev = (u8) => {
+      let n = 0, mean = 0, m2 = 0;
+      for (let i = 0; i < u8.length; i += 16) {
+        const g = (u8[i] + u8[i + 1] + u8[i + 2]) / 3;
+        n++;
+        const d = g - mean;
+        mean += d / n;
+        m2 += d * (g - mean);
+      }
+      return n > 1 ? Math.sqrt(m2 / (n - 1)) : 0;
+    };
     try {
       for (const c of crops) {
         throwIfCancelled(runId);
         const raw = await pixelTake(c.key);
         const u8 = new Uint8ClampedArray(raw);
+        // Skip the model on blank crops: ~1ms variance check vs ~1s of
+        // vision+prefill+autoregressive steps. Empty text flows downstream
+        // exactly as if OCR had returned ''.
+        if (cropStddev(u8) < 3.0) {
+          results.push({ id: c.id, text: '', chars: 0, chunks: 0, hitCeiling: false, stopped: 'eos', skipped: true });
+          continue;
+        }
         // Baberu clips at ~64 chars (upstream training cap), so the chunked
         // path re-OCRs an over-long crop in overlapping pieces.
         const r = await baberu.ocrChunked(u8, c.width, c.height, {
