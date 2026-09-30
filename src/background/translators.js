@@ -96,7 +96,7 @@ async function azure(texts, settings) {
 }
 
 function lmStudioBase(settings) {
-  return (settings.lmStudioUrl || 'http://localhost:1234/v1').replace(/\/+$/, '');
+  return (settings.lmStudioUrl || 'http://127.0.0.1:1234').replace(/\/+$/, '');
 }
 
 // Which server API the user points at. The two flavours differ in path,
@@ -112,7 +112,7 @@ function lmStudioBase(settings) {
 //   server root, so it is stripped).
 function lmStudioEndpoints(settings) {
   const url = lmStudioBase(settings);
-  if ((settings.lmStudioApi || 'openai') === 'lmstudio-v1') {
+  if ((settings.lmStudioApi || 'lmstudio-v1') === 'lmstudio-v1') {
     const root = url.replace(/\/v1$/, '');
     return { chat: root + '/api/v1/chat', models: root + '/api/v1/models', label: 'LM Studio REST API v1', flavor: 'lmstudio-v1' };
   }

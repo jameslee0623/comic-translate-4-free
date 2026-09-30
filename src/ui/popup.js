@@ -148,6 +148,18 @@ function setProgress(p) {
   $('progress').style.width = Math.round((p || 0) * 100) + '%';
 }
 
+// One button does both jobs: "Translate this page" when idle, "Cancel" while
+// a run is in flight.
+let running = false;
+function setRunning(r) {
+  running = !!r;
+  const b = $('translateBtn');
+  b.textContent = running ? (ctMsg('cancel') || 'Cancel')
+                          : (ctMsg('translate_page') || 'Translate this page');
+  b.classList.toggle('primary', !running);
+  b.classList.toggle('danger', running);
+}
+
 function fillLangs() {
   $('sourceLang').innerHTML = LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
   $('targetLang').innerHTML = TARGET_LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
@@ -167,12 +179,13 @@ async function refresh() {
     // Never wipe an error here: a failed click shows its error via the
     // message response just before this refresh runs. Only ever set.
     if (s.error) $('error').textContent = s.error;
-    $('cancel').disabled = !(s.stage && !['done', 'idle', 'error', 'cancelled'].includes(s.stage));
-    $('translate').disabled = !$('cancel').disabled;
+    const isRunning = s.stage && !['done', 'idle', 'error', 'cancelled'].includes(s.stage);
+    setRunning(isRunning);
   }
   const { settings } = await chrome.storage.local.get('settings');
   if (settings) {
-    if (settings.translationBackend) $('backend').value = settings.translationBackend;
+    if (settings.translationBackend) $('backend').value =
+      settings.translationBackend === 'local-llm' ? 'google' : settings.translationBackend;
     if (settings.sourceLang) $('sourceLang').value = settings.sourceLang;
     if (settings.targetLang && TARGET_LANGS.some(([c]) => c === settings.targetLang)) $('targetLang').value = settings.targetLang;
     else $('targetLang').value = 'en';
@@ -242,6 +255,7 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
   if (!currentHost) {
     $('site').innerHTML = ctMsg('no_site') || 'no site detected';
     btn.disabled = true;
+    btn.classList.remove('remind');
     return;
   }
   const ok = isWhitelisted(currentHost, list);
@@ -253,6 +267,8 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
   $('site').innerHTML = ctMsg('site_this', [hostHtml, statusHtml]) || `this site: ${hostHtml} — ${statusHtml}`;
   btn.textContent = ctMsg(ok ? 'whitelist_remove' : 'whitelist_add') || (ok ? 'Remove from whitelist' : 'Add this site to whitelist');
   btn.disabled = false;
+  // Light the button up until the site is whitelisted — it's the reminder.
+  btn.classList.toggle('remind', !ok);
   // Whitelisted but missing host access: offer the one-click grant. This covers
   // BOTH the page host (needed for script injection) and the picture's host
   // (needed for the download tier) — the picture often lives on a CDN. After
@@ -299,21 +315,23 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
   };
 }
 
-$('translate').onclick = async () => {
+$('translateBtn').onclick = async () => {
+  if (running) {
+    chrome.runtime.sendMessage({ type: 'ct/cancel-run' });
+    return;
+  }
   $('error').textContent = '';
   try {
     // Best-effort one-time permission so the worker can download the page's
     // picture at full resolution (covers the picture's host too).
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     const host = tab && hostOfUrl(tab.url);
-    if (host) await requestSiteAccess(host);
+    if (host) await requestSiteAccessNow(host);
   } catch { /* optional; the pipeline reports what it can't read */ }
   const r = await chrome.runtime.sendMessage({ type: 'ct/translate-page' }).catch(e => ({ ok: false, error: String(e) }));
   if (!r.ok) $('error').textContent = r.error;
   refresh();
 };
-
-$('cancel').onclick = () => chrome.runtime.sendMessage({ type: 'ct/cancel-run' });
 
 $('backend').onchange = async e => {
   const { settings } = await chrome.storage.local.get('settings');
@@ -334,9 +352,7 @@ chrome.runtime.onMessage.addListener(msg => {
     setProgress(msg.progress);
     if (msg.stage === 'error') $('error').textContent = msg.error || 'unknown error';
     else if (msg.stage === 'done') $('error').textContent = '';
-    const running = msg.stage && !['done', 'idle', 'error', 'cancelled'].includes(msg.stage);
-    $('cancel').disabled = !running;
-    $('translate').disabled = running;
+    setRunning(msg.stage && !['done', 'idle', 'error', 'cancelled'].includes(msg.stage));
   }
 });
 
@@ -344,7 +360,7 @@ ctApplyI18n();
 fillLangs();
 try {
   const v = chrome.runtime.getManifest().version;
-  $('build').textContent = `· v${v} · build ${BUILD}`;
-} catch { $('build').textContent = '· build ' + BUILD; }
+  $('build').textContent = `v${v} · build ${BUILD}`;
+} catch { $('build').textContent = 'build ' + BUILD; }
 refresh();
 setInterval(refresh, 3000);

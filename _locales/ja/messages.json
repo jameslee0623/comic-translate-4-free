@@ -27,7 +27,7 @@
     "message": "例: japaneast"
   },
   "backend": {
-    "message": "バックエンド"
+    "message": "翻訳エンジン"
   },
   "backend_azure": {
     "message": "Azure Translator"
@@ -42,19 +42,13 @@
     "message": "Google（無料、キー不要）"
   },
   "backend_hint": {
-    "message": "Azureのキー/リージョンはこのブラウザの拡張機能ストレージにのみ保存されます。LM StudioはOpenAI互換サーバーを有効にして起動してください（デフォルト http://localhost:1234）。WebLLMは初回利用時に数GBをダウンロードし、WebGPUが必要です。"
+    "message": "Azureのキー/リージョンはこのブラウザの拡張機能ストレージにのみ保存されます。LM StudioはOpenAI互換サーバーを有効にして起動してください（デフォルト http://127.0.0.1:1234）。"
   },
   "backend_lmstudio": {
     "message": "LM Studio（ローカル）"
   },
   "backend_lmstudio_opt": {
     "message": "LM Studio（ローカルサーバー）"
-  },
-  "backend_localllm": {
-    "message": "ローカルLLM（実験的）"
-  },
-  "backend_localllm_opt": {
-    "message": "ローカルLLM（実験的）"
   },
   "cancel": {
     "message": "キャンセル"

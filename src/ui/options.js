@@ -128,7 +128,7 @@ const TARGET_LANGS = [
 const DEFAULTS = {
   sourceLang: 'ja', targetLang: 'en', translationBackend: 'google',
   azureKey: '', azureRegion: '',
-  lmStudioUrl: 'http://localhost:1234/v1', lmStudioKey: '', lmStudioApi: 'openai',
+  lmStudioUrl: 'http://127.0.0.1:1234', lmStudioKey: '', lmStudioApi: 'lmstudio-v1',
   lmStudioModelId: '', // auto-managed, not shown in the UI
   localLlmModel: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC', // no UI yet; backend uses the default
   debugMode: false, detectionThreshold: 0.3,
@@ -232,6 +232,7 @@ $('wlAddBtn').onclick = async () => {
 async function load() {
   const { settings } = await chrome.storage.local.get('settings');
   const s = { ...DEFAULTS, ...(settings || {}) };
+  if (s.translationBackend === 'local-llm') s.translationBackend = 'google'; // backend retired from UI
   lastSettings = s;
   fillLangs($('sourceLang'), LANGS, s.sourceLang);
   fillLangs($('targetLang'), TARGET_LANGS, s.targetLang);
@@ -239,7 +240,7 @@ async function load() {
   $('azureKey').value = s.azureKey;
   $('azureRegion').value = s.azureRegion;
   $('lmStudioUrl').value = s.lmStudioUrl;
-  $('lmStudioApi').value = s.lmStudioApi || 'openai';
+  $('lmStudioApi').value = s.lmStudioApi || 'lmstudio-v1';
   $('lmStudioKey').value = s.lmStudioKey;
   $('threshold').value = s.detectionThreshold;
   $('thresholdVal').textContent = Number(s.detectionThreshold).toFixed(2);

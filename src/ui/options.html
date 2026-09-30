@@ -44,19 +44,18 @@
     <option value="google" data-i18n="backend_google_opt">Google (free, no key)</option>
     <option value="azure" data-i18n="backend_azure_opt">Azure Translator (key required)</option>
     <option value="lmstudio" data-i18n="backend_lmstudio_opt">LM Studio (local server)</option>
-    <option value="local-llm" data-i18n="backend_localllm_opt">Local LLM (experimental)</option>
   </select></div>
   <div class="row"><label data-i18n="azure_key">Azure API key</label><input type="password" id="azureKey" autocomplete="off"></div>
   <div class="row"><label data-i18n="azure_region">Azure region</label><input type="text" id="azureRegion" data-i18n-ph="azure_region_ph" placeholder="e.g. japaneast" autocomplete="off"></div>
   <div class="row"><label></label><button id="checkAzure" data-i18n="check_azure">Check Azure connection</button><span id="azureResult" class="check-result"></span></div>
-  <div class="row"><label data-i18n="lmstudio_url">LM Studio server URL</label><input type="text" id="lmStudioUrl" placeholder="http://localhost:1234/v1" autocomplete="off"></div>
+  <div class="row"><label data-i18n="lmstudio_url">LM Studio server URL</label><input type="text" id="lmStudioUrl" placeholder="http://127.0.0.1:1234" autocomplete="off"></div>
   <div class="row"><label data-i18n="lmstudio_api">LM Studio API</label><select id="lmStudioApi">
     <option value="openai" data-i18n="lmstudio_api_openai">OpenAI-compatible (/v1/chat/completions)</option>
     <option value="lmstudio-v1" data-i18n="lmstudio_api_v1">LM Studio REST API v1 (/api/v1/chat)</option>
   </select></div>
   <div class="row"><label data-i18n="lmstudio_key">LM Studio API key (optional)</label><input type="password" id="lmStudioKey" autocomplete="off"></div>
   <div class="row"><label></label><button id="checkLmStudio" data-i18n="check_lmstudio">Check LM Studio connection</button><span id="lmStudioResult" class="check-result"></span></div>
-  <p class="hint" data-i18n="backend_hint">Azure key/region are stored only in this browser's extension storage. LM Studio must be running with its OpenAI-compatible server enabled (default http://localhost:1234). WebLLM downloads gigabytes on first use and needs WebGPU.</p>
+  <p class="hint" data-i18n="backend_hint">Azure key/region are stored only in this browser's extension storage. LM Studio must be running with its OpenAI-compatible server enabled (default http://127.0.0.1:1234).</p>
 
   <h2 data-i18n="detection_rendering">Detection &amp; rendering</h2>
   <div class="row"><label data-i18n="det_threshold">Detection confidence threshold</label><input type="range" id="threshold" min="0.1" max="0.9" step="0.05"><span id="thresholdVal"></span></div>

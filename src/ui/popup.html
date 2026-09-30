@@ -10,6 +10,10 @@
   button:hover:not(:disabled) { background: #2c2c31; }
   button.primary { background: #1a73e8; color: #fff; border-color: #1a73e8; width: 100%; font-weight: 600; }
   button.primary:hover:not(:disabled) { background: #2b7de9; }
+  button.danger { background: #8c2f2f; color: #fff; border-color: #8c2f2f; width: 100%; font-weight: 600; }
+  button.danger:hover:not(:disabled) { background: #a33838; }
+  button.remind { background: #1a73e8; border-color: #1a73e8; color: #fff; font-weight: 600; box-shadow: 0 0 10px rgba(26,115,232,.55); }
+  button.remind:hover:not(:disabled) { background: #2b7de9; }
   button:disabled { opacity: .45; cursor: default; }
   .row { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
   .bar { height: 6px; background: #2a2a2e; border-radius: 3px; overflow: hidden; margin: 6px 0; }
@@ -22,8 +26,10 @@
   #status { color: #b9b9bf; font-size: 12px; min-height: 18px; margin: 6px 0; }
   #error { color: #ff7b72; font-size: 12px; margin: 6px 0; white-space: pre-wrap; }
   select { padding: 6px; border-radius: 6px; border: 1px solid #3a3a40; background: #232327; color: #e8e8ea; }
-  .foot { margin-top: 10px; text-align: right; }
+  .foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid #2e2e33; display: flex; justify-content: space-between; align-items: center; }
   .foot a { color: #8ab4f8; font-size: 12px; text-decoration: none; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; }
+  #build { font-size: 11px; color: #8a8a90; font-weight: 400; white-space: nowrap; }
   #site { font-size: 12px; color: #b9b9bf; }
   #site b { color: #fff; font-weight: 600; }
   .ok { color: #7ee787; } .warn { color: #f0b429; }
@@ -31,7 +37,7 @@
 </style>
 </head>
 <body>
-  <h1>comic-translate-4-free</h1>
+  <h1 class="head">comic-translate-4-free <span id="build"></span></h1>
 
   <div class="sitebox">
     <div class="row" style="margin:0">
@@ -46,11 +52,8 @@
     </div>
   </div>
 
-  <div style="margin-top:10px"><button id="translate" class="primary" data-i18n="translate_page">Translate this page</button></div>
-  <div class="row">
-    <button id="cancel" data-i18n="cancel" disabled>Cancel</button>
-    <span id="status"></span>
-  </div>
+  <div style="margin-top:10px"><button id="translateBtn" class="primary" data-i18n="translate_page">Translate this page</button></div>
+  <div class="row"><span id="status"></span></div>
   <div class="bar"><div id="progress"></div></div>
   <div id="error"></div>
 
@@ -66,11 +69,10 @@
     <option value="google" data-i18n="backend_google">Google (free)</option>
     <option value="azure" data-i18n="backend_azure">Azure Translator</option>
     <option value="lmstudio" data-i18n="backend_lmstudio">LM Studio (local)</option>
-    <option value="local-llm" data-i18n="backend_localllm">Local LLM (experimental)</option>
   </select></div>
 
-  <div class="foot"><a href="#" id="options" data-i18n="options_settings">Options &amp; settings</a> <span id="build" style="color:#666"></span></div>
-  <div class="foot" style="text-align:center;margin-top:12px;padding-top:10px;border-top:1px solid #2e2e33">
+  <div class="foot">
+    <a href="#" id="options" data-i18n="options_settings">Options &amp; settings</a>
     <a href="https://ko-fi.com/jameslee0623" target="_blank" rel="noopener noreferrer" data-i18n="support_project" style="color:#ff8fa3">❤️ Support this project</a>
   </div>
   <script src="i18n.js"></script>

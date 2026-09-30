@@ -7,9 +7,9 @@ export const DEFAULT_SETTINGS = {
   translationBackend: 'google', // 'google' | 'azure' | 'lmstudio' | 'local-llm'
   azureKey: '',
   azureRegion: '',
-  lmStudioUrl: 'http://localhost:1234/v1', // LM Studio OpenAI-compatible server
+  lmStudioUrl: 'http://127.0.0.1:1234', // LM Studio server (bare host:port; flavour adds its path)
   lmStudioKey: '',
-  lmStudioApi: 'openai', // 'openai' | 'lmstudio-v1'
+  lmStudioApi: 'lmstudio-v1', // 'openai' | 'lmstudio-v1' (LM Studio REST)
   lmStudioModelId: '', // auto-managed: loaded model id for the v1 flavour (no UI)
   localLlmModel: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC',
   debugMode: false,
