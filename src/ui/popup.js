@@ -342,6 +342,47 @@ $('backend').onchange = async e => {
   await chrome.storage.local.set({ settings: { ...(settings || {}), translationBackend: e.target.value } });
 };
 
+// ---- translated page cache (same stats as the Settings page) ----
+function fmtBytes(n) {
+  n = Number(n) || 0;
+  if (n < 1024) return `${n} B`;
+  if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1048576).toFixed(1)} MB`;
+}
+
+async function refreshCacheStats() {
+  let st = { count: 0, bytes: 0 };
+  try {
+    const r = await chrome.runtime.sendMessage({ type: 'ct/page-cache-stats' });
+    if (r && r.ok) st = r;
+  } catch { /* background unreachable — show zeros */ }
+  $('cacheInfo').textContent =
+    ctMsg('pagecache_stats', [String(st.count), fmtBytes(st.bytes)]) ||
+    `${st.count} images · ${fmtBytes(st.bytes)}`;
+}
+
+$('clearCacheBtn').onclick = async () => {
+  const btn = $('clearCacheBtn');
+  btn.disabled = true;
+  const old = btn.textContent;
+  btn.textContent = ctMsg('pagecache_clearing') || 'Clearing…';
+  try {
+    const r = await chrome.runtime.sendMessage({ type: 'ct/clear-page-cache' });
+    if (r && r.ok) {
+      $('cacheInfo').textContent =
+        ctMsg('pagecache_cleared', [String(r.count), fmtBytes(r.bytes)]) ||
+        `Cache cleared (${r.count} images, ${fmtBytes(r.bytes)} freed)`;
+      setTimeout(refreshCacheStats, 4000);
+    } else {
+      throw new Error((r && r.error) || 'unknown error');
+    }
+  } catch (e) {
+    $('cacheInfo').textContent = `✗ ${String((e && e.message) || e).slice(0, 100)}`;
+  }
+  btn.textContent = old;
+  btn.disabled = false;
+};
+
 $('sourceLang').onchange = e => saveLang('sourceLang', e.target.value);
 $('targetLang').onchange = e => saveLang('targetLang', e.target.value);
 
@@ -395,4 +436,5 @@ try {
   $('build').textContent = `v${v} · build ${BUILD}`;
 } catch { $('build').textContent = 'build ' + BUILD; }
 refresh();
+refreshCacheStats();
 setInterval(refresh, 3000);
