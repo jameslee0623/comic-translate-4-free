@@ -81,9 +81,10 @@ error. The extension reads the page's own image directly — it never
 screenshots the webpage.
 
 **Page cache:** pages you revisit in the same browser session load instantly
-from a temporary on-disk cache (the inpainted image + translated text, so
-font-size changes re-render without re-translating). The cache is cleared
-automatically when the browser closes, and is never used in incognito windows.
+from a temporary on-disk cache (translating 10~40 images in one session can 
+crash the browser, causes all images in cache lost. Please remember to clear 
+cache manually). The cache is cleared automatically when the browser closes, 
+and is never used in incognito windows.
 
 **Settings** (click the icon → Settings): site access, auto-translate on
 page load, source/target languages, translation engine (Google free / Azure
