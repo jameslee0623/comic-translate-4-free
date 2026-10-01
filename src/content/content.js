@@ -257,8 +257,12 @@
     c.width = im.naturalWidth; c.height = im.naturalHeight;
     const cx = c.getContext('2d');
     cx.drawImage(im, 0, 0);
-    const d = cx.getImageData(0, 0, c.width, c.height);
-    return { data: d.data.buffer, w: c.width, h: c.height };
+    // NOTE: raw pixel buffers CANNOT travel via extension messaging — Chrome
+    // silently turns ArrayBuffers into {} in both directions (verified). So
+    // the pixels go as a PNG data URL string, the same trick the render path
+    // uses for the translated image. Throws (tainted canvas) when the image
+    // host sends no CORS headers — the pipeline then tries a direct fetch.
+    return { dataUrl: c.toDataURL('image/png'), w: c.width, h: c.height };
   }
 
   function replaceMainImage(dataUrl) {
@@ -541,6 +545,33 @@
       try { sendResponse({ ok: true, ...mainImagePixels(msg.srcUrl) }); }
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
       return false;
+    }
+    if (msg.type === 'ct/fetch-image-bytes') {
+      // Download the image inside the PAGE (not the service worker): the
+      // browser applies the page's real referrer policy and cookies, exactly
+      // like the page's own <img> load. Some image hosts / WAFs 403 the
+      // service worker's fetch because its Referer and Sec-Fetch-* headers
+      // don't match what the page itself sends. The extension's host
+      // permissions let the content script read the cross-origin response.
+      // The bytes travel back as a data URL string: raw ArrayBuffers are
+      // silently emptied by extension messaging (verified), so binary goes
+      // the same string route the render path uses for the translated PNG.
+      (async () => {
+        try {
+          const res = await fetch(msg.srcUrl);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const blob = await res.blob();
+          if (!blob.size) throw new Error('empty response body');
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error || new Error('read failed'));
+            reader.readAsDataURL(blob);
+          });
+          sendResponse({ ok: true, dataUrl });
+        } catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e).slice(0, 120) }); }
+      })();
+      return true;
     }
     if (msg.type === 'ct/run-progress') {
       if (!msg.direct) return false; // broadcasts are for the popup; the pill takes targeted copies
