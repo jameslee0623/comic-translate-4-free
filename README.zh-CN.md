@@ -34,7 +34,7 @@
 **Firefox：** 打开 `about:debugging#/runtime/this-firefox` →
 **临时载入附加组件** → 打开解压后的文件夹并选择 `manifest.json`。
 （临时附加组件在 Firefox 重启前有效。如需永久安装，
-须使用 addons.mozilla.org 签名的构建。）
+须使用 addons.mozilla.org 签名的构建 —— 标准版 Firefox 的签名构建正在准备中。）
 
 然后在设置页中下载一次模型 — 点击 **Download all models**
 按钮即可获取全部（检测器、OCR 模型、修复器，共约 350MB）。
@@ -50,6 +50,8 @@
    点击扩展图标并按 **Allow this site**
    （或在设置中添加主机名，或开启 **Allow all sites** 以跳过此步骤）。这是硬性门槛：
    流水线不会在其他任何网站上运行。
+
+   ![扩展弹窗](docs/images/popup.png)
 2. 在已允许的网站上打开漫画页面 — 页面加载完成后即自动开始翻译，
    无需点击按钮（可在设置中通过 "Auto-translate on page load" 开关）。
    每个网站首次使用时，Chrome 会请求一次性权限，
@@ -64,7 +66,7 @@
    即使小于最小图片尺寸也会处理 — 并就地替换。
    该菜单项仅在您已允许的网站上出现。
 
-![扩展弹窗](docs/images/popup.png)
+![右键菜单](docs/images/right-click.png)
 
 流水线输入为页面中最大的图片，受最小图片尺寸设置限制
 （默认 500px）：更小的图片会给出明确错误并跳过。
@@ -75,15 +77,30 @@
 关闭浏览器时缓存会自动清除，隐身窗口中不会使用缓存。
 
 **设置**（右键图标 → 设置）：网站访问、页面加载时自动翻译、
-源语言/目标语言、翻译后端（Google 免费 / Azure Translator / LM Studio）、
+源语言/目标语言、翻译引擎（Google 免费 / Azure Translator / LM Studio）、
 Azure 与 LM Studio 的连接测试按钮、检测阈值、
 最小图片尺寸（默认 500px — 更小的捕获会被跳过）、
 字体大小、调试模式，以及已翻译页面缓存的管理。
 
+### Azure Translator
+
+在设置中将翻译引擎选为 **Azure Translator**，然后填写 API 密钥和区域 —
+**Check Azure connection** 可验证它们。
+
+获取密钥的方法（免费 tier 不需要信用卡）：
+
+1. 创建/登录 Microsoft/hotmail/Azure 账户
+2. 创建 Azure 订阅
+3. 创建 Azure Translator 资源
+4. 选择 F0（Free）定价层
+5. 资源管理 → 密钥和终结点 → 复制 **KEY 1** 和 **位置/区域**
+
+Microsoft 目前表示，Translator 的 F0 免费 tier 为每月 200 万字符，且不会过期。
+
 ### LM Studio
 
 运行启用了本地服务器的 LM Studio（默认
-`http://127.0.0.1:1234`）。在设置中将后端选为
+`http://127.0.0.1:1234`）。在设置中将翻译引擎选为
 **LM Studio (local server)**，设置服务器 URL 与 API 风格 —
 **LM Studio REST API v1**（向 `/api/v1/chat` 发送请求）或
 **OpenAI-compatible**（向 `/v1/chat/completions` 发送请求） —
@@ -180,7 +197,7 @@ translate 顺序；单线程的后台页面无法在不卡死的情况下运行�
 
 ## 已知限制
 
-- 没有好的韩语 OCR — 源语言为日语、英语、简体/繁体中文。
+- 还没有找到好的韩语 OCR — 源语言限于日语、英语、简体/繁体中文。
 - 自动翻译每页只处理一张图片（页面的主图）。
   要翻译页面上的其他图片，请右键点击它并选择
   **Send to comic-translate-4-free**。
@@ -193,12 +210,11 @@ translate 顺序；单线程的后台页面无法在不卡死的情况下运行�
 - 页面缓存是会话级的：浏览器启动时会被清空，因此重启后（包括崩溃后），
   重新发送的图片会走完整流程，不会命中缓存。
 - 本地 LLM 后端为实验性（需要 WebGPU + 数 GB 下载）。
-- Google 后端使用非官方 `translate.googleapis.com` 端点，
-  可能被限流；Azure 需要您自己的密钥。
+- Google 翻译引擎使用非官方 `translate.googleapis.com` 端点，
+  可能被限流。
 - OCR 引擎：Baberu（日语/英语/中文）。
 - Baberu 的解码器在上游训练时使用 64 字符标签上限（`--max-text-len 64`），
-  因此单次裁剪最多只返回约 64 个字符。较长的气泡会自动切成重叠的小块重新
-  OCR 并拼接还原（最多约 4×64 字符）；调试面板的 OCR 标签会标出触及上限的裁剪。
+  因此单次裁剪最多只返回约 64 个字符 — 较长的文本会被从中间截断。
 - 竖排文字针对高 CJK 文本块渲染；气泡外的拟声词等
   使用独立文本框。
 

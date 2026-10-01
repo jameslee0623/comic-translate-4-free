@@ -34,7 +34,7 @@
 **Firefox：** 開啟 `about:debugging#/runtime/this-firefox` →
 **載入暫用附加元件** → 開啟解壓縮後的資料夾並選擇 `manifest.json`。
 （暫用附加元件在 Firefox 重新啟動前有效。如需永久安裝，
-須使用 addons.mozilla.org 簽署的建置。）
+須使用 addons.mozilla.org 簽署的建置 —— 標準版 Firefox 的簽署建置正在準備中。）
 
 然後在設定頁面中下載一次模型 — 點擊 **Download all models**
 按鈕即可取得全部（偵測器、OCR 模型、修補器，共約 350MB）。
@@ -50,6 +50,8 @@
    點擊擴充功能圖示並按 **Allow this site**
    （或在設定中新增主機名稱，或開啟 **Allow all sites** 以跳過此步驟）。這是硬性門檻：
    處理流程不會在其他任何網站上執行。
+
+   ![擴充功能彈出視窗](docs/images/popup.png)
 2. 在已允許的網站上開啟漫畫頁面 — 頁面載入完成後即自動開始翻譯，
    無需點擊按鈕（可在設定中透過 "Auto-translate on page load" 開關）。
    每個網站首次使用時，Chrome 會請求一次性權限，
@@ -64,7 +66,7 @@
    即使小於最小圖片尺寸也會處理 — 並就地取代。
    該選單項目僅在您已允許的網站上出現。
 
-![擴充功能彈出視窗](docs/images/popup.png)
+![右鍵選單](docs/images/right-click.png)
 
 處理流程的輸入為頁面中最大的圖片，受最小圖片尺寸設定限制
 （預設 500px）：更小的圖片會顯示明確錯誤並略過。
@@ -75,15 +77,30 @@
 關閉瀏覽器時快取會自動清除，無痕視窗中不會使用快取。
 
 **設定**（在圖示上按右鍵 → 設定）：網站存取、頁面載入時自動翻譯、
-來源/目標語言、翻譯後端（Google 免費 / Azure Translator / LM Studio）、
+來源/目標語言、翻譯引擎（Google 免費 / Azure Translator / LM Studio）、
 Azure 與 LM Studio 的連線測試按鈕、偵測閾值、
 最小圖片尺寸（預設 500px — 更小的擷取會被略過）、
 字型大小、除錯模式，以及已翻譯頁面快取的管理。
 
+### Azure Translator
+
+在設定中將翻譯引擎選為 **Azure Translator**，然後填寫 API 金鑰和區域 —
+**Check Azure connection** 可驗證它們。
+
+取得金鑰的方法（免費 tier 不需要信用卡）：
+
+1. 建立/登入 Microsoft/hotmail/Azure 帳戶
+2. 建立 Azure 訂用帳戶
+3. 建立 Azure Translator 資源
+4. 選擇 F0（Free）定價層
+5. 資源管理 → 金鑰和端點 → 複製 **KEY 1** 和 **位置/區域**
+
+Microsoft 目前表示，Translator 的 F0 免費 tier 為每月 200 萬字元，且不會過期。
+
 ### LM Studio
 
 執行啟用了本機伺服器的 LM Studio（預設
-`http://127.0.0.1:1234`）。在設定中將後端選為
+`http://127.0.0.1:1234`）。在設定中將翻譯引擎選為
 **LM Studio (local server)**，設定伺服器 URL 與 API 類型 —
 **LM Studio REST API v1**（向 `/api/v1/chat` 發送請求）或
 **OpenAI-compatible**（向 `/v1/chat/completions` 發送請求） —
@@ -180,7 +197,7 @@ translate 順序；單一執行緒的背景頁面無法在不卡死的情況下�
 
 ## 已知限制
 
-- 沒有好的韓文 OCR — 來源語言為日文、英文、簡體/繁體中文。
+- 還沒有找到好的韓文 OCR — 來源語言限於日文、英文、簡體/繁體中文。
 - 自動翻譯每頁只處理一張圖片（頁面的主圖）。
   要翻譯頁面上的其他圖片，請在該圖片上按右鍵並選擇
   **Send to comic-translate-4-free**。
@@ -193,12 +210,11 @@ translate 順序；單一執行緒的背景頁面無法在不卡死的情況下�
 - 頁面快取是工作階段級的：瀏覽器啟動時會被清除，因此重新啟動後（包括當機後），
   重新傳送的圖片會走完整流程，不會命中快取。
 - 本機 LLM 後端為實驗性（需要 WebGPU + 數 GB 下載）。
-- Google 後端使用非官方 `translate.googleapis.com` 端點，
-  可能被限速；Azure 需要您自己的金鑰。
+- Google 翻譯引擎使用非官方 `translate.googleapis.com` 端點，
+  可能被限速。
 - OCR 引擎：Baberu（日文/英文/中文）。
 - Baberu 的解碼器在上游訓練時使用 64 字元標籤上限（`--max-text-len 64`），
-  因此單次裁切最多只回傳約 64 個字元。較長的對話框會自動切成重疊的小塊重新
-  OCR 並拼接還原（最多約 4×64 字元）；除錯面板的 OCR 分頁會標出觸及上限的裁切。
+  因此單次裁切最多只回傳約 64 個字元 — 較長的文字會被從中間截斷。
 - 直書文字針對高 CJK 文字區塊渲染；對話框外的狀聲詞等
   使用獨立文字框。
 
