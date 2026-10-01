@@ -186,48 +186,8 @@
     return { render_xyxy: area.map(v => Math.round(v)), render_font_size: Math.round(size * 10) / 10, auto_font_size: Math.round(autoSize * 10) / 10, vertical };
   }
 
-  // ------------------------------------------------------------ page images
-  // Multi-pic: every qualifying <img> gets a stable uid (data-ct-uid). The
-  // worker translates each picture and replaces it by uid, so any layout works
-  // (long strips, galleries, grids). dataset.ctOriginal remembers the real url
-  // once a translated render is swapped in, so a revisit can still find it.
-  let imgUidSeq = 0;
-  function ensureImgUid(im) {
-    if (!im.dataset.ctUid) im.dataset.ctUid = 'ct' + (++imgUidSeq) + '_' + (imgUidSeq * 7919 + ((im.naturalWidth || 0) * 31 + (im.naturalHeight || 0)) % 7919);
-    return im.dataset.ctUid;
-  }
-  function imgElByUid(uid) {
-    if (!uid) return null;
-    const el = document.querySelector('img[data-ct-uid="' + uid + '"]');
-    return el && el.isConnected ? el : null;
-  }
-  // One <img> as the worker sees it. Already translated in place? Report the
-  // ORIGINAL url the render replaced: a multi-MB data URL can break
-  // tabs.sendMessage, and page-canvas pixels would be the already-translated
-  // image — which would translate the translation and poison the page-cache
-  // key so revisits never hit the cache.
-  function describeImage(im) {
-    const cur = im.currentSrc || im.src || '';
-    const wasTranslated = !!im.dataset.ctOriginal && /^data:/i.test(cur);
-    return {
-      uid: ensureImgUid(im),
-      src: wasTranslated ? im.dataset.ctOriginal : cur,
-      w: im.naturalWidth, h: im.naturalHeight,
-      translated: wasTranslated,
-    };
-  }
-  function collectPageImages(minSide) {
-    const min = minSide || 120;
-    const imgs = [...document.images].filter(im => {
-      if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
-      const r = im.getBoundingClientRect();
-      return r.width >= min && r.height >= min;
-    });
-    // biggest first (stable order for progress + debug labels)
-    imgs.sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight));
-    return imgs.map(describeImage);
-  }
-  // Legacy single-image path (popup pre-flight, auto-path fallback).
+  // ------------------------------------------------------------ main image
+  // The page's own picture: largest fully-loaded <img> on the page.
   let mainImgEl = null;
 
   function findMainImage() {
@@ -238,61 +198,71 @@
     });
     if (!imgs.length) { mainImgEl = null; return null; }
     imgs.sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight));
-    mainImgEl = imgs[0];
-    return describeImage(mainImgEl);
+    const im = imgs[0];
+    mainImgEl = im;
+    const cur = im.currentSrc || im.src || '';
+    // Already translated in place: the <img> now shows our rendered data URL
+    // (the real url was kept in dataset.ctOriginal). Report the ORIGINAL url:
+    // a multi-MB data URL in this message can break tabs.sendMessage (the
+    // worker then reports "no picture found"), and the worker must download
+    // the original — page-canvas pixels would be the already-translated
+    // image, which would translate the translation and poison the page-cache
+    // key so revisits never hit the cache.
+    const wasTranslated = !!im.dataset.ctOriginal && /^data:/i.test(cur);
+    return {
+      src: wasTranslated ? im.dataset.ctOriginal : cur,
+      w: im.naturalWidth, h: im.naturalHeight,
+      translated: wasTranslated,
+    };
   }
 
   // The image the user right-clicked ("Send to comic-translate-4-free"): match
   // by live src, by the translated data URL now shown, or by the stashed
   // original (re-send of an already-translated image). No size filter — the
   // manual send bypasses the minimum image size on purpose.
-  function imageElBySrc(srcUrl) {
+  function findImageBySrc(srcUrl) {
     if (!srcUrl) return null;
-    return [...document.images].find(im => {
+    const im = [...document.images].find(im => {
       if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
       const cur = im.currentSrc || im.src || '';
       return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
-    }) || null;
-  }
-  function findImageBySrc(srcUrl) {
-    const im = imageElBySrc(srcUrl);
-    return im ? describeImage(im) : null;
+    });
+    if (!im) return null;
+    const cur = im.currentSrc || im.src || '';
+    const wasTranslated = !!im.dataset.ctOriginal && /^data:/i.test(cur);
+    return {
+      src: wasTranslated ? im.dataset.ctOriginal : cur,
+      w: im.naturalWidth, h: im.naturalHeight,
+      translated: wasTranslated,
+    };
   }
 
-  // Direct pixels via page canvas, as a PNG data URL: raw pixel buffers are
-  // silently emptied by extension messaging in both directions (verified), so
-  // binary travels the same string route the render path uses. Throws (tainted
-  // canvas) when the image host sends no CORS headers — the worker then falls
-  // back to downloading the image from inside the page.
-  function pixelsDataUrl(im) {
+  // Direct pixels via page canvas. With srcUrl, captures that specific image
+  // (the manual-send path); otherwise the main image. Throws (tainted
+  // canvas) when the image host sends no CORS headers — the worker then
+  // tries a direct fetch.
+  function mainImagePixels(srcUrl) {
+    let im = null;
+    if (srcUrl) {
+      im = [...document.images].find(im => {
+        if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
+        const cur = im.currentSrc || im.src || '';
+        return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
+      });
+    } else {
+      im = mainImgEl && mainImgEl.isConnected ? mainImgEl : null;
+    }
+    if (!im) throw new Error(srcUrl ? 'image not found on page' : 'no main image');
     const c = document.createElement('canvas');
     c.width = im.naturalWidth; c.height = im.naturalHeight;
     const cx = c.getContext('2d');
     cx.drawImage(im, 0, 0);
+    // NOTE: raw pixel buffers CANNOT travel via extension messaging — Chrome
+    // silently turns ArrayBuffers into {} in both directions (verified). So
+    // the pixels go as a PNG data URL string, the same trick the render path
+    // uses for the translated image. Throws (tainted canvas) when the image
+    // host sends no CORS headers — the pipeline then tries a direct fetch.
     return { dataUrl: c.toDataURL('image/png'), w: c.width, h: c.height };
-  }
-  function imagePixelsByUid(uid) {
-    const im = imgElByUid(uid);
-    if (!im) throw new Error('image left the page before translation finished — reload the page to retry');
-    return pixelsDataUrl(im);
-  }
-  function mainImagePixels(srcUrl) {
-    const im = srcUrl ? imageElBySrc(srcUrl)
-      : (mainImgEl && mainImgEl.isConnected ? mainImgEl : null);
-    if (!im) throw new Error(srcUrl ? 'image not found on page' : 'no main image');
-    return pixelsDataUrl(im);
-  }
-
-  // Multi-pic: swap the exact <img> a run named by uid. The stored element can
-  // go stale over a long pipeline (page re-rendered the <img>); uid lookup
-  // re-queries, so that case is covered too.
-  function replaceImageByUid(uid, dataUrl) {
-    const im = imgElByUid(uid);
-    if (!im) return false;
-    if (!im.dataset.ctOriginal) im.dataset.ctOriginal = im.currentSrc || im.src;
-    im.removeAttribute('srcset');
-    im.src = dataUrl;
-    return true;
   }
 
   function replaceMainImage(dataUrl) {
@@ -571,37 +541,6 @@
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
       return false;
     }
-    if (msg.type === 'ct/list-images') {
-      // Multi-pic inventory: uid + src + size per qualifying <img>, plus the
-      // page's total <img> count so icons/spacers are accounted for too.
-      try {
-        const minSide = (msg && msg.minSide) || 120;
-        sendResponse({ ok: true, images: collectPageImages(minSide), total: document.images.length });
-      } catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
-      return false;
-    }
-    if (msg.type === 'ct/get-image-pixels-by-uid') {
-      try { sendResponse({ ok: true, ...imagePixelsByUid(msg.uid) }); }
-      catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
-      return false;
-    }
-    if (msg.type === 'ct/run-summary') {
-      // End-of-run report from the worker: the popup may be closed already,
-      // so the page pill carries the outcome (translated / skipped / ignored).
-      const n = (msg && msg.images) || 0;
-      const failed = (msg && msg.failed) || [];
-      const ignored = (msg && msg.ignored) || 0;
-      if (failed.length) {
-        showPillError(`run finished — ${n} translated, ${failed.length} not: ` +
-          failed.slice(0, 2).join('; ') + (failed.length > 2 ? ' …' : '') +
-          ' — full list in the popup');
-      } else if (ignored) {
-        showPill(`comic-translate-4-free — done ✓ (${n} translated, ${ignored} tiny/hidden images skipped)`);
-      } else {
-        showPill('comic-translate-4-free — done ✓');
-      }
-      return false;
-    }
     if (msg.type === 'ct/get-image-pixels') {
       try { sendResponse({ ok: true, ...mainImagePixels(msg.srcUrl) }); }
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
@@ -672,7 +611,7 @@
       (async () => {
         try {
           currentRunId = msg.runId;
-          const { imageDataUrl, width, height, blocks, timings, debug, mode, uid } = msg;
+          const { imageDataUrl, width, height, blocks, timings, debug, mode } = msg;
           // Compose the final translated page on a scratch canvas.
           const renderT0 = performance.now();
           const work = document.createElement('canvas');
@@ -706,9 +645,8 @@
             // The manual-send path names the exact <img> (msg.srcUrl); the
             // auto path replaces the detected main image.
             const dataUrl = work.toDataURL('image/png');
-            replaced = uid ? replaceImageByUid(uid, dataUrl)
-                  : (msg.srcUrl ? replaceImageBySrc(msg.srcUrl, dataUrl)
-                                : replaceMainImage(dataUrl));
+            replaced = msg.srcUrl ? replaceImageBySrc(msg.srcUrl, dataUrl)
+                                  : replaceMainImage(dataUrl);
             if (replaced) {
               if (overlay) overlay.style.display = 'none';
             } else {

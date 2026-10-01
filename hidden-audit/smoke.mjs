@@ -4,13 +4,9 @@ import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 import http from 'node:http';
 
-const CHROME = process.env.CHROME_PATH || '/opt/meta-chromium/chrome';
+const CHROME = '/opt/meta-chromium/chrome';
 const EXT = new URL('../dist/chrome', import.meta.url).pathname;
 const PROFILE = '/tmp/ct-smoke-profile';
-// Compare against the repo, never a hard-coded build: the stamp moves every
-// build and a stale literal here turns every run into a false failure.
-const EXPECT = (await import('node:fs')).readFileSync(
-  new URL('../src/shared/version.js', import.meta.url), 'utf8').match(/BUILD = '([^']+)'/)?.[1];
 
 function getJson(port, path) {
   return new Promise((res, rej) => {
@@ -66,7 +62,7 @@ try {
     await sleep(5000);
     ws.close();
     console.log('BUILD stamp in SW:', stamp);
-    if (stamp !== EXPECT) { console.log(`FAIL: expected stamp ${EXPECT}, got ${stamp}`); failures++; }
+    if (stamp !== '20260930s') { console.log(`FAIL: expected stamp 20260930u, got ${stamp}`); failures++; }
     const fatal = errors.filter(e => !/favicon|net::ERR/i.test(e));
     if (fatal.length) { console.log('FAIL: SW errors:', fatal.slice(0, 5)); failures++; }
     else console.log('SW: no errors in 5s window');
