@@ -457,7 +457,6 @@
     if (overlay) overlay.remove();
     overlay = null; debugPanel = null; debugBody = null;
     for (const k of Object.keys(stageTabs)) delete stageTabs[k];
-    chrome.runtime.sendMessage({ type: 'ct/overlay-closed' }).catch(() => {});
   }
 
   function esc(s) {
@@ -528,7 +527,6 @@
   // ------------------------------------------------------------ messages
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || typeof msg.type !== 'string' || !msg.type.startsWith('ct/')) return false;
-    if (msg.type === 'ct/close-overlay') { closeOverlay(); sendResponse({ ok: true }); return false; }
     if (msg.type === 'ct/find-image') {
       try { sendResponse({ ok: true, image: findMainImage() }); }
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }

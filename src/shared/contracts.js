@@ -18,18 +18,20 @@ export const MSG = {
   MODEL_PROGRESS: 'ct/model-progress',   // {id, loaded, total}
   RUN_PROGRESS: 'ct/run-progress',       // {runId, stage, progress}
   // SW -> offscreen
+  // Pixel bytes never travel in these messages: they go through the IDB pixel
+  // bus (shared/pixel-bus.js) and only the lookup key crosses here.
   ML_PING: 'ml/ping',                    // {} -> {ok, loaded:{detector,baberu,inpaint}}
   ML_ENSURE: 'ml/ensure',                // {model:'detector'|'ocr-baberu'|'inpaint'} -> {ok} | {ok:false,error}
-  ML_DETECT: 'ml/detect',                // {image:ArrayBuffer,width,height,threshold} -> {ok, boxes:[{xyxy,label,score}], ms}
-  ML_OCR: 'ml/ocr',                      // {crops:[{id,key,width,height}], sourceLang} -> {ok, results:[{id,text,chars,chunks,hitCeiling}], ms, engine}
-  ML_INPAINT: 'ml/inpaint',              // {patches:[{id,rgba:ArrayBuffer,width,height,mask:ArrayBuffer}]} -> {ok, results:[{id,rgba:ArrayBuffer,width,height}], ms}
+  ML_DETECT: 'ml/detect',                // {key,width,height,threshold,runId} -> {ok, boxes:[{xyxy,label,score}], ms, inputMean}
+  ML_OCR: 'ml/ocr',                      // {crops:[{id,key,width,height}], sourceLang, runId} -> {ok, results:[{id,text,chars,chunks,hitCeiling}], ms, engine}
+  ML_INPAINT: 'ml/inpaint',              // {patches:[{id,key,maskKey,width,height}], runId} -> {ok, results:[{id,key,width,height}], ms}
   ML_DOWNLOAD: 'ml/download',            // {fileId} -> {ok, bytes} (progress via MODEL_PROGRESS)
   ML_RESET: 'ml/reset',                  // {group} -> {ok} (drop loaded sessions)
   ML_CANCEL: 'ml/cancel',                // {runId} -> {ok} (abort in-flight ML work for a run)
   // SW -> content (tabs.sendMessage)
   RUN_STARTED: 'ct/run-started',         // {runId} (marks the tab's current run; stale renders are ignored)
-  RENDER: 'ct/render',                   // {runId, image:ArrayBuffer,width,height, blocks:[TextBlock]}
-  DEBUG_STAGE: 'ct/debug-stage',          // {runId, stage, title, payload}
+  RENDER: 'ct/render',                   // {runId, mode, imageDataUrl, width, height, blocks, timings, debug, srcUrl?}
+  DEBUG_STAGE: 'ct/debug-stage',          // {runId, stage, payload, debug}
 };
 
 // IndexedDB: db 'ct-db', store 'models' (keyPath 'id').
@@ -54,6 +56,12 @@ export function openDb() {
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
+    // A version upgrade (v1 -> v2) blocks until every other context closes its
+    // connection. Without this the promise would never settle and the caller
+    // would hang with no error — the offscreen document keeps its connection
+    // cached for its whole lifetime, so this is reachable in practice.
+    req.onblocked = () => reject(new Error(
+      'another extension context is still holding the model database open — close other tabs of this extension and retry'));
   });
 }
 
@@ -72,6 +80,10 @@ export async function idbPut(db, record) {
     tx.objectStore(IDB_STORE).put(record);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    // An aborted transaction (quota exceeded, storage evicted mid-write) fires
+    // neither oncomplete nor onerror, so without this the promise hangs
+    // forever and the pipeline stalls with no message.
+    tx.onabort = () => reject(tx.error || new DOMException('storage write aborted (quota?)', 'AbortError'));
   });
 }
 
@@ -81,5 +93,6 @@ export async function idbDel(db, id) {
     tx.objectStore(IDB_STORE).delete(id);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new DOMException('storage delete aborted', 'AbortError'));
   });
 }

@@ -79,10 +79,15 @@ async function ensureModel(kind) {
 // (pixel payloads now travel via the IDB pixel bus — see pixel-bus.js)
 
 // Run ids whose ML work must stop ASAP (see ML_CANCEL). Checked between
-// units of work; entries are removed when the handler finishes.
+// units of work. An entry is dropped when a handler finishes for a run that
+// was NOT cancelled; a cancelled run keeps its flag so the NEXT ML stage of
+// the same run aborts immediately instead of silently running to completion.
 const cancelledRuns = new Set();
 function throwIfCancelled(runId) {
   if (runId && cancelledRuns.has(runId)) throw new Error('cancelled');
+}
+function releaseRun(runId) {
+  if (runId && !cancelledRuns.has(runId)) cancelledRuns.delete(runId);
 }
 
 const handlers = {
@@ -136,7 +141,13 @@ const handlers = {
   // throw, so a cancelled run stops burning CPU instead of finishing a page
   // the user already left.
   [MSG.ML_CANCEL]({ runId }) {
-    if (runId) cancelledRuns.add(runId);
+    if (runId) {
+      cancelledRuns.add(runId);
+      // Bound the set: a run cancelled between ML stages keeps its flag (so
+      // the next stage aborts) and would otherwise never be released. Sets
+      // iterate in insertion order, so this drops the oldest entries first.
+      while (cancelledRuns.size > 64) cancelledRuns.delete(cancelledRuns.values().next().value);
+    }
     return { ok: true };
   },
 
@@ -153,7 +164,7 @@ const handlers = {
     try {
       boxes = await detector.detect(buf, width, height, threshold);
     } finally {
-      if (runId) cancelledRuns.delete(runId);
+      releaseRun(runId);
     }
     throwIfCancelled(runId);
     return { ok: true, boxes, ms: Math.round(performance.now() - t0), inputMean: +meanBrightness(buf).toFixed(4) };
@@ -203,7 +214,7 @@ const handlers = {
         results.push({ id: c.id, text: r.text, chars: r.text.length, chunks: r.chunks, hitCeiling: r.hitCeiling, stopped: r.stopped });
       }
     } finally {
-      if (runId) cancelledRuns.delete(runId);
+      releaseRun(runId);
     }
     return { ok: true, results, ms: Math.round(performance.now() - t0), engine };
   },
@@ -237,7 +248,7 @@ const handlers = {
         reportInpaint((pi + 1) / patches.length);
       }
     } finally {
-      if (runId) cancelledRuns.delete(runId);
+      releaseRun(runId);
     }
     return { ok: true, results, ms: Math.round(performance.now() - t0) };
   },

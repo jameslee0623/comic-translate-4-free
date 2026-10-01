@@ -158,6 +158,7 @@ export async function pageCachePut(key, entry) {
     });
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error || new DOMException('page-cache write aborted (storage full?)', 'AbortError'));
   });
 }
 
@@ -167,6 +168,7 @@ function clearStore() {
     t.objectStore(PAGE_CACHE_STORE).clear();
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
+    t.onabort = () => reject(t.error || new DOMException('page-cache clear aborted', 'AbortError'));
   }));
 }
 

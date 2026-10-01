@@ -721,10 +721,21 @@ async function runPipeline(tabId, opts = {}) {
         });
       });
       // Main thread: mask → inpaint (linear, WASM may block but worker continues)
-      const maskRes = await runMask();
-      inpaintOut = await runInpaint(maskRes);
-      // Collect translation from worker
-      const translated = await translateP;
+      // If mask/inpaint throws first, translateP would reject with no handler
+      // (unhandled rejection) and the worker would linger until its timeout —
+      // attach a handler and stop the worker on the way out.
+      translateP.catch(() => {});
+      let maskRes, translated;
+      try {
+        maskRes = await runMask();
+        inpaintOut = await runInpaint(maskRes);
+        // Collect translation from worker
+        translated = await translateP;
+      } catch (e) {
+        try { tWorker.terminate(); } catch { /* already terminated */ }
+        throw e;
+      }
+      try { tWorker.terminate(); } catch { /* already terminated by onmessage */ }
       checkCancelled(runId);
       blocks.forEach((b, i) => { b.translation = translated[i]; });
       const translateMs = Math.round(performance.now() - t0t);
