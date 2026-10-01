@@ -88,6 +88,8 @@ Azure Translator / LM Studio）、Azure・LM Studioの接続テストボタン�
 検出しきい値、最小画像サイズ（デフォルト500px — より小さいキャプチャは
 スキップ）、フォントサイズ、デバッグモード、翻訳済みページキャッシュの管理。
 
+![Settings page](docs/images/options.png)
+
 ## このプロジェクトを支援
 
 この拡張機能が役に立ったなら、開発の支援をいただけると助かります：
