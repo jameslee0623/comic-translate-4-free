@@ -31,7 +31,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zips-${{ github.sha }}
-          path: dist/*-chrome.zip dist/*-firefox.zip
+          path: |
+            dist/*-chrome.zip
+            dist/*-firefox.zip
           if-no-files-found: error
 
       - name: Attach zips to the release
