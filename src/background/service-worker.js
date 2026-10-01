@@ -120,6 +120,14 @@ function bitmapToRGBA(bmp, maxDim) {
   return { rgba: img.data, w, h };
 }
 
+// Decode a data-URL image into RGBA pixels. The content script transports
+// binary as data URL strings because raw ArrayBuffers are silently emptied
+// by extension messaging (verified in both directions).
+async function dataUrlToRGBA(dataUrl, maxDim) {
+  const blob = await (await fetch(dataUrl)).blob();
+  return bitmapToRGBA(await createImageBitmap(blob), maxDim);
+}
+
 // Direct download of the page image (needs the host permission the popup
 // requests on click). Full resolution, no viewport limits.
 // The request mimics the page's own <img> load: some image hosts 403 requests
@@ -140,9 +148,12 @@ async function fetchImagePixels(url, referrer) {
 
 // Pipeline input: the page's own picture — never a screenshot of the page.
 // Tier 1a: pixels straight from the page canvas (works when the image host
-// sends CORS headers). Tier 1b: background fetch of the image URL (needs the
-// host permission the popup requests on click). If neither can read the
-// picture we throw an actionable error; there is no screenshot fallback.
+// sends CORS headers). Tier 1b: download inside the page (content script),
+// so the request carries the page's real referrer policy and cookies —
+// exactly like the page's own <img> load. Tier 1c: background fetch of the
+// image URL (needs the host permission the popup requests on click). If none
+// can read the picture we throw an actionable error; there is no screenshot
+// fallback.
 async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   // Manual send (right-click "Send to comic-translate-4-free"): translate
   // this exact image, bypassing the minimum image size — the user picked it.
@@ -177,11 +188,11 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
     try {
       const p = await chrome.tabs.sendMessage(tabId,
         manualSrc ? { type: 'ct/get-image-pixels', srcUrl: manualSrc } : { type: 'ct/get-image-pixels' });
-      if (p && p.ok) {
-        const rgba = new Uint8ClampedArray(p.data);
+      if (p && p.ok && typeof p.dataUrl === 'string') {
+        const { rgba, w, h } = await dataUrlToRGBA(p.dataUrl, 2560);
         // A blank (all-black) capture fed to the detector yields 2 bogus
         // full-page boxes, so validate the pixels before accepting them.
-        if (meanBrightness(rgba) >= 0.004) return { rgba, w: p.w, h: p.h, mode: 'replace', tier: 'page-canvas' };
+        if (meanBrightness(rgba) >= 0.004) return { rgba, w, h, mode: 'replace', tier: 'page-canvas' };
         failures.push('page canvas returned blank pixels');
       } else {
         failures.push('page canvas: ' + String((p && p.error) || 'no pixels').slice(0, 100));
@@ -190,7 +201,23 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   } else {
     failures.push('page canvas skipped (already showing the translated render)');
   }
-  // Tier 1b: background fetch of the image URL (for an already-translated
+  // Tier 1b: download inside the PAGE (content script). The browser applies the
+  // page's real referrer policy and cookies — exactly like the page's own
+  // <img> load. Some image hosts / WAFs (e.g. Cloudflare) 403 the service
+  // worker's fetch because its Referer and Sec-Fetch-* headers don't match
+  // what the page itself sends; this tier is indistinguishable from the page
+  // loading the image itself. The extension's host permissions let the
+  // content script read the cross-origin response bytes.
+  try {
+    const f = await chrome.tabs.sendMessage(tabId, { type: 'ct/fetch-image-bytes', srcUrl: info.src });
+    if (f && f.ok && typeof f.dataUrl === 'string' && f.dataUrl.startsWith('data:')) {
+      const { rgba, w, h } = await dataUrlToRGBA(f.dataUrl, 2560);
+      if (!manualSrc) tooSmall(w, h);
+      return { rgba, w, h, mode: 'replace', tier: 'page-fetch' };
+    }
+    failures.push('page download: ' + String((f && f.error) || 'no bytes').slice(0, 100));
+  } catch (e) { failures.push('page download: ' + String((e && e.message) || e).slice(0, 100)); }
+  // Tier 1c: background fetch of the image URL (for an already-translated
   // page this is the ORIGINAL url, so the pixels — and the cache key — are
   // the originals, not the render).
   try {
@@ -215,7 +242,7 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   throw new Error(
     `couldn't read the page's picture (${failures.join('; ')}). ` +
     (serverRefused
-      ? `The image server${imgHostLabel ? ' (' + imgHostLabel + ')' : ''} refused the download${staleOriginal ? ' — the saved image link has likely expired' : ' even though access was granted'} — it is blocking requests that don't come from the page itself. Reload the page and try again; if it persists, this site can't be translated right now.`
+      ? `The image server${imgHostLabel ? ' (' + imgHostLabel + ')' : ''} refused the download${staleOriginal ? ' — the saved image link has likely expired' : ' even though access was granted'} — the download was refused even when made from the page itself, which points to bot protection (e.g. Cloudflare) rather than a permission problem. Reload the page and try again; if it persists, this site can't be translated right now.`
       : imgHost
         ? staleOriginal
           ? `The picture lives on ${imgHostLabel} but its saved image link no longer loads (these links expire, or the access grant was revoked) — reload the page for a fresh link and translate again; if the popup offers it, grant access to ${imgHostLabel} first.`
