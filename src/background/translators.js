@@ -516,30 +516,10 @@ export async function checkAzure(settings) {
   }
 }
 async function localLlm(texts, settings) {
-  let wllm;
-  try {
-    wllm = await import(chrome.runtime.getURL('src/offscreen/vendor/web-llm.js'));
-  } catch (e) {
-    throw new Error('local LLM: could not load the WebLLM runtime — ' + String(e).slice(0, 120));
-  }
-  let engine;
-  try {
-    engine = await wllm.CreateMLCEngine(settings.localLlmModel, { logLevel: 'SILENT' });
-  } catch (e) {
-    throw new Error('local LLM: model load failed (needs WebGPU + a large download) — ' + String(e).slice(0, 160));
-  }
-  const sys = `Translate the following ${langName(settings.sourceLang)} manga dialogue to ${langName(settings.targetLang)}. Preserve tone and line breaks. Output only the translation, nothing else.`;
-  const out = [];
-  for (const t of texts) {
-    const resp = await engine.chat.completions.create({
-      messages: [
-        { role: 'system', content: sys },
-        { role: 'user', content: t },
-      ],
-    });
-    out.push(((resp.choices[0].message.content) || '').trim());
-  }
-  return out;
+  // WebLLM runtime removed from the bundle (was 6.6 MB; unreachable — the UI
+  // maps a stored 'local-llm' backend to Google). Kept as a clear error in
+  // case a stale setting ever routes here.
+  throw new Error('local LLM backend was removed from this build; using Google Translate instead.');
 }
 
 export async function translateBlocks(blocks, settings, onProgress) {

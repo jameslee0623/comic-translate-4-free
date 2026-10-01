@@ -55,6 +55,10 @@ cd "$SRC"
 zip -q "$OUT" README.md LICENSE
 echo "wrote $OUT ($(du -h "$OUT" | cut -f1))"
 unzip -l "$OUT" | tail -3
+# Per-store zips (manifest at root) for manual store submission.
+(cd "$DIST/chrome" && zip -qr "$DIST/${NAME}-chrome.zip" .)
+(cd "$DIST/firefox" && zip -qr "$DIST/${NAME}-firefox.zip" .)
+echo "store zips: ${NAME}-chrome.zip + ${NAME}-firefox.zip"
 # Local convenience copy (same bytes, gitignored).
 mkdir -p "$(dirname "$LOCAL_OUT")"
 cp "$OUT" "$LOCAL_OUT"
