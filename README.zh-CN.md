@@ -76,18 +76,19 @@
 （缓存的是修复后的图像＋翻译文本，因此更改字号无需重新翻译即可重新渲染）。
 关闭浏览器时缓存会自动清除，隐身窗口中不会使用缓存。
 
-**设置**（右键图标 → 设置）：网站访问、页面加载时自动翻译、
+**设置**（点击图标 → 设置）：网站访问、页面加载时自动翻译、
 源语言/目标语言、翻译引擎（Google 免费 / Azure Translator / LM Studio）、
 Azure 与 LM Studio 的连接测试按钮、检测阈值、
 最小图片尺寸（默认 500px — 更小的捕获会被跳过）、
 字体大小、调试模式，以及已翻译页面缓存的管理。
 
-### Azure Translator
+## 支持本项目
 
-在设置中将翻译引擎选为 **Azure Translator**，然后填写 API 密钥和区域 —
-**Check Azure connection** 可验证它们。
+如果这个扩展对你有帮助，欢迎支持它的开发：
 
-获取密钥的方法（免费 tier 不需要信用卡）：
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S5X627XJQW)
+
+### 申请 Microsoft Azure 账户
 
 1. 创建/登录 Microsoft/hotmail/Azure 账户
 2. 创建 Azure 订阅
@@ -209,12 +210,8 @@ translate 顺序；单线程的后台页面无法在不卡死的情况下运行�
   （在缓存约 35 张图片时观察到）。
 - 页面缓存是会话级的：浏览器启动时会被清空，因此重启后（包括崩溃后），
   重新发送的图片会走完整流程，不会命中缓存。
-- 本地 LLM 后端为实验性（需要 WebGPU + 数 GB 下载）。
 - Google 翻译引擎使用非官方 `translate.googleapis.com` 端点，
   可能被限流。
-- OCR 引擎：Baberu（日语/英语/中文）。
-- Baberu 的解码器在上游训练时使用 64 字符标签上限（`--max-text-len 64`），
-  因此单次裁剪最多只返回约 64 个字符 — 较长的文本会被从中间截断。
 - 竖排文字针对高 CJK 文本块渲染；气泡外的拟声词等
   使用独立文本框。
 
@@ -223,8 +220,3 @@ translate 顺序；单线程的后台页面无法在不卡死的情况下运行�
 捆绑的库、移植的代码、运行时下载的模型及其许可证，
 见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
 
-## 支持本项目
-
-如果这个扩展对你有帮助，欢迎支持它的开发：
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S5X627XJQW)

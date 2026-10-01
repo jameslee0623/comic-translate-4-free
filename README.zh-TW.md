@@ -76,18 +76,19 @@
 載入（快取的是修復後的圖像＋翻譯文字，因此變更字級無需重新翻譯即可重新算繪）。
 關閉瀏覽器時快取會自動清除，無痕視窗中不會使用快取。
 
-**設定**（在圖示上按右鍵 → 設定）：網站存取、頁面載入時自動翻譯、
+**設定**（點擊圖示 → 設定）：網站存取、頁面載入時自動翻譯、
 來源/目標語言、翻譯引擎（Google 免費 / Azure Translator / LM Studio）、
 Azure 與 LM Studio 的連線測試按鈕、偵測閾值、
 最小圖片尺寸（預設 500px — 更小的擷取會被略過）、
 字型大小、除錯模式，以及已翻譯頁面快取的管理。
 
-### Azure Translator
+## 支持本專案
 
-在設定中將翻譯引擎選為 **Azure Translator**，然後填寫 API 金鑰和區域 —
-**Check Azure connection** 可驗證它們。
+如果這個擴充功能對你有幫助，歡迎支持它的開發：
 
-取得金鑰的方法（免費 tier 不需要信用卡）：
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S5X627XJQW)
+
+### 申請 Microsoft Azure 帳戶
 
 1. 建立/登入 Microsoft/hotmail/Azure 帳戶
 2. 建立 Azure 訂用帳戶
@@ -209,12 +210,8 @@ translate 順序；單一執行緒的背景頁面無法在不卡死的情況下�
   （在快取約 35 張圖片時觀察到）。
 - 頁面快取是工作階段級的：瀏覽器啟動時會被清除，因此重新啟動後（包括當機後），
   重新傳送的圖片會走完整流程，不會命中快取。
-- 本機 LLM 後端為實驗性（需要 WebGPU + 數 GB 下載）。
 - Google 翻譯引擎使用非官方 `translate.googleapis.com` 端點，
   可能被限速。
-- OCR 引擎：Baberu（日文/英文/中文）。
-- Baberu 的解碼器在上游訓練時使用 64 字元標籤上限（`--max-text-len 64`），
-  因此單次裁切最多只回傳約 64 個字元 — 較長的文字會被從中間截斷。
 - 直書文字針對高 CJK 文字區塊渲染；對話框外的狀聲詞等
   使用獨立文字框。
 
@@ -223,8 +220,3 @@ translate 順序；單一執行緒的背景頁面無法在不卡死的情況下�
 綑綁的函式庫、移植的程式碼、執行時下載的模型及其授權，
 見 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
 
-## 支持本專案
-
-如果這個擴充功能對你有幫助，歡迎支持它的開發：
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S5X627XJQW)

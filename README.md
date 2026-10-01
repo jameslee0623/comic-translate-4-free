@@ -11,8 +11,7 @@ re-rendering into the original speech bubbles.
 The extension UI follows your browser's language setting (English, Japanese,
 Korean, Simplified/Traditional Chinese).
 
-Ported from [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate)
-to Manifest V3 + ONNX Runtime Web (WASM).
+This project is inspired by [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate).
 
 ## Download (no build needed)
 
@@ -38,7 +37,7 @@ Download the zip for your browser above and unzip it.
 **Firefox:** `about:debugging#/runtime/this-firefox` → **Load Temporary
 Add-on** → open the unzipped folder and pick `manifest.json`. (Temporary
 add-ons stay until Firefox restarts. For a permanent install the build must
-be signed on addons.mozilla.org — a signed build for standard Firefox is in the works.)
+be signed on addons.mozilla.org. Working on signed extension for Firefox standard edition.)
 
 Then download the models once from the Settings page — one
 **Download all models** button fetches everything (detector, OCR models,
@@ -52,7 +51,7 @@ truncated or wrong file is flagged with a ⚠ and can be re-downloaded.
 
 1. **Allow the site first** — translation only runs on sites you explicitly
    allow. Click the extension icon and press **Allow this site**
-   (or add hostnames in Settings, or turn on **Allow all sites** to skip this
+   (or add hostnames in Settings, or turn on **ALLOW ALL SITES** to skip this
    step everywhere). This is a hard gate: the pipeline refuses
    to run anywhere else.
 
@@ -86,31 +85,32 @@ from a temporary on-disk cache (the inpainted image + translated text, so
 font-size changes re-render without re-translating). The cache is cleared
 automatically when the browser closes, and is never used in incognito windows.
 
-**Settings** (right-click the icon → Settings): site access, auto-translate on
+**Settings** (click the icon → Settings): site access, auto-translate on
 page load, source/target languages, translation engine (Google free / Azure
 Translator / LM Studio), connection-test buttons for Azure and LM Studio,
 detection threshold, minimum image size (default 500px — smaller captures are
 skipped), font sizes, debug mode, and the translated-page cache controls.
 
-### Azure Translator
+## Support this project
 
-Select **Azure Translator** as the translation engine in Settings, then add
-your API key and region — **Check Azure connection** verifies them.
+If this extension is useful to you, consider supporting its development:
 
-To get a key (no credit card needed for the free tier):
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S5X627XJQW)
+
+### Apply for Microsoft Azure account
 
 1. Create/sign in to a Microsoft/hotmail/Azure account
 2. Create an Azure subscription
 3. Create an Azure Translator resource
 4. Select F0 (Free) pricing tier
-5. Resource Management → Keys and Endpoint → copy **KEY 1** and **Location/Region**
+5. Resource Management → Keys and Endpoint → copy **KEY 1** and **Location/Region** 
 
 Microsoft currently says the Translator F0 free tier is 2 million characters/month and does not expire.
 
 ### LM Studio
 
 Run LM Studio with its local server enabled (default
-`http://127.0.0.1:1234`). Select **LM Studio (local server)** as the translation
+`http://127.0.0.1:1234`). Select **LM Studio (local server)** as the translation 
 engine in Settings, set the server URL and the API flavour — **LM Studio REST API v1**
 (posts to `/api/v1/chat`) or **OpenAI-compatible** (posts to
 `/v1/chat/completions`) — then press **Check LM Studio connection** to
@@ -206,7 +206,7 @@ blocked when the WASM inpaint hogs the main thread.
 
 ## Known limitations
 
-- No good OCR for Korean found yet — source languages are limited to Japanese,
+- No good OCR for Korean found yet — source languages are limited to Japanese, 
   English, and Simplified/Traditional Chinese.
 - Auto-translate handles a single picture per page (the page's main image).
   To translate any other picture on the page, right-click it and choose
@@ -221,13 +221,8 @@ blocked when the WASM inpaint hogs the main thread.
 - The page cache is session-scoped: it is wiped when the browser starts, so
   after a restart (including after a crash) re-sent images run the full
   pipeline again instead of hitting the cache.
-- Google translation engine uses the unofficial `translate.googleapis.com`
+- Google translation engine uses the unofficial `translate.googleapis.com` 
   endpoint and may be rate-limited.
-- Local LLM backend is experimental (needs WebGPU + multi-GB downloads).
-- OCR engines: Baberu (Japanese/English/Chinese).
-- Baberu's decoder was trained upstream with a 64-character label cap
-  (`--max-text-len 64`), so one crop never returns more than ~64 characters —
-  longer text truncates mid-word.
 - Vertical text is rendered for tall CJK blocks; SFX / text outside bubbles
   uses its own text box.
 
@@ -235,9 +230,3 @@ blocked when the WASM inpaint hogs the main thread.
 
 Bundled libraries, ported code, and runtime-downloaded models are listed with
 their licenses in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
-
-## Support this project
-
-If this extension is useful to you, consider supporting its development:
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S5X627XJQW)
