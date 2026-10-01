@@ -334,7 +334,6 @@ $('translateBtn').onclick = async () => {
   } catch { /* optional; the pipeline reports what it can't read */ }
   const r = await chrome.runtime.sendMessage({ type: 'ct/translate-page' }).catch(e => ({ ok: false, error: String(e) }));
   if (!r.ok) $('error').textContent = r.error;
-  else if (r.failed && r.failed.length) $('error').textContent = `done: ${r.images} image(s) translated; skipped — ${r.failed.join('; ')}`;
   refresh();
 };
 

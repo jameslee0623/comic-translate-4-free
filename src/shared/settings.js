@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS = {
   detectionThreshold: 0.3,
   initFontSize: 40,
   minFontSize: 10,
-minImageSize: 400, // skip images smaller than this (max dimension, px)
+  minImageSize: 500, // skip images smaller than this (max dimension, px)
   siteWhitelist: [], // hostnames with site access, e.g. ['example.com']
   allowAllSites: false, // site access: translate on any site (requests <all_urls> when enabled)
   autoTranslateOnLoad: true, // start the pipeline automatically on allowed page loads
@@ -151,11 +151,11 @@ export const TARGET_LANGS = [
 export async function getSettings() {
   const stored = await chrome.storage.local.get('settings');
   const s = { ...DEFAULT_SETTINGS, ...(stored.settings || {}) };
-  // One-time migration: the default minimum image size dropped 600 -> 500 -> 400.
-  // Installs still sitting on an old default follow it; a value the user
+  // One-time migration: the default minimum image size dropped 600 -> 500.
+  // Installs still sitting on the old default follow it; a value the user
   // deliberately chose is left alone.
-  if (stored.settings && (stored.settings.minImageSize === 600 || stored.settings.minImageSize === 500)) {
-    s.minImageSize = 400;
+  if (stored.settings && stored.settings.minImageSize === 600) {
+    s.minImageSize = 500;
     chrome.storage.local.set({ settings: s }).catch(() => {});
   }
   // One-time migration (2026-09-28): Latin/Russian source languages were
