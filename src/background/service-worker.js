@@ -138,45 +138,77 @@ async function fetchImagePixels(url, referrer) {
   return bitmapToRGBA(await createImageBitmap(await res.blob()), 2560);
 }
 
-// Pipeline input: the page's own picture — never a screenshot of the page.
-// Tier 1a: pixels straight from the page canvas (works when the image host
-// sends CORS headers). Tier 1b: background fetch of the image URL (needs the
-// host permission the popup requests on click). If neither can read the
-// picture we throw an actionable error; there is no screenshot fallback.
-async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
-  // Manual send (right-click "Send to comic-translate-4-free"): translate
-  // this exact image, bypassing the minimum image size — the user picked it.
+// Multi-pic: every qualifying <img> on the page is translated (biggest
+// first). MAX_IMAGES_PER_PAGE caps a run; the rest are reported as skipped.
+const MAX_IMAGES_PER_PAGE = 50;
+
+// Some browsers have been observed to hang chrome.tabs.sendMessage forever
+// (neither resolve nor reject — the same behaviour emitDebug races against).
+// Racing a timeout turns a hung round-trip into a recorded per-image failure
+// instead of a run that quietly never finishes after image N.
+function raceTimeout(p, ms, what) {
+  let t;
+  return Promise.race([
+    p,
+    new Promise((_, rej) => { t = setTimeout(() => rej(new Error(`${what} timed out after ${Math.round(ms / 1000)}s`)), ms); }),
+  ]).finally(() => clearTimeout(t));
+}
+
+// Inventory of the pictures this run will translate. Never a screenshot of the
+// page: the extension reads the page's own <img> elements. The right-click
+// "Send to comic-translate-4-free" path names one exact image and bypasses the
+// minimum size (the user picked it).
+async function getPipelineImages(tabId, settings, tabUrl, opts = {}) {
   const manualSrc = opts.srcUrl || null;
-  const minSize = settings.minImageSize || 500;
-  const tooSmall = (w, h) => {
-    if (Math.max(w, h) < minSize) {
-      throw new Error(`page image is ${w}×${h}px — below the minimum image size of ${minSize}px (change it in Options)`);
+  const minSize = settings.minImageSize || 400;
+  if (manualSrc) {
+    let info = null;
+    try { info = (await chrome.tabs.sendMessage(tabId, { type: 'ct/find-image-by-src', srcUrl: manualSrc }))?.image || null; }
+    catch { info = null; }
+    if (!info || !info.src) {
+      throw new Error('could not find that image on the page anymore — it may have been removed or the page reloaded');
     }
-  };
-  let info = null;
+    return { images: [info], skipped: [], ignored: 0 };
+  }
+  let list = [], total = 0;
   try {
-    info = manualSrc
-      ? (await chrome.tabs.sendMessage(tabId, { type: 'ct/find-image-by-src', srcUrl: manualSrc }))?.image || null
-      : (await chrome.tabs.sendMessage(tabId, { type: 'ct/find-image' }))?.image || null;
+    const r = await chrome.tabs.sendMessage(tabId, { type: 'ct/list-images', minSide: 120 });
+    list = r?.images || [];
+    total = r?.total || list.length;
+  } catch { list = []; }
+  if (!list.length) {
+    throw new Error('no pictures found on this page — the extension translates the page\'s own pictures, not a screenshot of the page');
   }
-  catch { info = null; }
-  if (!info || !info.src) {
-    throw new Error(manualSrc
-      ? 'could not find that image on the page anymore — it may have been removed or the page reloaded'
-      : 'no picture found on this page — the extension translates the page\'s own picture, not a screenshot of the page');
+  const eligible = list.filter(im => Math.max(im.w || 0, im.h || 0) >= minSize);
+  const skipped = [];
+  if (list.length - eligible.length) skipped.push(`${list.length - eligible.length} below the minimum image size of ${minSize}px (change it in Options)`);
+  const picked = eligible.slice(0, MAX_IMAGES_PER_PAGE);
+  if (eligible.length - picked.length) skipped.push(`${eligible.length - picked.length} over the ${MAX_IMAGES_PER_PAGE}-image per-run cap`);
+  if (!picked.length) {
+    throw new Error(`no usable pictures on this page (${skipped.join('; ')}).`);
   }
-  if (!manualSrc) tooSmall(info.w || 0, info.h || 0);
+  // Pictures the inventory never even considered (icons, spacers, hidden or
+  // still-loading <img>) — reported separately so "quietly untranslated"
+  // pictures are always accounted for in the run summary.
+  const ignored = Math.max(0, total - list.length);
+  return { images: picked, skipped, ignored };
+}
+
+// One picture's pixels, loaded just before its stages run and released after.
+// Tier 1a: straight from the page canvas by uid (works when the image host
+// sends CORS headers), skipped when the page already shows our render — the
+// canvas would hand back translated pixels, so the pipeline would translate
+// the translation and poison the page-cache key. Tier 1b: background fetch of
+// the ORIGINAL url the content script reported (needs the host permission the
+// popup requests on click). If neither can read it we throw an actionable
+// error; there is no screenshot fallback.
+async function loadPipelineImagePixels(tabId, info, minSize, tabUrl) {
   const failures = [];
-  // Tier 1a: pixels straight from the page. Skipped when the page already
-  // shows our translated render (info.translated): the canvas would hand back
-  // the translated pixels, so the pipeline would translate the translation
-  // and the page-cache key would never match. The download tier below fetches
-  // the ORIGINAL url the content script reported, so pixels and cache key
-  // stay correct and revisits hit the cache.
   if (!info.translated) {
     try {
-      const p = await chrome.tabs.sendMessage(tabId,
-        manualSrc ? { type: 'ct/get-image-pixels', srcUrl: manualSrc } : { type: 'ct/get-image-pixels' });
+      const p = await raceTimeout(
+        chrome.tabs.sendMessage(tabId, { type: 'ct/get-image-pixels-by-uid', uid: info.uid }),
+        15000, 'page pixel read');
       if (p && p.ok) {
         const rgba = new Uint8ClampedArray(p.data);
         // A blank (all-black) capture fed to the detector yields 2 bogus
@@ -190,12 +222,9 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   } else {
     failures.push('page canvas skipped (already showing the translated render)');
   }
-  // Tier 1b: background fetch of the image URL (for an already-translated
-  // page this is the ORIGINAL url, so the pixels — and the cache key — are
-  // the originals, not the render).
   try {
     const { rgba, w, h } = await fetchImagePixels(info.src, tabUrl);
-    if (!manualSrc) tooSmall(w, h);
+    if (Math.max(w, h) < minSize) throw new Error(`downloaded image is ${w}×${h}px — below the minimum image size of ${minSize}px`);
     return { rgba, w, h, mode: 'replace', tier: 'worker-fetch' };
   } catch (e) { failures.push('download: ' + String((e && e.message) || e).slice(0, 120)); }
   let imgHost = '';
@@ -207,10 +236,10 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   // An HTTP status means the request went out — access was granted and the
   // SERVER refused it. Don't send the user on another grant-access errand.
   const serverRefused = /HTTP (401|403)/.test(failures.join(';'));
-  // A revisit of an already-translated page downloads the ORIGINAL url the
-  // content script stashed. Some hosts hand out expiring image links
-  // (keystamp=...), so on revisit that saved link is dead — the fix is a
-  // page reload for a fresh link, not another access grant.
+  // A revisit of an already-translated picture downloads the ORIGINAL url the
+  // content script stashed. Some hosts hand out expiring image links, so on
+  // revisit that saved link is dead — the fix is a page reload for a fresh
+  // link, not another access grant.
   const staleOriginal = !!info.translated;
   throw new Error(
     `couldn't read the page's picture (${failures.join('; ')}). ` +
@@ -387,15 +416,17 @@ async function isIncognitoTab(tabId) {
 
 // Send the render payload to the page and verify it landed. Shared by the
 // live pipeline and the page-cache hit path (which re-sends a stored entry).
-// extra.srcUrl names the exact <img> for the manual-send path; the auto
-// path omits it and the page replaces its detected main image.
+// extra.uid names the exact <img> (multi-pic); extra.srcUrl names it for the
+// manual-send path. The render itself is raced with a timeout: a hung
+// tabs.sendMessage would otherwise stall the run with no message.
 async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timings, debug, extra = {}) {
-  const renderRes = await chrome.tabs.sendMessage(tabId, {
+  const renderRes = await raceTimeout(chrome.tabs.sendMessage(tabId, {
     type: MSG.RENDER, runId, mode,
     imageDataUrl, width: w, height: h,
     blocks, timings, debug,
+    ...(extra.uid ? { uid: extra.uid } : {}),
     ...(extra.srcUrl ? { srcUrl: extra.srcUrl } : {}),
-  });
+  }), 30000, 'render to the page');
   // Surface a content-side render failure instead of silently reporting
   // "done" while the original image is still on the page.
   if (!renderRes || renderRes.ok === false) {
@@ -411,15 +442,15 @@ async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timing
 // page already knows (RUN_STARTED went out before capture), and the message
 // shape is identical to the live pipeline's — the content script can't tell
 // the difference, and re-composites the text with the CURRENT font settings.
-async function renderFromPageCache(tabId, runId, entry, settings, timings, srcUrl) {
+// Returns without touching run progress: the caller keeps looping over the
+// remaining pictures (setProgress would end the run early).
+async function renderFromPageCache(tabId, runId, entry, settings, timings, uid, srcUrl) {
   checkCancelled(runId);
-  setProgress(runId, 'render', 0.96);
   const t0 = performance.now();
   await sendRender(tabId, runId, entry.mode || 'replace',
     entry.imageDataUrl, entry.width, entry.height, entry.blocks,
     { ...timings, cacheHit: Math.round(performance.now() - t0) },
-    settings.debugMode, { srcUrl });
-  setProgress(runId, 'done', 1);
+    settings.debugMode, { uid, srcUrl });
   return { runId, ok: true, cached: true };
 }
 
@@ -431,14 +462,12 @@ async function runPipeline(tabId, opts = {}) {
   const runId = 'run-' + Date.now().toString(36) + '-' + (runSeq++) + '-' + Math.random().toString(36).slice(2, 8);
   runs.set(runId, { cancelled: false, tabId });
   const settings = await getSettings();
-  const timings = {};
-  const pipelineT0 = performance.now(); // overall wall-clock for this run
   // Firefox: pre-load the 206MB LaMa first, before detector/OCR fragment the
   // WASM heap. A fragmented heap can't provide the contiguous block LaMa needs.
   if (directHandlers()) {
     try { await callMl({ type: MSG.ML_ENSURE, model: 'inpaint' }); } catch (e) { /* loaded on demand */ }
   }
-  const pxKeys = []; // IDB pixel-bus keys created this run; dropped in finally
+  const pxKeys = []; // IDB pixel-bus keys staged outside the per-image loop
   let result;
   try {
     // Inject the overlay early so debug-stage payloads have a panel to land in.
@@ -465,324 +494,371 @@ async function runPipeline(tabId, opts = {}) {
     try {
       await chrome.tabs.sendMessage(tabId, { type: MSG.RUN_STARTED, runId });
     } catch { /* content script not there yet */ }
-    // ---- 1. capture: the page's own picture (min-size gated), else viewport
-    setProgress(runId, 'capture', 0.02);
-    let t0 = performance.now();
-    const { rgba, w, h, mode, tier } = await getPipelineImage(tabId, settings, tabUrl, { srcUrl: manualSrc });
-    timings.capture = Math.round(performance.now() - t0);
-    const capMean = meanBrightness(rgba);
-    if (capMean < 0.004) {
-      throw new Error(
-        `captured image came back blank (all pixels black) via "${tier}" — ` +
-        `the page's picture could not be read. Reload the page and try again; ` +
-        `if it persists, the site may be blocking pixel access.`);
-    }
-    // The data-URL image is only built in debug mode — in normal runs this
-    // PNG encode of the full page is pure overhead.
-    await emitDebug(runId, tabId, settings, 'capture',
-      { title: `Captured page — ${tier}, mean brightness ${capMean.toFixed(3)}`, image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null, w, h, ms: timings.capture });
-
-    // ---- 1b. page cache: a page translated earlier in this session renders
-    // instantly — no detection, OCR, inpaint, or translation. The stored entry
-    // is re-sent as ct/render, so the content script re-composites the text
-    // with the CURRENT font settings; font-size tweaks never invalidate it.
-    // An early return inside try still runs the finally below (runs.delete +
-    // dropping staged pixel payloads), so cleanup is unchanged.
-    checkCancelled(runId);
-    let cacheHit = null;
-    try {
-      if (!(await isIncognitoTab(tabId))) {
-        cacheHit = await pageCacheGet(await buildCacheKey(rgba, w, h, settings));
-      }
-    } catch (e) {
-      console.warn('[ct] page-cache lookup failed:', String((e && e.message) || e).slice(0, 120));
-    }
-    if (cacheHit) {
-      return await renderFromPageCache(tabId, runId, cacheHit, settings, timings, manualSrc);
-    }
-
-    // ---- 2. detection (+ tall-image slicing)
-    checkCancelled(runId);
-    setProgress(runId, 'detect', 0.1);
-    t0 = performance.now();
-    let detections, detectInputMean = null;
-    if (h / w > 3.5) {
-      detections = await detectSliced(rgba, w, h, settings.detectionThreshold, runId, pxKeys);
-    } else {
-      // NOTE: pixel bytes go through the IDB pixel bus — chrome.runtime
-      // messaging drops ArrayBuffers sent from the service worker.
-      const pxKey = `detect:${runId}`;
-      pxKeys.push(pxKey);
-      await pixelPut(pxKey, rgba.buffer);
-      const r = await callMlChecked(runId, { type: MSG.ML_DETECT, key: pxKey, width: w, height: h, threshold: settings.detectionThreshold, runId });
-      detections = r.boxes;
-      timings.detect = r.ms;
-      detectInputMean = r.inputMean;
-      if (detectInputMean != null && detectInputMean < 0.004) {
-        throw new Error(`the detector received a blank image (input mean ${detectInputMean}) ` +
-          `although the capture looked fine (mean ${capMean.toFixed(3)}) — pixel data was lost ` +
-          `between capture and detection. Reload the page and try again.`);
-      }
-    }
-    if (!timings.detect) timings.detect = Math.round(performance.now() - t0);
-    setProgress(runId, 'detect', 0.25);
-    await emitDebug(runId, tabId, settings, 'detect', {
-      title: `Detection — ${detections.length} boxes @ ≥${settings.detectionThreshold}` +
-        (detectInputMean != null ? ` (detector input mean ${detectInputMean})` : ''),
-      boxes: detections, w, h, threshold: settings.detectionThreshold, ms: timings.detect,
-      image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null,
-    });
-
-    // ---- 3. text blocks
-    checkCancelled(runId);
-    t0 = performance.now();
-    const blocks = buildBlocks(detections, w, h, rgba, settings);
-    timings.blocks = Math.round(performance.now() - t0);
-    setProgress(runId, 'blocks', 0.3);
-    await emitDebug(runId, tabId, settings, 'blocks', {
-      title: `Text blocks — ${blocks.length}`,
-      blocks: blocks.map((b, i) => ({
-        i, text_class: b.text_class,
-        xyxy: b.xyxy.map(v => Math.round(v)),
-        bubble_xyxy: b.bubble_xyxy ? b.bubble_xyxy.map(v => Math.round(v)) : null,
-        font_color: b.font_color,
-      })),
-      ms: timings.blocks,
-    });
-
-    // ---- 4. OCR (sequential — the mask stage needs blk.text, so it must
-    // wait for OCR; see buildBlockMaskData's `if (!blk.text ...)` guard).
-    checkCancelled(runId);
-    setProgress(runId, 'ocr', 0.38);
-    {
-      const crops = [];
-      for (const [i, b] of blocks.entries()) {
-        const c = cropForBlock(rgba, w, h, b.xyxy, b.bubble_xyxy);
-        if (!c) continue;
-        const pxKey = `ocr:${runId}:${i}`;
-        pxKeys.push(pxKey);
-        await pixelPut(pxKey, c.data.buffer);
-        crops.push({ id: i, key: pxKey, data: c.data, width: c.w, height: c.h, x: c.x, y: c.y, bw: b.xyxy[2] - b.xyxy[0], bh: b.xyxy[3] - b.xyxy[1] });
-      }
-      let ocrMs = 0, ocrEngineLabel = '';
-      // Per-crop OCR diagnostics for the debug panel: char count and whether
-      // this crop needed the Baberu ~64-char-ceiling chunked re-OCR.
-      const ocrStats = new Map();
-      if (crops.length) {
-        const r = await callMlChecked(runId, {
-          type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
-          crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
-        });
-        ocrMs = r.ms;
-        ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
-        for (const res of r.results) {
-          blocks[res.id].text = res.text;
-          ocrStats.set(res.id, { chars: res.chars, chunks: res.chunks, hitCeiling: res.hitCeiling, stopped: res.stopped, skipped: !!res.skipped });
+    // ---- 1. inventory: every qualifying picture on the page (multi-pic).
+    // Each one then runs the full pipeline; per-image stage progress maps onto
+    // its slice of the overall run, debug titles carry the image index, and one
+    // bad picture never kills the rest of the run.
+    const { images, skipped, ignored } = await getPipelineImages(tabId, settings, tabUrl, { srcUrl: manualSrc });
+    if (skipped.length) console.warn('[ct] skipping page images:', skipped.join(' | ').slice(0, 300));
+    const doneImgs = [], failedImgs = [];
+    if (skipped.length) failedImgs.push(...skipped);
+    const multi = images.length > 1;
+    for (const [imgIdx, img] of images.entries()) {
+      const imgLabel = multi ? ` \u2014 image ${imgIdx + 1}/${images.length} (${img.w}\u00d7${img.h})` : '';
+      const imgBase = imgIdx / images.length, imgSpan = 1 / images.length;
+      const imgSetProgress = (stage, frac) => setProgress(runId, stage, imgBase + frac * imgSpan);
+      const imgEmitDebug = (stage, payload) => emitDebug(runId, tabId, settings, stage,
+        { ...payload, title: (payload.title || stage) + imgLabel });
+      const imgTimings = {};
+      const imgPxKeys = [];   // this image's pixel-bus keys; dropped in finally
+      const imgT0 = performance.now();
+      let t0 = 0;
+      try {
+        // Lazy pixels: loaded now, released at the end of this iteration, so
+        // only ONE image's bytes are ever live alongside the WASM sessions.
+        imgSetProgress('capture', 0.02);
+        const { rgba, w, h, mode, tier } = await loadPipelineImagePixels(
+          tabId, img, settings.minImageSize || 400, tabUrl);
+        imgTimings.capture = Math.round(performance.now() - imgT0);
+        const capMean = meanBrightness(rgba);
+        if (capMean < 0.004) {
+          throw new Error(
+            `captured image ${imgIdx + 1} came back blank (all pixels black) via "${tier}" \u2014 ` +
+            `the page's picture could not be read. Reload the page and try again; ` +
+            `if it persists, the site may be blocking pixel access.`);
         }
-      }
-      timings.ocr = ocrMs;
-      setProgress(runId, 'ocr', 0.55);
-      const ocrThumbs = [];
-      // Thumbnails are debug-panel only — skip the 40 canvas encodes in normal runs.
-      if (settings.debugMode) {
-        for (const c of crops.slice(0, 40)) {
-          ocrThumbs.push({
-            id: c.id, text: blocks[c.id].text,
-            ...(ocrStats.get(c.id) || {}),
-            thumb: await rgbaToDataURL(c.data, c.width, c.height, 200),
+        await imgEmitDebug('capture',
+          { title: `Captured page \u2014 ${tier}, mean brightness ${capMean.toFixed(3)}`,
+            image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null,
+            w, h, ms: imgTimings.capture });
+        // ---- 1b. page cache: a picture translated earlier in this session
+        // renders instantly. The stored entry is re-sent as ct/render, so the
+        // content script re-composites the text with the CURRENT font settings.
+        checkCancelled(runId);
+        let cacheHit = null;
+        try {
+          if (!(await isIncognitoTab(tabId))) {
+            cacheHit = await pageCacheGet(await buildCacheKey(rgba, w, h, settings));
+          }
+        } catch (e) {
+          console.warn('[ct] page-cache lookup failed:', String((e && e.message) || e).slice(0, 120));
+        }
+        if (cacheHit) {
+          await renderFromPageCache(tabId, runId, cacheHit, settings, imgTimings, img.uid, manualSrc);
+          doneImgs.push(imgIdx + 1);
+          continue;
+        }
+
+        // ---- 2. detection (+ tall-image slicing)
+        checkCancelled(runId);
+        imgSetProgress('detect', 0.1);
+        t0 = performance.now();
+        let detections, detectInputMean = null;
+        if (h / w > 3.5) {
+          detections = await detectSliced(rgba, w, h, settings.detectionThreshold, runId, imgPxKeys);
+        } else {
+          // NOTE: pixel bytes go through the IDB pixel bus — chrome.runtime
+          // messaging drops ArrayBuffers sent from the service worker.
+          const pxKey = `detect:${runId}`;
+          imgPxKeys.push(pxKey);
+          await pixelPut(pxKey, rgba.buffer);
+          const r = await callMlChecked(runId, { type: MSG.ML_DETECT, key: pxKey, width: w, height: h, threshold: settings.detectionThreshold, runId });
+          detections = r.boxes;
+          imgTimings.detect = r.ms;
+          detectInputMean = r.inputMean;
+          if (detectInputMean != null && detectInputMean < 0.004) {
+            throw new Error(`the detector received a blank image (input mean ${detectInputMean}) ` +
+              `although the capture looked fine (mean ${capMean.toFixed(3)}) — pixel data was lost ` +
+              `between capture and detection. Reload the page and try again.`);
+          }
+        }
+        if (!imgTimings.detect) imgTimings.detect = Math.round(performance.now() - t0);
+        imgSetProgress('detect', 0.25);
+        await imgEmitDebug( 'detect', {
+          title: `Detection — ${detections.length} boxes @ ≥${settings.detectionThreshold}` +
+            (detectInputMean != null ? ` (detector input mean ${detectInputMean})` : ''),
+          boxes: detections, w, h, threshold: settings.detectionThreshold, ms: imgTimings.detect,
+          image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null,
+        });
+
+        // ---- 3. text blocks
+        checkCancelled(runId);
+        t0 = performance.now();
+        const blocks = buildBlocks(detections, w, h, rgba, settings);
+        imgTimings.blocks = Math.round(performance.now() - t0);
+        imgSetProgress('blocks', 0.3);
+        await imgEmitDebug( 'blocks', {
+          title: `Text blocks — ${blocks.length}`,
+          blocks: blocks.map((b, i) => ({
+            i, text_class: b.text_class,
+            xyxy: b.xyxy.map(v => Math.round(v)),
+            bubble_xyxy: b.bubble_xyxy ? b.bubble_xyxy.map(v => Math.round(v)) : null,
+            font_color: b.font_color,
+          })),
+          ms: imgTimings.blocks,
+        });
+
+        // ---- 4. OCR (sequential — the mask stage needs blk.text, so it must
+        // wait for OCR; see buildBlockMaskData's `if (!blk.text ...)` guard).
+        checkCancelled(runId);
+        imgSetProgress('ocr', 0.38);
+        {
+          const crops = [];
+          for (const [i, b] of blocks.entries()) {
+            const c = cropForBlock(rgba, w, h, b.xyxy, b.bubble_xyxy);
+            if (!c) continue;
+            const pxKey = `ocr:${runId}:${i}`;
+            imgPxKeys.push(pxKey);
+            await pixelPut(pxKey, c.data.buffer);
+            crops.push({ id: i, key: pxKey, data: c.data, width: c.w, height: c.h, x: c.x, y: c.y, bw: b.xyxy[2] - b.xyxy[0], bh: b.xyxy[3] - b.xyxy[1] });
+          }
+          let ocrMs = 0, ocrEngineLabel = '';
+          // Per-crop OCR diagnostics for the debug panel: char count and whether
+          // this crop needed the Baberu ~64-char-ceiling chunked re-OCR.
+          const ocrStats = new Map();
+          if (crops.length) {
+            const r = await callMlChecked(runId, {
+              type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
+              crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
+            });
+            ocrMs = r.ms;
+            ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
+            for (const res of r.results) {
+              blocks[res.id].text = res.text;
+              ocrStats.set(res.id, { chars: res.chars, chunks: res.chunks, hitCeiling: res.hitCeiling, stopped: res.stopped, skipped: !!res.skipped });
+            }
+          }
+          imgTimings.ocr = ocrMs;
+          imgSetProgress('ocr', 0.55);
+          const ocrThumbs = [];
+          // Thumbnails are debug-panel only — skip the 40 canvas encodes in normal runs.
+          if (settings.debugMode) {
+            for (const c of crops.slice(0, 40)) {
+              ocrThumbs.push({
+                id: c.id, text: blocks[c.id].text,
+                ...(ocrStats.get(c.id) || {}),
+                thumb: await rgbaToDataURL(c.data, c.width, c.height, 200),
+              });
+            }
+          }
+          const ocrTextCount = blocks.filter(b => b.text && b.text.trim()).length;
+          const clippedCount = [...ocrStats.values()].filter(s => s.hitCeiling).length;
+          await imgEmitDebug( 'ocr', {
+            title: `OCR — ${crops.length} crops, ${ocrTextCount} with text${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}` +
+              (clippedCount ? `, ${clippedCount} hit the 64-char model cap (re-OCR'd in chunks)` : ''),
+            crops: ocrThumbs, ms: ocrMs,
           });
         }
-      }
-      const ocrTextCount = blocks.filter(b => b.text && b.text.trim()).length;
-      const clippedCount = [...ocrStats.values()].filter(s => s.hitCeiling).length;
-      await emitDebug(runId, tabId, settings, 'ocr', {
-        title: `OCR — ${crops.length} crops, ${ocrTextCount} with text${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}` +
-          (clippedCount ? `, ${clippedCount} hit the 64-char model cap (re-OCR'd in chunks)` : ''),
-        crops: ocrThumbs, ms: ocrMs,
-      });
-    }
 
-    // ---- 5+6+7. translate || (mask -> inpaint). Translate and mask both need
-    // only the OCR text and are independent of each other (translate: network
-    // I/O here; mask: CPU here). Inpaint needs the mask, so it chains off the
-    // mask promise and starts as soon as the mask is done — it does not wait
-    // for translate. Render waits for both translate and inpaint.
-    checkCancelled(runId);
-    const par = { translate: 0, mask: 0, inpaint: 0 };
-    let parMax = 0.58;
-    const parProgress = (branch, frac) => {
-      par[branch] = frac;
-      parMax = Math.max(parMax, 0.58 + 0.32 * (par.translate + par.mask + par.inpaint) / 3);
-      setProgress(runId, branch, parMax);
-    };
-    // Long tiled inpaints feed per-tile progress through this (Firefox only —
-    // the ML host shares this page). The pill keeps moving instead of looking
-    // stalled at one percentage for minutes.
-    runs.get(runId).onInpaintProgress = (frac) => parProgress('inpaint', frac);
-    const runTranslate = async () => {
-      parProgress('translate', 0);
-      const t0t = performance.now();
-      const translated = await translateBlocks(blocks, settings);
-      checkCancelled(runId);
-      blocks.forEach((b, i) => { b.translation = translated[i]; });
-      const translateMs = Math.round(performance.now() - t0t);
-      parProgress('translate', 1);
-      await emitDebug(runId, tabId, settings, 'translate', {
-        title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
-        rows: blocks.map(b => ({ text: b.text, translation: b.translation })),
-        ms: translateMs,
-      });
-      return { translateMs };
-    };
-    const runMask = async () => {
-      parProgress('mask', 0);
-      const t0m = performance.now();
-      const pageGray = toGrayU8(rgba, w, h);
-      const { mask: fullMask, entries } = generateMask(rgba, w, h, pageGray, blocks, 5);
-      const maskMs = Math.round(performance.now() - t0m);
-      parProgress('mask', 1);
-      await emitDebug(runId, tabId, settings, 'mask', {
-        title: `Mask — ${entries.length} block masks`,
-        mask: settings.debugMode ? await rgbaToDataURL(maskToRGBA(fullMask, w, h), w, h) : null, ms: maskMs,
-      });
-      return { fullMask, entries, maskMs };
-    };
-    const runInpaint = async ({ fullMask, entries, maskMs }) => {
-      checkCancelled(runId);
-      parProgress('inpaint', 0);
-      const t0i = performance.now();
-      const patchBoxes = mergePaddedBoxes(entries, 8, w, h);
-      const patches = [];
-      for (const [i, pb] of patchBoxes.entries()) {
+        // ---- 5+6+7. translate || (mask -> inpaint). Translate and mask both need
+        // only the OCR text and are independent of each other (translate: network
+        // I/O here; mask: CPU here). Inpaint needs the mask, so it chains off the
+        // mask promise and starts as soon as the mask is done — it does not wait
+        // for translate. Render waits for both translate and inpaint.
         checkCancelled(runId);
-        const [x1, y1, x2, y2] = pb.map(Math.round);
-        const pxKey = `inpaint:${runId}:${i}`;
-        const maskKey = `inpaint-mask:${runId}:${i}`;
-        pxKeys.push(pxKey, maskKey);
-        await pixelPut(pxKey, cropRGBA(rgba, w, x1, y1, x2, y2).data.buffer);
-        await pixelPut(maskKey, cropMask1(fullMask, w, x1, y1, x2, y2).buffer);
-        patches.push({ id: i, x: x1, y: y1, key: pxKey, maskKey, width: x2 - x1, height: y2 - y1 });
-      }
-      const inpainted = new Uint8ClampedArray(rgba);
-      let inpaintMs = 0;
-      if (patches.length) {
-        const r = await callMlChecked(runId, {
-          type: MSG.ML_INPAINT, runId,
-          patches: patches.map(({ id, key, maskKey, width, height }) => ({ id, key, maskKey, width, height })),
-        });
-        inpaintMs = r.ms;
-        for (const res of r.results) {
-          const p = patches[res.id];
-          pxKeys.push(res.key);
-          const buf = await pixelTake(res.key);
-          pasteRGBA(inpainted, w, { data: new Uint8ClampedArray(buf), w: p.width, h: p.height }, p.x, p.y);
+        const par = { translate: 0, mask: 0, inpaint: 0 };
+        let parMax = 0.58;
+        const parProgress = (branch, frac) => {
+          par[branch] = frac;
+          parMax = Math.max(parMax, 0.58 + 0.32 * (par.translate + par.mask + par.inpaint) / 3);
+          imgSetProgress(branch, parMax);
+        };
+        // Long tiled inpaints feed per-tile progress through this (Firefox only —
+        // the ML host shares this page). The pill keeps moving instead of looking
+        // stalled at one percentage for minutes.
+        runs.get(runId).onInpaintProgress = (frac) => parProgress('inpaint', frac);
+        const runTranslate = async () => {
+          parProgress('translate', 0);
+          const t0t = performance.now();
+          const translated = await translateBlocks(blocks, settings);
+          checkCancelled(runId);
+          blocks.forEach((b, i) => { b.translation = translated[i]; });
+          const translateMs = Math.round(performance.now() - t0t);
+          parProgress('translate', 1);
+          await imgEmitDebug( 'translate', {
+            title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
+            rows: blocks.map(b => ({ text: b.text, translation: b.translation })),
+            ms: translateMs,
+          });
+          return { translateMs };
+        };
+        const runMask = async () => {
+          parProgress('mask', 0);
+          const t0m = performance.now();
+          const pageGray = toGrayU8(rgba, w, h);
+          const { mask: fullMask, entries } = generateMask(rgba, w, h, pageGray, blocks, 5);
+          const maskMs = Math.round(performance.now() - t0m);
+          parProgress('mask', 1);
+          await imgEmitDebug( 'mask', {
+            title: `Mask — ${entries.length} block masks`,
+            mask: settings.debugMode ? await rgbaToDataURL(maskToRGBA(fullMask, w, h), w, h) : null, ms: maskMs,
+          });
+          return { fullMask, entries, maskMs };
+        };
+        const runInpaint = async ({ fullMask, entries, maskMs }) => {
+          checkCancelled(runId);
+          parProgress('inpaint', 0);
+          const t0i = performance.now();
+          const patchBoxes = mergePaddedBoxes(entries, 8, w, h);
+          const patches = [];
+          for (const [i, pb] of patchBoxes.entries()) {
+            checkCancelled(runId);
+            const [x1, y1, x2, y2] = pb.map(Math.round);
+            const pxKey = `inpaint:${runId}:${i}`;
+            const maskKey = `inpaint-mask:${runId}:${i}`;
+            imgPxKeys.push(pxKey, maskKey);
+            await pixelPut(pxKey, cropRGBA(rgba, w, x1, y1, x2, y2).data.buffer);
+            await pixelPut(maskKey, cropMask1(fullMask, w, x1, y1, x2, y2).buffer);
+            patches.push({ id: i, x: x1, y: y1, key: pxKey, maskKey, width: x2 - x1, height: y2 - y1 });
+          }
+          const inpainted = new Uint8ClampedArray(rgba);
+          let inpaintMs = 0;
+          if (patches.length) {
+            const r = await callMlChecked(runId, {
+              type: MSG.ML_INPAINT, runId,
+              patches: patches.map(({ id, key, maskKey, width, height }) => ({ id, key, maskKey, width, height })),
+            });
+            inpaintMs = r.ms;
+            for (const res of r.results) {
+              const p = patches[res.id];
+              imgPxKeys.push(res.key);
+              const buf = await pixelTake(res.key);
+              pasteRGBA(inpainted, w, { data: new Uint8ClampedArray(buf), w: p.width, h: p.height }, p.x, p.y);
+            }
+          }
+          const totalInpaintMs = Math.round(performance.now() - t0i);
+          parProgress('inpaint', 1);
+          await imgEmitDebug( 'inpaint', {
+            title: `Inpaint — ${patches.length} patches`,
+            image: settings.debugMode ? await rgbaToDataURL(inpainted, w, h) : null, ms: inpaintMs,
+          });
+          return { inpainted, inpaintMs, maskMs, totalInpaintMs };
+        };
+
+        // Firefox runs ML in-process on a single thread: WASM inpaint blocks the
+        // event loop, freezing the parallel translate branch and the UI. Run the
+        // stages sequentially there; Chrome keeps the parallel pipeline (ML is in
+        // the offscreen document on its own thread).
+        let translateOut, inpaintOut;
+        if (directHandlers()) {
+          // Firefox: translation runs on a Web Worker (own thread), mask → inpaint
+          // runs on the main thread. The worker's network I/O is not blocked when
+          // WASM inpaint hogs the main thread.
+          const t0t = performance.now();
+          const workerUrl = chrome.runtime.getURL('src/background/translate-worker.js');
+          const tWorker = new Worker(workerUrl, { type: 'module' });
+          const translateP = new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              tWorker.terminate();
+              reject(new Error('translate worker timeout'));
+            }, 180000);
+            tWorker.onmessage = (e) => {
+              clearTimeout(timeout);
+              tWorker.terminate();
+              if (e.data.ok) resolve(e.data.translated);
+              else reject(new Error(e.data.error));
+            };
+            tWorker.onerror = (err) => {
+              clearTimeout(timeout);
+              tWorker.terminate();
+              reject(err instanceof Error ? err : new Error(String(err)));
+            };
+            tWorker.postMessage({
+              blocks: blocks.map(b => ({ text: b.text })),
+              settings,
+            });
+          });
+          // Main thread: mask → inpaint (linear, WASM may block but worker continues)
+          // If mask/inpaint throws first, translateP would reject with no handler
+          // (unhandled rejection) and the worker would linger until its timeout —
+          // attach a handler and stop the worker on the way out.
+          translateP.catch(() => {});
+          let maskRes, translated;
+          try {
+            maskRes = await runMask();
+            inpaintOut = await runInpaint(maskRes);
+            // Collect translation from worker
+            translated = await translateP;
+          } catch (e) {
+            try { tWorker.terminate(); } catch { /* already terminated */ }
+            throw e;
+          }
+          try { tWorker.terminate(); } catch { /* already terminated by onmessage */ }
+          checkCancelled(runId);
+          blocks.forEach((b, i) => { b.translation = translated[i]; });
+          const translateMs = Math.round(performance.now() - t0t);
+          parProgress('translate', 1);
+          await imgEmitDebug( 'translate', {
+            title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
+            rows: blocks.map(b => ({ text: b.text, translation: b.translation })),
+            ms: translateMs,
+          });
+          translateOut = { translateMs };
+        } else {
+          const maskP = runMask();
+          const inpaintP = maskP.then(runInpaint);
+          const translateP = runTranslate();
+          [translateOut, inpaintOut] = await Promise.all([translateP, inpaintP]);
         }
-      }
-      const totalInpaintMs = Math.round(performance.now() - t0i);
-      parProgress('inpaint', 1);
-      await emitDebug(runId, tabId, settings, 'inpaint', {
-        title: `Inpaint — ${patches.length} patches`,
-        image: settings.debugMode ? await rgbaToDataURL(inpainted, w, h) : null, ms: inpaintMs,
-      });
-      return { inpainted, inpaintMs, maskMs, totalInpaintMs };
-    };
+        imgTimings.translate = translateOut.translateMs;
+        imgTimings.mask = inpaintOut.maskMs;
+        imgTimings.inpaint = inpaintOut.totalInpaintMs;
+        const { inpainted } = inpaintOut;
 
-    // Firefox runs ML in-process on a single thread: WASM inpaint blocks the
-    // event loop, freezing the parallel translate branch and the UI. Run the
-    // stages sequentially there; Chrome keeps the parallel pipeline (ML is in
-    // the offscreen document on its own thread).
-    let translateOut, inpaintOut;
-    if (directHandlers()) {
-      // Firefox: translation runs on a Web Worker (own thread), mask → inpaint
-      // runs on the main thread. The worker's network I/O is not blocked when
-      // WASM inpaint hogs the main thread.
-      const t0t = performance.now();
-      const workerUrl = chrome.runtime.getURL('src/background/translate-worker.js');
-      const tWorker = new Worker(workerUrl, { type: 'module' });
-      const translateP = new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          tWorker.terminate();
-          reject(new Error('translate worker timeout'));
-        }, 180000);
-        tWorker.onmessage = (e) => {
-          clearTimeout(timeout);
-          tWorker.terminate();
-          if (e.data.ok) resolve(e.data.translated);
-          else reject(new Error(e.data.error));
-        };
-        tWorker.onerror = (err) => {
-          clearTimeout(timeout);
-          tWorker.terminate();
-          reject(err instanceof Error ? err : new Error(String(err)));
-        };
-        tWorker.postMessage({
-          blocks: blocks.map(b => ({ text: b.text })),
-          settings,
-        });
-      });
-      // Main thread: mask → inpaint (linear, WASM may block but worker continues)
-      // If mask/inpaint throws first, translateP would reject with no handler
-      // (unhandled rejection) and the worker would linger until its timeout —
-      // attach a handler and stop the worker on the way out.
-      translateP.catch(() => {});
-      let maskRes, translated;
-      try {
-        maskRes = await runMask();
-        inpaintOut = await runInpaint(maskRes);
-        // Collect translation from worker
-        translated = await translateP;
+        // ---- 8. render: translated text composited onto the image.
+        // mode 'replace' swaps the page's original <img>; 'overlay' shows it in the overlay.
+        // NOTE: the finished picture travels as a PNG data URL — raw pixel buffers
+        // don't survive chrome.tabs messaging from the service worker either.
+        checkCancelled(runId);
+        imgSetProgress('render', 0.96);
+        const finalDataUrl = await rgbaToDataURL(inpainted, w, h, Math.max(w, h));
+        // Same tick as the send below: a cancellation can never slip in between
+        // and let a stale render reach the tab.
+        checkCancelled(runId);
+        imgTimings.total = Math.round(performance.now() - imgT0);
+        await sendRender(tabId, runId, mode, finalDataUrl, w, h, blocks, imgTimings, settings.debugMode, { uid: img.uid, srcUrl: manualSrc });
+        // ---- 9. page cache: remember this translated page for instant revisits.
+        // Best-effort — a cache failure must never fail the run. Skipped in
+        // incognito; a cancelled run never reaches this point (it throws above).
+        try {
+          if (!(await isIncognitoTab(tabId))) {
+            await pageCachePut(await buildCacheKey(rgba, w, h, settings), {
+              imageDataUrl: finalDataUrl, width: w, height: h, blocks, mode,
+            });
+          }
+        } catch (e) {
+          console.warn('[ct] page-cache write failed:', String((e && e.message) || e).slice(0, 120));
+        }
+        doneImgs.push(imgIdx + 1);
       } catch (e) {
-        try { tWorker.terminate(); } catch { /* already terminated */ }
-        throw e;
+        // Cancellation ends the whole run; an ML out-of-memory poisons the WASM
+        // module for the session, so abort with its actionable message instead
+        // of grinding through the remaining images. Everything else is this
+        // image's problem: record it and move on.
+        if (e && e.cancelled) throw e;
+        if (/out of memory|no available backend|aborted\s*\(/i.test(String((e && e.message) || e))) throw e;
+        failedImgs.push(`image ${imgIdx + 1}: ${String((e && e.message) || e).slice(0, 160)}`);
+      } finally {
+        // Release this image's pixel-bus payloads NOW, success or failure: on
+        // Firefox the WASM sessions share this thread's heap, so payloads
+        // retained across images would starve the next image's allocation.
+        for (const k of imgPxKeys.splice(0)) await pixelDrop(k);
       }
-      try { tWorker.terminate(); } catch { /* already terminated by onmessage */ }
-      checkCancelled(runId);
-      blocks.forEach((b, i) => { b.translation = translated[i]; });
-      const translateMs = Math.round(performance.now() - t0t);
-      parProgress('translate', 1);
-      await emitDebug(runId, tabId, settings, 'translate', {
-        title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
-        rows: blocks.map(b => ({ text: b.text, translation: b.translation })),
-        ms: translateMs,
-      });
-      translateOut = { translateMs };
-    } else {
-      const maskP = runMask();
-      const inpaintP = maskP.then(runInpaint);
-      const translateP = runTranslate();
-      [translateOut, inpaintOut] = await Promise.all([translateP, inpaintP]);
     }
-    timings.translate = translateOut.translateMs;
-    timings.mask = inpaintOut.maskMs;
-    timings.inpaint = inpaintOut.totalInpaintMs;
-    const { inpainted } = inpaintOut;
-
-    // ---- 8. render: translated text composited onto the image.
-    // mode 'replace' swaps the page's original <img>; 'overlay' shows it in the overlay.
-    // NOTE: the finished picture travels as a PNG data URL — raw pixel buffers
-    // don't survive chrome.tabs messaging from the service worker either.
-    checkCancelled(runId);
-    setProgress(runId, 'render', 0.96);
-    const finalDataUrl = await rgbaToDataURL(inpainted, w, h, Math.max(w, h));
-    // Same tick as the send below: a cancellation can never slip in between
-    // and let a stale render reach the tab.
-    checkCancelled(runId);
-    timings.total = Math.round(performance.now() - pipelineT0);
-    await sendRender(tabId, runId, mode, finalDataUrl, w, h, blocks, timings, settings.debugMode, { srcUrl: manualSrc });
-    // ---- 9. page cache: remember this translated page for instant revisits.
-    // Best-effort — a cache failure must never fail the run. Skipped in
-    // incognito; a cancelled run never reaches this point (it throws above).
-    try {
-      if (!(await isIncognitoTab(tabId))) {
-        await pageCachePut(await buildCacheKey(rgba, w, h, settings), {
-          imageDataUrl: finalDataUrl, width: w, height: h, blocks, mode,
-        });
-      }
-    } catch (e) {
-      console.warn('[ct] page-cache write failed:', String((e && e.message) || e).slice(0, 120));
+    if (!doneImgs.length) {
+      throw new Error('no picture could be translated (' + failedImgs.join('; ').slice(0, 400) + ')');
     }
     setProgress(runId, 'done', 1);
-    result = { runId, ok: true };
+    // Surface the outcome on the PAGE too: runs take minutes and the popup is
+    // usually closed by the time the last picture finishes, so without this a
+    // partial run (skips, per-image failures, ignored tiny images) is silent.
+    try {
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'ct/run-summary', runId, images: doneImgs.length,
+        failed: failedImgs, ignored,
+      });
+    } catch { /* content script may have been removed mid-run */ }
+    result = { runId, ok: true, images: doneImgs.length, failed: failedImgs };
   } catch (e) {
     let msg;
     if (e && e.cancelled) {

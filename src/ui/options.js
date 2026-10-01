@@ -336,7 +336,7 @@ function collect() {
     detectionThreshold: parseFloat($('threshold').value),
     initFontSize: parseInt($('initFontSize').value, 10) || 40,
     minFontSize: parseInt($('minFontSize').value, 10) || 10,
-    minImageSize: parseInt($('minImageSize').value, 10) || 500,
+    minImageSize: parseInt($('minImageSize').value, 10) || 400,
     debugMode: $('debugMode').checked,
     siteWhitelist: [...allowedSites], autoTranslateOnLoad: $('autoTranslate').checked,
     playDing: $('playDing').checked,

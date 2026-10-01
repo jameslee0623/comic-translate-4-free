@@ -67,10 +67,10 @@ appears on sites you have allowed.
 
 ![The extension popup](docs/images/popup.png)
 
-The pipeline input is the page's largest image, gated by the minimum image
-size setting (default 500px): smaller pictures are skipped with a clear
-error. The extension reads the page's own image directly — it never
-screenshots the webpage.
+The pipeline translates every picture on the page (up to 50 per run,
+biggest first), gated by the minimum image size setting (default 400px):
+smaller pictures are skipped with a clear error. The extension reads the
+page's own image directly — it never screenshots the webpage.
 
 **Page cache:** pages you revisit in the same browser session load instantly
 from a temporary on-disk cache (the inpainted image + translated text, so
@@ -80,7 +80,7 @@ automatically when the browser closes, and is never used in incognito windows.
 **Options** (right-click the icon → Options): site access, auto-translate on
 page load, source/target languages, translation backend (Google free / Azure
 Translator / LM Studio), connection-test buttons for Azure and LM Studio,
-detection threshold, minimum image size (default 500px — smaller captures are
+detection threshold, minimum image size (default 400px — smaller captures are
 skipped), font sizes, debug mode, and the translated-page cache controls.
 
 ### LM Studio
