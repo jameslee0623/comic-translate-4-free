@@ -3,7 +3,7 @@
     "message": "Add"
   },
   "appDesc": {
-    "message": "Translate manga/comic pages in-browser: bubble detection, OCR, inpainting, translation, re-rendering. All ML runs locally via ONNX Runtime Web."
+    "message": "Translate manga and comic pages in your browser: detection, OCR, inpainting, translation. All ML runs locally."
   },
   "appName": {
     "message": "comic-translate-4-free"

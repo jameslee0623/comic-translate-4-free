@@ -15,13 +15,6 @@ components.
 - License: **MIT License** (full text in §5 below). The license header is
   preserved at the top of `ort.min.js`.
 
-### @mlc-ai/web-llm v0.2.85
-- What: In-browser LLM inference used by the optional WebLLM translation backend.
-- Where: `src/offscreen/vendor/web-llm.js`.
-- Copyright: © MLC AI team contributors.
-- License: **Apache License 2.0** (full text in §6 below). The Apache-2.0
-  license notice is preserved inside the bundled file.
-
 ## 2. Ported source code
 
 The pipeline logic below was ported (rewritten in JavaScript for the browser)
@@ -120,7 +113,7 @@ SOFTWARE.
 
 ---
 
-## 6. Apache License 2.0 (web-llm, comic-translate, baberu-ocr, RT-DETRv2, LaMa)
+## 6. Apache License 2.0 (comic-translate, baberu-ocr, RT-DETRv2, LaMa)
 
                                  Apache License
                            Version 2.0, January 2004
