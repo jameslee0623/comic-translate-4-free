@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS = {
   allowAllSites: false, // site access: translate on any site (requests <all_urls> when enabled)
   autoTranslateOnLoad: true, // start the pipeline automatically on allowed page loads
   playDing: true, // play a chime when a translation finishes (toggle in Settings)
+  firstRun: false, // transient: set true by onInstalled, consumed by the popup to show the models section once
 };
 
 export const LANGS = [

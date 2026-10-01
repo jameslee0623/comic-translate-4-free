@@ -521,6 +521,20 @@ async function refreshModels() {
 
 load();
 ctApplyI18n();
+// Deep link: #models or #models-download scrolls to the models section.
+// The download variant (first run) also pulses the "Download all" button.
+if (location.hash === '#models' || location.hash === '#models-download') {
+  document.getElementById('modelsSection')?.scrollIntoView();
+  if (location.hash === '#models-download') {
+    const dl = document.getElementById('downloadAll');
+    if (dl) {
+      dl.classList.add('pulse');
+      const stop = () => dl.classList.remove('pulse');
+      dl.addEventListener('click', stop, { once: true });
+      setTimeout(stop, 15000);
+    }
+  }
+}
 document.title = `${ctMsg('appName') || 'comic-translate-4-free'} — ${ctMsg('options_title') || 'Settings'}`;
 try {
   const v = chrome.runtime.getManifest().version;

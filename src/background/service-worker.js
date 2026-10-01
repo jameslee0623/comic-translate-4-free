@@ -861,6 +861,16 @@ async function detectSliced(rgba, w, h, threshold, runId, pxKeys) {
 const autoFired = new Map(); // tabId -> {url, at}
 chrome.tabs.onRemoved.addListener(tabId => autoFired.delete(tabId));
 
+// First install: flag the popup to send the user straight to the models
+// section of the Settings page (download button highlighted) on first open.
+chrome.runtime.onInstalled.addListener(details => {
+  if (!details || details.reason !== 'install') return;
+  chrome.storage.local.get('settings').then(({ settings }) => {
+    if (settings && settings.firstRun) return;
+    chrome.storage.local.set({ settings: { ...(settings || {}), firstRun: true } }).catch(() => {});
+  }).catch(() => {});
+});
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (!changeInfo || changeInfo.status !== 'complete') return;
   (async () => {

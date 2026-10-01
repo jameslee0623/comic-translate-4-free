@@ -16,6 +16,8 @@
   button { padding: 7px 14px; border: 1px solid #3a3a40; border-radius: 6px; background: #232327; color: #e8e8ea; cursor: pointer; }
   button:hover:not(:disabled) { background: #2c2c31; }
   button:disabled { opacity: .45; cursor: default; }
+  @keyframes ctPulse { 0%,100% { box-shadow: 0 0 0 rgba(26,115,232,0); } 50% { box-shadow: 0 0 16px rgba(26,115,232,.85); } }
+  button.pulse { animation: ctPulse 1.2s ease-in-out infinite; border-color: #1a73e8; }
   #saved { color: #7ee787; margin-left: 10px; opacity: 0; transition: opacity .3s; }
   input[type=range] { width: 200px; accent-color: #1a73e8; }
   input[type=checkbox] { accent-color: #1a73e8; width: 16px; height: 16px; }
@@ -75,7 +77,7 @@
   <div class="row"><label data-i18n="debug_mode">Debug mode (stage inspector)</label><input type="checkbox" id="debugMode"></div>
   <p class="hint" data-i18n="debug_hint">Shows every pipeline stage's output in a side panel so each stage can be checked.</p>
 
-  <h2 data-i18n="models">Models</h2>
+  <h2 data-i18n="models" id="modelsSection">Models</h2>
   <div class="row"><button id="downloadAll" data-i18n="download_all">Download all models</button></div>
   <div id="models"></div>
   <p class="hint" data-i18n="models_hint">Models are downloaded from Hugging Face once and cached in the browser (IndexedDB).</p>

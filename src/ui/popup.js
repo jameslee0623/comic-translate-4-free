@@ -431,6 +431,20 @@ chrome.runtime.onMessage.addListener(msg => {
 
 ctApplyI18n();
 fillLangs();
+// First run: send the user straight to the models section of the Settings
+// page, with the Download all button highlighted. One-time flag set by the
+// SW's onInstalled handler; consumed here.
+(async () => {
+  try {
+    const { settings } = await chrome.storage.local.get('settings');
+    if (settings && settings.firstRun) {
+      await chrome.storage.local.set({ settings: { ...settings, firstRun: false } });
+      chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/options.html#models-download') });
+      window.close();
+      return;
+    }
+  } catch { /* popup works fine without the redirect */ }
+})();
 try {
   const v = chrome.runtime.getManifest().version;
   $('build').textContent = `v${v} · build ${BUILD}`;
