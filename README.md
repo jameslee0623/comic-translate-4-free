@@ -91,13 +91,15 @@ Translator / LM Studio), connection-test buttons for Azure and LM Studio,
 detection threshold, minimum image size (default 500px — smaller captures are
 skipped), font sizes, debug mode, and the translated-page cache controls.
 
+![Settings page](docs/images/options.png)
+
 ## Support this project
 
 If this extension is useful to you, consider supporting its development:
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S5X627XJQW)
 
-### Apply for Microsoft Azure account
+### Apply for a Microsoft Azure account
 
 1. Create/sign in to a Microsoft/hotmail/Azure account
 2. Create an Azure subscription
