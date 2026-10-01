@@ -38,7 +38,7 @@ Download the zip for your browser above and unzip it.
 **Firefox:** `about:debugging#/runtime/this-firefox` → **Load Temporary
 Add-on** → open the unzipped folder and pick `manifest.json`. (Temporary
 add-ons stay until Firefox restarts. For a permanent install the build must
-be signed on addons.mozilla.org.)
+be signed on addons.mozilla.org — a signed build for standard Firefox is in the works.)
 
 Then download the models once from the Settings page — one
 **Download all models** button fetches everything (detector, OCR models,
@@ -55,6 +55,9 @@ truncated or wrong file is flagged with a ⚠ and can be re-downloaded.
    (or add hostnames in Settings, or turn on **Allow all sites** to skip this
    step everywhere). This is a hard gate: the pipeline refuses
    to run anywhere else.
+
+   ![The extension popup](docs/images/popup.png)
+
 2. Open a manga page on an allowed site — it starts translating
    automatically as soon as the page finishes loading, no button click
    needed (toggleable in Settings under "Auto-translate on page load").
@@ -71,7 +74,7 @@ that exact image through the pipeline — even when it is smaller than the
 minimum image size — and still replaces it in place. The menu item only
 appears on sites you have allowed.
 
-![The extension popup](docs/images/popup.png)
+   ![The right-click menu](docs/images/right-click.png)
 
 The pipeline input is the page's largest image, gated by the minimum image
 size setting (default 500px): smaller pictures are skipped with a clear
@@ -84,16 +87,31 @@ font-size changes re-render without re-translating). The cache is cleared
 automatically when the browser closes, and is never used in incognito windows.
 
 **Settings** (right-click the icon → Settings): site access, auto-translate on
-page load, source/target languages, translation backend (Google free / Azure
+page load, source/target languages, translation engine (Google free / Azure
 Translator / LM Studio), connection-test buttons for Azure and LM Studio,
 detection threshold, minimum image size (default 500px — smaller captures are
 skipped), font sizes, debug mode, and the translated-page cache controls.
 
+### Azure Translator
+
+Select **Azure Translator** as the translation engine in Settings, then add
+your API key and region — **Check Azure connection** verifies them.
+
+To get a key (no credit card needed for the free tier):
+
+1. Create/sign in to a Microsoft/hotmail/Azure account
+2. Create an Azure subscription
+3. Create an Azure Translator resource
+4. Select F0 (Free) pricing tier
+5. Resource Management → Keys and Endpoint → copy **KEY 1** and **Location/Region**
+
+Microsoft currently says the Translator F0 free tier is 2 million characters/month and does not expire.
+
 ### LM Studio
 
 Run LM Studio with its local server enabled (default
-`http://127.0.0.1:1234`). Select **LM Studio (local server)** as the backend
-in Settings, set the server URL and the API flavour — **LM Studio REST API v1**
+`http://127.0.0.1:1234`). Select **LM Studio (local server)** as the translation
+engine in Settings, set the server URL and the API flavour — **LM Studio REST API v1**
 (posts to `/api/v1/chat`) or **OpenAI-compatible** (posts to
 `/v1/chat/completions`) — then press **Check LM Studio connection** to
 verify. The loaded model is detected automatically and remembered, so there
@@ -156,7 +174,7 @@ crops + readings, the inpaint mask, the inpainted page, and translations.
 ## Architecture
 
 ```
-popup / options (src/ui)
+popup / settings (src/ui)
       │ chrome.runtime messages
       ▼
 background — orchestration, capture, blocks, mask, translation APIs,
@@ -184,14 +202,12 @@ mask/inpaint after OCR. Chrome does it via Promise.all — the ML sessions
 live in the offscreen document on its own thread, so the stages truly
 overlap. Firefox runs translation on a Web Worker (its own thread) while
 mask → inpaint runs on the main thread — the worker's network I/O is not
-blocked when the WASM inpaint hogs the main thread. (Firefox previously ran
-the linear mask → inpaint → translate order; the single-threaded background
-page couldn't run the parallel branches without freezing.)
+blocked when the WASM inpaint hogs the main thread.
 
 ## Known limitations
 
-- No good OCR for Korean — source languages are Japanese, English, and
-  Simplified/Traditional Chinese.
+- No good OCR for Korean found yet — source languages are limited to Japanese,
+  English, and Simplified/Traditional Chinese.
 - Auto-translate handles a single picture per page (the page's main image).
   To translate any other picture on the page, right-click it and choose
   **Send to comic-translate-4-free**.
@@ -205,15 +221,13 @@ page couldn't run the parallel branches without freezing.)
 - The page cache is session-scoped: it is wiped when the browser starts, so
   after a restart (including after a crash) re-sent images run the full
   pipeline again instead of hitting the cache.
+- Google translation engine uses the unofficial `translate.googleapis.com`
+  endpoint and may be rate-limited.
 - Local LLM backend is experimental (needs WebGPU + multi-GB downloads).
-- Google backend uses the unofficial `translate.googleapis.com` endpoint and
-  may be rate-limited; Azure needs your own key.
 - OCR engines: Baberu (Japanese/English/Chinese).
 - Baberu's decoder was trained upstream with a 64-character label cap
-  (`--max-text-len 64`), so one crop never returns more than ~64 characters.
-  Longer bubbles are re-OCR'd automatically in overlapping chunks and stitched
-  back together (up to ~4x64 chars); the debug panel's OCR tab marks any crop
-  that hit the cap.
+  (`--max-text-len 64`), so one crop never returns more than ~64 characters —
+  longer text truncates mid-word.
 - Vertical text is rendered for tall CJK blocks; SFX / text outside bubbles
   uses its own text box.
 
