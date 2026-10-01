@@ -164,10 +164,10 @@
     "message": "not allowed"
   },
   "options_settings": {
-    "message": "Options & settings"
+    "message": "Settings"
   },
   "options_title": {
-    "message": "Options"
+    "message": "Settings"
   },
   "redownload": {
     "message": "Re-download"

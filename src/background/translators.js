@@ -79,8 +79,8 @@ function azureLang(code) {
 async function azure(texts, settings) {
   const key = (settings.azureKey || '').trim();
   const region = (settings.azureRegion || '').trim();
-  if (!key) throw new Error('azure translator: API key not set — add it in Options');
-  if (!region) throw new Error('azure translator: region not set — add it in Options');
+  if (!key) throw new Error('azure translator: API key not set — add it in Settings');
+  if (!region) throw new Error('azure translator: region not set — add it in Settings');
   const to = azureLang(settings.targetLang);
   // The 25-text batches used to run one at a time; now 3 batches fly in
   // parallel (official paid API — no rate-limit gentleness needed).

@@ -14,38 +14,44 @@
 ## 下載（無需建置）
 
 從 [**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
-頁面取得可直接安裝的 zip — 每個 release 都由 CI 自動建置，
-同時包含 `chrome/` 和 `firefox/`。解壓縮後按下方「安裝」操作即可。
+頁面取得最新 release — 每個 release 都由 CI 自動建置。
+請下載對應您瀏覽器的 zip：
+
+- `comic-translate-4-free-v<version>-<build>-chrome.zip` → Chrome / Edge / Brave
+- `comic-translate-4-free-v<version>-<build>-firefox.zip` → Firefox
+
+（另有合併版 `comic-translate-4-free-v<version>-<build>.zip`，
+同時包含 `chrome/` 和 `firefox/`，如需兩者可一併下載。）
 您無需複製儲存庫或自行執行 `build.sh`。
 
 ## 安裝
 
-zip 中包含兩個建置：`chrome/` 和 `firefox/`。
+下載上方對應您瀏覽器的 zip 並解壓縮。
 
 **Chrome：** 開啟 `chrome://extensions` → 啟用**開發人員模式** →
-**載入未封裝項目** → 選擇 `chrome/` 資料夾。
+**載入未封裝項目** → 選擇解壓縮後的資料夾。
 
 **Firefox：** 開啟 `about:debugging#/runtime/this-firefox` →
-**載入暫用附加元件** → 開啟 `firefox/` 資料夾並選擇 `manifest.json`。
+**載入暫用附加元件** → 開啟解壓縮後的資料夾並選擇 `manifest.json`。
 （暫用附加元件在 Firefox 重新啟動前有效。如需永久安裝，
 須使用 addons.mozilla.org 簽署的建置。）
 
-然後在選項頁面中下載一次模型 — 點擊 **Download all models**
+然後在設定頁面中下載一次模型 — 點擊 **Download all models**
 按鈕即可取得全部（偵測器、OCR 模型、修補器，共約 350MB）。
 它們快取在瀏覽器（IndexedDB）中，不會重複下載。
 每個檔案的位元組大小在下載後都會驗證；損壞的檔案會標示 ⚠
 並可重新下載。
 
-![在選項頁面下載模型](docs/images/options-models.png)
+![在設定頁面下載模型](docs/images/options-models.png)
 
 ## 使用方式
 
 1. **先允許該網站** — 翻譯只在您明確允許的網站上執行。
    點擊擴充功能圖示並按 **Allow this site**
-   （或在選項中新增主機名稱，或開啟 **Allow all sites** 以跳過此步驟）。這是硬性門檻：
+   （或在設定中新增主機名稱，或開啟 **Allow all sites** 以跳過此步驟）。這是硬性門檻：
    處理流程不會在其他任何網站上執行。
 2. 在已允許的網站上開啟漫畫頁面 — 頁面載入完成後即自動開始翻譯，
-   無需點擊按鈕（可在選項中透過 "Auto-translate on page load" 開關）。
+   無需點擊按鈕（可在設定中透過 "Auto-translate on page load" 開關）。
    每個網站首次使用時，Chrome 會請求一次性權限，
    以便擴充功能以完整解析度下載頁面圖片。
 3. 頁面右上角的狀態 pill 會顯示即時進度
@@ -68,7 +74,7 @@ zip 中包含兩個建置：`chrome/` 和 `firefox/`。
 載入（快取的是修復後的圖像＋翻譯文字，因此變更字級無需重新翻譯即可重新算繪）。
 關閉瀏覽器時快取會自動清除，無痕視窗中不會使用快取。
 
-**選項**（在圖示上按右鍵 → 選項）：網站存取、頁面載入時自動翻譯、
+**設定**（在圖示上按右鍵 → 設定）：網站存取、頁面載入時自動翻譯、
 來源/目標語言、翻譯後端（Google 免費 / Azure Translator / LM Studio）、
 Azure 與 LM Studio 的連線測試按鈕、偵測閾值、
 最小圖片尺寸（預設 500px — 更小的擷取會被略過）、
@@ -77,7 +83,7 @@ Azure 與 LM Studio 的連線測試按鈕、偵測閾值、
 ### LM Studio
 
 執行啟用了本機伺服器的 LM Studio（預設
-`http://127.0.0.1:1234`）。在選項中將後端選為
+`http://127.0.0.1:1234`）。在設定中將後端選為
 **LM Studio (local server)**，設定伺服器 URL 與 API 類型 —
 **LM Studio REST API v1**（向 `/api/v1/chat` 發送請求）或
 **OpenAI-compatible**（向 `/v1/chat/completions` 發送請求） —
@@ -96,13 +102,19 @@ cd comic-translate-4-free
 ./build.sh
 ```
 
-這會產生 `dist/comic-translate-4-free-v<version>-<build>.zip`，
-同時包含 `chrome/` 和 `firefox/`，
-按上文「安裝」載入即可（Chrome 以未封裝方式，
-Firefox 以暫用附加元件方式）。
+這會在 `dist/` 產生三個 zip（合併版另有一份方便取用的複本）：
 
-`<build>` 戳記來自 `src/ui/options.js` 與 `src/ui/popup.js`
-頂部的 `BUILD` 常數（保持兩者同步）。
+- `comic-translate-4-free-v<version>-<build>.zip` — 合併版，
+  同時包含 `chrome/` 和 `firefox/`，
+  按上文「安裝」載入即可（Chrome 以未封裝方式，
+  Firefox 以暫用附加元件方式）
+- `comic-translate-4-free-v<version>-<build>-chrome.zip` — 僅 Chrome 建置，
+  商店送審版面
+- `comic-translate-4-free-v<version>-<build>-firefox.zip` — 僅 Firefox 建置，
+  商店送審版面
+
+`<build>` 戳記來自 `src/shared/version.js` 中的 `BUILD` 常數
+（顯示在彈出視窗和設定頁面頁尾，並用作頁面快取的鍵）。
 建置前先調高它，可在檔名和 UI 頁尾中獲得唯一戳記 —
 否則您的建置與同戳記的 release 建置無法區分。
 
@@ -129,7 +141,7 @@ POST {server}/chat/completions
 
 ## 除錯模式
 
-在選項中啟用**除錯模式**後，每個處理階段的輸出都會顯示在
+在設定中啟用**除錯模式**後，每個處理階段的輸出都會顯示在
 側邊檢視面板中：擷取的影像、偵測框、文字區塊、
 OCR 裁剪 + 辨識結果、修補遮罩、修補後的頁面、譯文。
 

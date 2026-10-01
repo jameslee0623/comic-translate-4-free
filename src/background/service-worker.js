@@ -38,7 +38,7 @@ const CONTENT_SCRIPT_FILES = (typeof window !== 'undefined' && window.document)
 // scripting.executeScript needs a host permission for the tab's origin. That
 // permission is only granted when the user adds the site through the popup
 // (a click = the user gesture permissions.request requires) — a site typed
-// into Options never gets it. Without it every run dies here, silently as far
+// into Settings never gets it. Without it every run dies here, silently as far
 // as the page is concerned (nothing can be injected to show an error).
 async function hasHostAccess(host) {
   try {
@@ -161,7 +161,7 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   const minSize = settings.minImageSize || 500;
   const tooSmall = (w, h) => {
     if (Math.max(w, h) < minSize) {
-      throw new Error(`page image is ${w}×${h}px — below the minimum image size of ${minSize}px (change it in Options)`);
+      throw new Error(`page image is ${w}×${h}px — below the minimum image size of ${minSize}px (change it in Settings)`);
     }
   };
   let info = null;
@@ -477,7 +477,7 @@ async function runPipeline(tabId, opts = {}) {
     const tabHost = hostOf(tabUrl);
     if (tabHost && !(await hasHostAccess(tabHost))) {
       throw settings.allowAllSites
-        ? new Error('"Allow all sites" is on, but the extension no longer has access to all sites (the permission may have been revoked) — reopen Options → Site access and turn it back on.')
+        ? new Error('"Allow all sites" is on, but the extension no longer has access to all sites (the permission may have been revoked) — reopen Settings → Site access and turn it back on.')
         : hostAccessError(tabHost);
     }
     try {
@@ -949,7 +949,7 @@ async function handleTranslateImage(tabId, srcUrl) {
         await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
         await chrome.tabs.sendMessage(tabId, {
           type: MSG.RUN_PROGRESS, direct: true, stage: 'error',
-          error: `"${host}" is not in your site access list — allow it from the popup or Options, or turn on "Allow all sites"`,
+          error: `"${host}" is not in your site access list — allow it from the popup or Settings, or turn on "Allow all sites"`,
         });
       } catch { /* no page access: stay silent */ }
       return;
@@ -986,7 +986,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const host = hostOf(tab.url);
           if (!host) throw new Error('cannot determine the site of this tab');
           if (!settings.allowAllSites && !isSiteAllowed(host, settings.siteWhitelist || [])) {
-            throw new Error(`"${host}" is not in your site access list — allow it from the popup or Options, or turn on "Allow all sites"`);
+            throw new Error(`"${host}" is not in your site access list — allow it from the popup or Settings, or turn on "Allow all sites"`);
           }
           // Awaited (not fire-and-forget): the worker stays alive for the whole run.
           // Any in-flight run for this tab is dropped first — the new request wins.

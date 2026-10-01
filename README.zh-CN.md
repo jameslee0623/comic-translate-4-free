@@ -14,38 +14,44 @@
 ## 下载（无需构建）
 
 从 [**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
-页面获取可直接安装的 zip — 每个 release 都由 CI 自动构建，
-同时包含 `chrome/` 和 `firefox/`。解压后按下方“安装”操作即可。
+页面获取最新 release — 每个 release 都由 CI 自动构建。
+请下载对应您浏览器的 zip：
+
+- `comic-translate-4-free-v<version>-<build>-chrome.zip` → Chrome / Edge / Brave
+- `comic-translate-4-free-v<version>-<build>-firefox.zip` → Firefox
+
+（另有合并版 `comic-translate-4-free-v<version>-<build>.zip`，
+同时包含 `chrome/` 和 `firefox/`，如需两者可一并下载。）
 您无需克隆仓库或自行运行 `build.sh`。
 
 ## 安装
 
-zip 中包含两个构建：`chrome/` 和 `firefox/`。
+下载上方对应您浏览器的 zip 并解压。
 
 **Chrome：** 打开 `chrome://extensions` → 启用**开发者模式** →
-**加载已解压的扩展程序** → 选择 `chrome/` 文件夹。
+**加载已解压的扩展程序** → 选择解压后的文件夹。
 
 **Firefox：** 打开 `about:debugging#/runtime/this-firefox` →
-**临时载入附加组件** → 打开 `firefox/` 文件夹并选择 `manifest.json`。
+**临时载入附加组件** → 打开解压后的文件夹并选择 `manifest.json`。
 （临时附加组件在 Firefox 重启前有效。如需永久安装，
 须使用 addons.mozilla.org 签名的构建。）
 
-然后在选项页中下载一次模型 — 点击 **Download all models**
+然后在设置页中下载一次模型 — 点击 **Download all models**
 按钮即可获取全部（检测器、OCR 模型、修复器，共约 350MB）。
 它们缓存在浏览器（IndexedDB）中，不会重复下载。
 每个文件的字节大小在下载后都会校验；损坏的文件会标 ⚠
 并可重新下载。
 
-![在选项页下载模型](docs/images/options-models.png)
+![在设置页下载模型](docs/images/options-models.png)
 
 ## 使用
 
 1. **先允许该网站** — 翻译只在您明确允许的网站上运行。
    点击扩展图标并按 **Allow this site**
-   （或在选项中添加主机名，或开启 **Allow all sites** 以跳过此步骤）。这是硬性门槛：
+   （或在设置中添加主机名，或开启 **Allow all sites** 以跳过此步骤）。这是硬性门槛：
    流水线不会在其他任何网站上运行。
 2. 在已允许的网站上打开漫画页面 — 页面加载完成后即自动开始翻译，
-   无需点击按钮（可在选项中通过 "Auto-translate on page load" 开关）。
+   无需点击按钮（可在设置中通过 "Auto-translate on page load" 开关）。
    每个网站首次使用时，Chrome 会请求一次性权限，
    以便扩展以完整分辨率下载页面图片。
 3. 页面右上角的状态 pill 显示实时进度
@@ -68,7 +74,7 @@ zip 中包含两个构建：`chrome/` 和 `firefox/`。
 （缓存的是修复后的图像＋翻译文本，因此更改字号无需重新翻译即可重新渲染）。
 关闭浏览器时缓存会自动清除，隐身窗口中不会使用缓存。
 
-**选项**（右键图标 → 选项）：网站访问、页面加载时自动翻译、
+**设置**（右键图标 → 设置）：网站访问、页面加载时自动翻译、
 源语言/目标语言、翻译后端（Google 免费 / Azure Translator / LM Studio）、
 Azure 与 LM Studio 的连接测试按钮、检测阈值、
 最小图片尺寸（默认 500px — 更小的捕获会被跳过）、
@@ -77,7 +83,7 @@ Azure 与 LM Studio 的连接测试按钮、检测阈值、
 ### LM Studio
 
 运行启用了本地服务器的 LM Studio（默认
-`http://127.0.0.1:1234`）。在选项中将后端选为
+`http://127.0.0.1:1234`）。在设置中将后端选为
 **LM Studio (local server)**，设置服务器 URL 与 API 风格 —
 **LM Studio REST API v1**（向 `/api/v1/chat` 发送请求）或
 **OpenAI-compatible**（向 `/v1/chat/completions` 发送请求） —
@@ -96,13 +102,19 @@ cd comic-translate-4-free
 ./build.sh
 ```
 
-这会生成 `dist/comic-translate-4-free-v<version>-<build>.zip`，
-同时包含 `chrome/` 和 `firefox/`，
-按上文“安装”加载即可（Chrome 以解压方式，
-Firefox 以临时附加组件方式）。
+这会在 `dist/` 生成三个 zip（合并版另有一份方便取用的拷贝）：
 
-`<build>` 戳来自 `src/ui/options.js` 与 `src/ui/popup.js`
-顶部的 `BUILD` 常量（保持两者同步）。
+- `comic-translate-4-free-v<version>-<build>.zip` — 合并版，
+  同时包含 `chrome/` 和 `firefox/`，
+  按上文“安装”加载即可（Chrome 以解压方式，
+  Firefox 以临时附加组件方式）
+- `comic-translate-4-free-v<version>-<build>-chrome.zip` — 仅 Chrome 构建，
+  商店提交布局
+- `comic-translate-4-free-v<version>-<build>-firefox.zip` — 仅 Firefox 构建，
+  商店提交布局
+
+`<build>` 戳来自 `src/shared/version.js` 中的 `BUILD` 常量
+（显示在弹出窗口和设置页页脚，并用作页面缓存的键）。
 构建前 bump 它，可在文件名和 UI 页脚中获得唯一戳记 —
 否则您的构建与同戳记的 release 构建无法区分。
 
@@ -129,7 +141,7 @@ POST {server}/chat/completions
 
 ## 调试模式
 
-在选项中启用**调试模式**后，每个流水线阶段的输出都会显示在
+在设置中启用**调试模式**后，每个流水线阶段的输出都会显示在
 侧边检查面板中：捕获的图像、检测框、文本块、
 OCR 裁剪 + 识别结果、修复遮罩、修复后的页面、译文。
 

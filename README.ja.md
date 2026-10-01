@@ -15,38 +15,44 @@ Manifest V3 + ONNX Runtime Web（WASM）に移植したものです。
 ## ダウンロード（ビルド不要）
 
 [**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
-ページからインストール用zipを取得してください — すべてのリリースはCIで自動ビルドされ、
-`chrome/` と `firefox/` が同梱されています。解凍後、下の「インストール」に進んでください。
+ページから最新のリリースを取得してください — すべてのリリースはCIで自動ビルドされます。
+お使いのブラウザ用のzipをダウンロードしてください：
+
+- `comic-translate-4-free-v<version>-<build>-chrome.zip` → Chrome / Edge / Brave
+- `comic-translate-4-free-v<version>-<build>-firefox.zip` → Firefox
+
+（`chrome/` と `firefox/` が同梱された結合版
+`comic-translate-4-free-v<version>-<build>.zip` もあります。両方まとめて使いたい場合にどうぞ。）
 リポジトリのクローンや `build.sh` の実行は不要です。
 
 ## インストール
 
-zipには2つのビルドが含まれています：`chrome/` と `firefox/`。
+上でダウンロードした、お使いのブラウザ用のzipを解凍してください。
 
 **Chrome:** `chrome://extensions` → **デベロッパーモード**を有効化 →
-**パッケージ化されていない拡張機能を読み込む** → `chrome/` フォルダを選択。
+**パッケージ化されていない拡張機能を読み込む** → 解凍したフォルダを選択。
 
 **Firefox:** `about:debugging#/runtime/this-firefox` → **一時的なアドオンを読み込む** →
-`firefox/` フォルダを開いて `manifest.json` を選択。（一時アドオンはFirefox再起動まで有効です。
+解凍したフォルダを開いて `manifest.json` を選択。（一時アドオンはFirefox再起動まで有効です。
 恒久インストールには addons.mozilla.org での署名が必要です。）
 
-次に、オプションページからモデルを一度だけダウンロードします —
+次に、設定ページからモデルを一度だけダウンロードします —
 **Download all models** ボタンひとつで全部取得できます（検出器、OCRモデル、
 インペインター、合計約350MB）。ブラウザ（IndexedDB）にキャッシュされ、
 再ダウンロードは不要です。各ファイルのバイトサイズはダウンロード後に検証され、
 壊れたファイルには ⚠ が付いて再ダウンロードできます。
 
-![オプションページでのモデルダウンロード](docs/images/options-models.png)
+![設定ページでのモデルダウンロード](docs/images/options-models.png)
 
 ## 使い方
 
 1. **まずサイトを許可** — 翻訳は明示的に許可したサイトでのみ動作します。
    拡張機能アイコンをクリックして **Allow this site** を押すか、
-   オプションでホスト名を追加してください（**Allow all sites** をオンにすれば
+   設定でホスト名を追加してください（**Allow all sites** をオンにすれば
    この手順は不要です）。これは厳格なゲートです：
    他のサイトではパイプラインは動作しません。
 2. 許可済みサイトでマンガページを開くと、ページの読み込み完了後すぐに
-   自動翻訳が始まります — ボタンクリックは不要です（オプションの
+   自動翻訳が始まります — ボタンクリックは不要です（設定の
    「Auto-translate on page load」で切替可能）。
    サイトごとの初回利用時、ページ画像をフル解像度で取得するため
    Chromeがワンタイム権限を求めます。
@@ -73,7 +79,7 @@ zipには2つのビルドが含まれています：`chrome/` と `firefox/`。
 キャッシュはブラウザを閉じると自動的に削除され、シークレットウィンドウでは
 使用されません。
 
-**オプション**（アイコンを右クリック → オプション）：サイトアクセス、
+**設定**（アイコンを右クリック → 設定）：サイトアクセス、
 ページ読み込み時の自動翻訳、翻訳元/翻訳先言語、翻訳バックエンド（Google無料 /
 Azure Translator / LM Studio）、Azure・LM Studioの接続テストボタン、
 検出しきい値、最小画像サイズ（デフォルト500px — より小さいキャプチャは
@@ -82,7 +88,7 @@ Azure Translator / LM Studio）、Azure・LM Studioの接続テストボタン�
 ### LM Studio
 
 ローカルサーバーを有効にしたLM Studioを起動します（デフォルト
-`http://127.0.0.1:1234`）。オプションでバックエンドに
+`http://127.0.0.1:1234`）。設定でバックエンドに
 **LM Studio (local server)** を選択し、サーバーURLとAPIフレーバーを設定 —
 **LM Studio REST API v1**（`/api/v1/chat` にPOST）または
 **OpenAI-compatible**（`/v1/chat/completions` にPOST） — してから
@@ -101,13 +107,19 @@ cd comic-translate-4-free
 ./build.sh
 ```
 
-`dist/comic-translate-4-free-v<version>-<build>.zip` が生成され、
-`chrome/` と `firefox/` が同梱されます。上記「インストール」の手順で
-読み込めます（Chromeはパッケージ化されていない拡張機能として、
-Firefoxは一時アドオンとして）。
+`dist/` に3つのzipが生成されます（結合版は別途コピーもされます）：
 
-`<build>` スタンプは `src/ui/options.js` と `src/ui/popup.js` 先頭の
-`BUILD` 定数から来ます（2つを同期させてください）。ビルド前に上げておくと、
+- `comic-translate-4-free-v<version>-<build>.zip` — 結合版。`chrome/` と
+  `firefox/` が同梱されています。上記「インストール」の手順で読み込めます
+  （Chromeはパッケージ化されていない拡張機能として、Firefoxは一時アドオンとして）
+- `comic-translate-4-free-v<version>-<build>-chrome.zip` — Chromeビルドのみ、
+  ストア提出用レイアウト
+- `comic-translate-4-free-v<version>-<build>-firefox.zip` — Firefoxビルドのみ、
+  ストア提出用レイアウト
+
+`<build>` スタンプは `src/shared/version.js` の `BUILD` 定数から来ます
+（ポップアップと設定ページのフッターに表示され、ページキャッシュのキーにも
+使われます）。ビルド前に上げておくと、
 ファイル名とUIフッターに一意のスタンプが付きます —
 上げないと、同じスタンプのリリース版と見分けがつきません。
 
@@ -133,7 +145,7 @@ POST {server}/chat/completions
 
 ## デバッグモード
 
-オプションで **デバッグモード** を有効にすると、各パイプラインステージの出力が
+設定で **デバッグモード** を有効にすると、各パイプラインステージの出力が
 サイドパネルのインスペクタに表示されます：キャプチャ画像、検出ボックス、
 テキストブロック、OCRクロップ＋読み取り結果、インペイントマスク、
 インペイント後のページ、翻訳文。

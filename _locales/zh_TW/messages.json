@@ -164,10 +164,10 @@
     "message": "未允許"
   },
   "options_settings": {
-    "message": "選項與設定"
+    "message": "設定"
   },
   "options_title": {
-    "message": "選項"
+    "message": "設定"
   },
   "redownload": {
     "message": "重新下載"

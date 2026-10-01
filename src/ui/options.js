@@ -1,4 +1,4 @@
-// Options page: read/write settings + model management + connection checks.
+// Settings page: read/write settings + model management + connection checks.
 import { BUILD } from '../shared/version.js';
 import { imageHostOrigins } from '../shared/site-access.js';
 import { DEFAULT_SETTINGS } from '../shared/settings.js';
@@ -521,7 +521,7 @@ async function refreshModels() {
 
 load();
 ctApplyI18n();
-document.title = `${ctMsg('appName') || 'comic-translate-4-free'} — ${ctMsg('options_title') || 'Options'}`;
+document.title = `${ctMsg('appName') || 'comic-translate-4-free'} — ${ctMsg('options_title') || 'Settings'}`;
 try {
   const v = chrome.runtime.getManifest().version;
   $('version').textContent = `v${v} · build ${BUILD}`;

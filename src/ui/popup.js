@@ -366,7 +366,7 @@ $('allowAllSites').onchange = e => {
   }).catch(() => { if (on) e.target.checked = false; });
 };
 
-// Sync with the Options page (and any other settings writer): re-render when
+// Sync with the Settings page (and any other settings writer): re-render when
 // settings change elsewhere. Our own writes echo back through here too, but
 // refresh() only reads, so re-running it is harmless.
 chrome.storage.onChanged.addListener((changes, area) => {

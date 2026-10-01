@@ -164,10 +164,10 @@
     "message": "허용 안 됨"
   },
   "options_settings": {
-    "message": "옵션 및 설정"
+    "message": "설정"
   },
   "options_title": {
-    "message": "옵션"
+    "message": "설정"
   },
   "redownload": {
     "message": "다시 다운로드"

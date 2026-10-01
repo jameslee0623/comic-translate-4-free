@@ -16,42 +16,48 @@ to Manifest V3 + ONNX Runtime Web (WASM).
 
 ## Download (no build needed)
 
-Grab the latest ready-to-install zip from the
+Grab the latest release from the
 [**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
-page — every release is built automatically by CI and carries `chrome/` and
-`firefox/` side by side. Unzip it, then follow "Install" below. You never need
-to clone the repo or run `build.sh` yourself.
+page — every release is built automatically by CI. Download the zip for your
+browser:
+
+- `comic-translate-4-free-v<version>-<build>-chrome.zip` → Chrome / Edge / Brave
+- `comic-translate-4-free-v<version>-<build>-firefox.zip` → Firefox
+
+(There is also a combined `comic-translate-4-free-v<version>-<build>.zip`
+containing `chrome/` and `firefox/` side by side, if you want both at once.)
+You never need to clone the repo or run `build.sh` yourself.
 
 ## Install
 
-The zip contains two builds: `chrome/` and `firefox/`.
+Download the zip for your browser above and unzip it.
 
 **Chrome:** `chrome://extensions` → enable **Developer mode** →
-**Load unpacked** → select the `chrome/` folder.
+**Load unpacked** → select the unzipped folder.
 
 **Firefox:** `about:debugging#/runtime/this-firefox` → **Load Temporary
-Add-on** → open the `firefox/` folder and pick `manifest.json`. (Temporary
+Add-on** → open the unzipped folder and pick `manifest.json`. (Temporary
 add-ons stay until Firefox restarts. For a permanent install the build must
 be signed on addons.mozilla.org.)
 
-Then download the models once from the Options page — one
+Then download the models once from the Settings page — one
 **Download all models** button fetches everything (detector, OCR models,
 inpainter, ~350 MB total). They are cached in the browser (IndexedDB) and never
 re-downloaded. The byte size of each file is verified after download; a
 truncated or wrong file is flagged with a ⚠ and can be re-downloaded.
 
-![Downloading the models from the Options page](docs/images/options-models.png)
+![Downloading the models from the Settings page](docs/images/options-models.png)
 
 ## Use
 
 1. **Allow the site first** — translation only runs on sites you explicitly
    allow. Click the extension icon and press **Allow this site**
-   (or add hostnames in Options, or turn on **Allow all sites** to skip this
+   (or add hostnames in Settings, or turn on **Allow all sites** to skip this
    step everywhere). This is a hard gate: the pipeline refuses
    to run anywhere else.
 2. Open a manga page on an allowed site — it starts translating
    automatically as soon as the page finishes loading, no button click
-   needed (toggleable in Options under "Auto-translate on page load").
+   needed (toggleable in Settings under "Auto-translate on page load").
    On first use per site, Chrome asks for a one-time permission so the
    extension can download the page image at full resolution.
 3. A status pill in the top-right corner of the page shows live progress
@@ -77,7 +83,7 @@ from a temporary on-disk cache (the inpainted image + translated text, so
 font-size changes re-render without re-translating). The cache is cleared
 automatically when the browser closes, and is never used in incognito windows.
 
-**Options** (right-click the icon → Options): site access, auto-translate on
+**Settings** (right-click the icon → Settings): site access, auto-translate on
 page load, source/target languages, translation backend (Google free / Azure
 Translator / LM Studio), connection-test buttons for Azure and LM Studio,
 detection threshold, minimum image size (default 500px — smaller captures are
@@ -87,7 +93,7 @@ skipped), font sizes, debug mode, and the translated-page cache controls.
 
 Run LM Studio with its local server enabled (default
 `http://127.0.0.1:1234`). Select **LM Studio (local server)** as the backend
-in Options, set the server URL and the API flavour — **LM Studio REST API v1**
+in Settings, set the server URL and the API flavour — **LM Studio REST API v1**
 (posts to `/api/v1/chat`) or **OpenAI-compatible** (posts to
 `/v1/chat/completions`) — then press **Check LM Studio connection** to
 verify. The loaded model is detected automatically and remembered, so there
@@ -104,13 +110,20 @@ cd comic-translate-4-free
 ./build.sh
 ```
 
-This writes `dist/comic-translate-4-free-v<version>-<build>.zip` containing
-`chrome/` and `firefox/` side by side, ready to load unpacked (Chrome) or as
-a temporary add-on (Firefox) per "Install" above.
+This writes three zips to `dist/` (plus a copy of the combined zip for
+convenience):
 
-The `<build>` stamp comes from the `BUILD` const at the top of
-`src/ui/options.js` and `src/ui/popup.js` (keep the two in sync). Bump it
-before building if you want a unique stamp in the filename and the UI
+- `comic-translate-4-free-v<version>-<build>.zip` — combined, `chrome/` and
+  `firefox/` side by side, ready to load unpacked (Chrome) or as a temporary
+  add-on (Firefox) per "Install" above
+- `comic-translate-4-free-v<version>-<build>-chrome.zip` — Chrome build only,
+  in store-submission layout
+- `comic-translate-4-free-v<version>-<build>-firefox.zip` — Firefox build only,
+  in store-submission layout
+
+The `<build>` stamp comes from the `BUILD` const in `src/shared/version.js`
+(shown in the popup and settings page footers, baked into the page-cache key).
+Bump it before building if you want a unique stamp in the filename and the UI
 footer — otherwise your build is indistinguishable from the released one
 with the same stamp.
 
@@ -136,7 +149,7 @@ is accepted; one translation per line is the last-resort fallback.
 
 ## Debug mode
 
-Enable **Debug mode** in Options and every pipeline stage's output appears in
+Enable **Debug mode** in Settings and every pipeline stage's output appears in
 a side-panel inspector: captured image, detection boxes, text blocks, OCR
 crops + readings, the inpaint mask, the inpainted page, and translations.
 
