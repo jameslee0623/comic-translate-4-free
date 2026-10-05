@@ -1,6 +1,5 @@
 // Settings page: read/write settings + model management + connection checks.
 import { BUILD } from '../shared/version.js';
-import { imageHostOrigins } from '../shared/site-access.js';
 import { DEFAULT_SETTINGS } from '../shared/settings.js';
 const $ = id => document.getElementById(id);
 const LANGS = [
@@ -192,37 +191,31 @@ function renderSiteList() {
   }
 }
 
-$('wlAddBtn').onclick = async () => {
+$('wlAddBtn').onclick = () => {
   let h = $('wlAdd').value.trim().toLowerCase();
-  h = h.replace(/^https?:\/\//, '').split('/')[0];
-  if (h && !allowedSites.includes(h)) {
-    // Same grant the popup does on add: without a host permission the site
-    // is allowed but translation can never start on it. Best effort:
-    // if the site is open in a tab, also cover the picture's host — the
-    // picture often lives on a CDN host different from the page host.
-    const origins = [`*://${h}/*`, `*://*.${h}/*`];
-    try {
-      const tabs = await chrome.tabs.query({});
-      const tab = tabs.find(t => { try { return new URL(t.url).hostname.toLowerCase() === h; } catch { return false; } });
-      if (tab && tab.id != null) {
-        const r = await chrome.tabs.sendMessage(tab.id, { type: 'ct/find-image' }).catch(() => null);
-        const src = r && r.image && r.image.src;
-        if (src && /^https?:\/\//i.test(src)) {
-          const ih = new URL(src).hostname.toLowerCase();
-          // Base-domain grant: random per-visit image subdomains would
-          // otherwise need a new grant every visit.
-          if (ih && ih !== h) origins.push(...imageHostOrigins(ih));
-        }
-      }
-    } catch { /* page-host origins are enough to try */ }
-    if (chrome.permissions && chrome.permissions.request) {
-      await chrome.permissions.request({ origins }).catch(() => false);
-    }
+  // Normalize: strip scheme, path, and a leading "*." — the origins below are
+  // built from the bare host, and "*.tumblr.com" in the allowlist would never
+  // match "www.tumblr.com".
+  h = h.replace(/^https?:\/\//, '').split('/')[0].replace(/^\*\./, '');
+  if (!h || allowedSites.includes(h)) { $('wlAdd').value = ''; renderSiteList(); return; }
+  // permissions.request() must run synchronously in the click turn: the
+  // awaits the old code did first (tabs.query, content-script round trip)
+  // burn Firefox's transient activation, so the prompt silently never fires
+  // and the site ends up "added" but unusable. Same constraint as the popup
+  // grant button.
+  // The typed host's origins cover the page and its subdomains (which is
+  // where pictures usually live). A picture on an unrelated CDN host is
+  // covered by the popup's grant row or the error pill's Allow button.
+  const origins = [`*://${h}/*`, `*://*.${h}/*`];
+  let req;
+  try { req = chrome.permissions.request({ origins }); }
+  catch { req = Promise.resolve(false); }
+  Promise.resolve(req).catch(() => false).then(() => {
     allowedSites.push(h);
-  }
-  $('wlAdd').value = '';
-  renderSiteList();
-  saveNow();
+    $('wlAdd').value = '';
+    renderSiteList();
+    saveNow();
+  });
 };
 
 $('allowAllSites').onchange = e => {
