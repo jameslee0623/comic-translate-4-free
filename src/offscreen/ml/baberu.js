@@ -20,6 +20,7 @@
 //               in a row gets -inf (kills repetition loops)
 //             stop at EOS or 128 tokens
 //        -> decode: ids 0..3 are <pad>/<bos>/<eos>/<unk>, id>=4 -> charset[id-4]
+import { detectBlockLang } from '../../shared/lang-detect.js';
 export const BABERU_IMG = 224;
 const BOS = 1, EOS = 2;
 // NOTE (2026-09-29, corrected): the ~64-character ceiling on long text is a
