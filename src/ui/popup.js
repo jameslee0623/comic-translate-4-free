@@ -173,7 +173,7 @@ async function saveLang(key, value) {
   await chrome.storage.local.set({ settings: { ...(settings || {}), [key]: value } });
 }
 
-async function refresh() {
+async function refreshStatus() {
   const st = await chrome.runtime.sendMessage({ type: 'ct/get-status' }).catch(() => null);
   if (st && st.ok) {
     const s = st.status;
@@ -185,6 +185,9 @@ async function refresh() {
     const isRunning = s.stage && !['done', 'idle', 'error', 'cancelled'].includes(s.stage);
     setRunning(isRunning);
   }
+}
+
+async function refreshSettings() {
   const { settings } = await chrome.storage.local.get('settings');
   if (settings) {
     if (settings.translationBackend) $('backend').value =
@@ -195,6 +198,15 @@ async function refresh() {
     $('allowAllSites').checked = !!(settings && settings.allowAllSites);
   }
   await refreshSite(settings || {});
+}
+
+// Full refresh: status + settings. The 3s interval only needs the status
+// part — rewriting the settings dropdowns on every tick stomps the user's
+// in-progress selection (the open language list collapses), so settings
+// controls update only here, at init, and on real storage changes.
+async function refresh() {
+  await refreshStatus();
+  await refreshSettings();
 }
 
 // The picture often lives on a CDN host different from the page host; without
@@ -411,9 +423,9 @@ $('allowAllSites').onchange = e => {
 
 // Sync with the Settings page (and any other settings writer): re-render when
 // settings change elsewhere. Our own writes echo back through here too, but
-// refresh() only reads, so re-running it is harmless.
+// refreshSettings() only reads, so re-running it is harmless.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.settings) refresh().catch(() => {});
+  if (area === 'local' && changes.settings) refreshSettings().catch(() => {});
 });
 
 $('options').onclick = e => {
@@ -453,4 +465,4 @@ try {
 } catch { $('build').textContent = 'build ' + BUILD; }
 refresh();
 refreshCacheStats();
-setInterval(refresh, 3000);
+setInterval(refreshStatus, 3000);
