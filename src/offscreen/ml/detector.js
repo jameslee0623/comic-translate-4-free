@@ -31,11 +31,13 @@ export class Detector {
   async detect(rgba, w, h, threshold = 0.3) {
     const resized = resizeBilinearRGBA(rgba, w, h, SIZE, SIZE);
     const nchw = toNCHW(resized, SIZE, SIZE);
-    const feeds = {
-      images: new ort.Tensor('float32', nchw, [1, 3, SIZE, SIZE]),
-      orig_target_sizes: new ort.Tensor('int64', BigInt64Array.from([BigInt(w), BigInt(h)]), [1, 2]),
-    };
-    const out = await this.session.run(feeds);
+    const tImages = new ort.Tensor('float32', nchw, [1, 3, SIZE, SIZE]);
+    const tSizes = new ort.Tensor('int64', BigInt64Array.from([BigInt(w), BigInt(h)]), [1, 2]);
+    const out = await this.session.run({ images: tImages, orig_target_sizes: tSizes });
+    // Tensors hold WASM-heap buffers — undisposed, every run leaks until the
+    // page's memory blows up (this was the 10~40-image browser crash).
+    tImages.dispose();
+    tSizes.dispose();
     const labels = out.labels.data, boxes = out.boxes.data, scores = out.scores.data;
     const kept = [];
     for (let i = 0; i < scores.length; i++) {
@@ -48,6 +50,7 @@ export class Detector {
       }
     }
     kept.sort((a, b) => b.score - a.score);
+    for (const t of Object.values(out)) t.dispose();
     return kept;
   }
 }

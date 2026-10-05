@@ -241,24 +241,34 @@ export class BaberuOCR {
   async _decode(rgba, w, h) {
     const chw = preprocessCrop(rgba, w, h);
     const i64 = (v) => new ort.Tensor('int64', BigInt64Array.from([BigInt(v)]), [1, 1]);
-    const visIn = this._feed(this.vis, { pixel_values: new ort.Tensor('float32', chw, [1, 3, BABERU_IMG, BABERU_IMG]) });
+    const tPixel = new ort.Tensor('float32', chw, [1, 3, BABERU_IMG, BABERU_IMG]);
+    const visIn = this._feed(this.vis, { pixel_values: tPixel });
     if (!visIn || Object.keys(visIn).length === 0) {
       // Extremely defensive: feed positionally if no name matched.
-      visIn[this.vis.inputNames[0]] = new ort.Tensor('float32', chw, [1, 3, BABERU_IMG, BABERU_IMG]);
+      visIn[this.vis.inputNames[0]] = tPixel;
     }
     const visOut = await this.vis.run(visIn);
+    // Tensors hold WASM-heap buffers — every undisposed run leaks, and this
+    // loop does up to 128 runs per crop. That leak was the 10~40-image
+    // browser crash: dispose every input/output once its data is copied out.
+    tPixel.dispose();
     const visEmbeds = visOut[this.vis.outputNames[0]];
+    for (const n of Object.keys(visOut)) if (n !== this.vis.outputNames[0]) visOut[n].dispose();
 
+    const tBos = i64(BOS);
     const preIn = this._feed(this.pre, {
       vision_embeds: visEmbeds,
-      input_ids: i64(BOS),
+      input_ids: tBos,
     });
     const preOut = await this.pre.run(preIn);
+    tBos.dispose();
+    visEmbeds.dispose(); // consumed by the prefill run above
     const preNames = this.pre.outputNames;
     const preLogits = preOut[preNames[0]];
     // prefill logits are [1, 257, vocab] (256 vision + 1 BOS): take the last row.
     const pv = preLogits.dims[preLogits.dims.length - 1];
     let logits = preLogits.data.slice(preLogits.data.length - pv);
+    preLogits.dispose();
     let present = preNames.slice(1).map(n => preOut[n]);
 
     const pastNames = this._pastNames();
@@ -293,22 +303,29 @@ export class BaberuOCR {
       toks.push(nxt);
       seq.push(nxt);
       if (toks.length >= MAX_NEW_TOKENS) break;
+      const tId = i64(nxt), tPos = i64(pos);
       const feed = this._feed(this.stp, {
-        input_ids: i64(nxt),
-        position_ids: i64(pos),
+        input_ids: tId,
+        position_ids: tPos,
       });
       for (let i = 0; i < pastNames.length && i < present.length; i++) {
         feed[pastNames[i]] = present[i];
       }
+      const prevPresent = present;
       const out = await this.stp.run(feed);
+      tId.dispose();
+      tPos.dispose();
+      for (const t of prevPresent) t.dispose(); // consumed by the run above
       const names = this.stp.outputNames;
       const flat = out[names[0]];
       // logits layout [1, 1, vocab] -> last row.
       const n = flat.data.length, v = flat.dims[flat.dims.length - 1];
       logits = flat.data.slice(n - v);
+      flat.dispose();
       present = names.slice(1).map(nm => out[nm]);
       pos++;
     }
+    for (const t of present) t.dispose(); // last step's KV cache, no longer needed
     let text = '';
     for (const id of toks) {
       const ch = this.id2ch.get(id);

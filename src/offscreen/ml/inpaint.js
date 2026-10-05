@@ -81,11 +81,15 @@ export class Inpainter {
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) maskNCHW[y * mw + x] = mask01[y * w + x] ? 1 : 0;
 
-    const out = await this.session.run({
-      image: new ort.Tensor('float32', imgNCHW, [1, 3, mh, mw]),
-      mask: new ort.Tensor('float32', maskNCHW, [1, 1, mh, mw]),
-    });
-    const d = out.inpainted.data;
+    const tImg = new ort.Tensor('float32', imgNCHW, [1, 3, mh, mw]);
+    const tMask = new ort.Tensor('float32', maskNCHW, [1, 1, mh, mw]);
+    const out = await this.session.run({ image: tImg, mask: tMask });
+    // Tensors hold WASM-heap buffers — dispose every run's inputs/outputs or
+    // the leak accumulates per tile until the browser crashes (see detector.js).
+    tImg.dispose();
+    tMask.dispose();
+    const d = out.inpainted.data.slice();
+    out.inpainted.dispose();
     const res = new Uint8ClampedArray(w * h * 4);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
