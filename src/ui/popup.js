@@ -191,6 +191,21 @@ async function refreshStatus() {
 
 async function refreshSettings() {
   const { settings } = await chrome.storage.local.get('settings');
+  // Reconcile the allow-all-sites flag with the real <all_urls> permission.
+  // The permission prompt steals focus and can close the popup, killing this
+  // JS context before permissions.request() resolves — the grant then never
+  // reaches storage, so the checkbox looks off on the next open even though
+  // the permission was granted (the "needs multiple tries" bug). The
+  // permission itself is the source of truth; fix storage to match it.
+  // The write below only fires on mismatch, so the storage.onChanged echo
+  // re-running refreshSettings() terminates after one extra pass.
+  try {
+    const has = await chrome.permissions.contains({ origins: ['<all_urls>'] });
+    if (settings && !!settings.allowAllSites !== has) {
+      settings.allowAllSites = has;
+      await chrome.storage.local.set({ settings });
+    }
+  } catch { /* permissions API unavailable — leave storage alone */ }
   if (settings) {
     if (settings.translationBackend) $('backend').value =
       settings.translationBackend === 'local-llm' ? 'google' : settings.translationBackend;
@@ -424,6 +439,10 @@ $('targetLang').onchange = e => saveLang('targetLang', e.target.value);
 // Allow-all-sites toggle. The <all_urls> request must run synchronously in
 // the change gesture — no awaits before it — or Firefox drops the transient
 // activation and the prompt silently never appears.
+// Note: the permission prompt can close the popup and kill this JS context
+// before the request resolves; the .then() below then never runs. That's OK:
+// the permission itself is durable, and refreshSettings() reconciles storage
+// with it on the next popup open, so one click is enough.
 $('allowAllSites').onchange = e => {
   const on = e.target.checked;
   let p;
