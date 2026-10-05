@@ -173,10 +173,12 @@ async function saveLang(key, value) {
   await chrome.storage.local.set({ settings: { ...(settings || {}), [key]: value } });
 }
 
+let lastStatus = null;
 async function refreshStatus() {
   const st = await chrome.runtime.sendMessage({ type: 'ct/get-status' }).catch(() => null);
   if (st && st.ok) {
     const s = st.status;
+    lastStatus = s;
     setStatus(STAGE_LABEL[s.stage] || s.stage);
     setProgress(s.progress);
     // Never wipe an error here: a failed click shows its error via the
@@ -306,6 +308,24 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
         // Request synchronously in the click: no awaits before
         // permissions.request() or Firefox drops the user gesture.
         requestSiteAccessNow(currentHost).then(() => refreshSite(settings));
+      };
+    }
+  }
+  // The last failed run named the exact image host that needs a grant (the
+  // pill's one-click grant can't work on Firefox — the content-script click
+  // gesture doesn't reach the worker — so it points here). Offer it directly;
+  // more reliable than the find-image heuristic above.
+  if (grantRow.style.display === 'none' && lastStatus && lastStatus.stage === 'error' &&
+      lastStatus.grantHost && chrome.permissions && chrome.permissions.request) {
+    const gh = lastStatus.grantHost;
+    if (!(await hasOriginAccess(gh).catch(() => true))) {
+      const gl = lastStatus.grantLabel || displayHost(gh);
+      grantRow.style.display = '';
+      $('grantBtn').textContent = ctMsg('grant_access_to', [gl]) || `Grant access to ${gl}`;
+      $('grantBtn').onclick = () => {
+        // Synchronous in the click — no awaits before permissions.request().
+        chrome.permissions.request({ origins: imageHostOrigins(gh) })
+          .catch(() => false).then(() => refreshSite(settings));
       };
     }
   }

@@ -410,7 +410,10 @@ function setProgress(runId, stage, progress) {
 }
 
 function broadcastError(runId, error, grant) {
-  currentRun = { runId, stage: 'error', progress: 0, error };
+  // The failed run's image host is kept on currentRun so the popup can offer
+  // a one-click grant for exactly that host (ct/get-status -> refreshSite).
+  currentRun = { runId, stage: 'error', progress: 0, error,
+    ...(grant && grant.host ? { grantHost: grant.host, grantLabel: grant.label || grant.host } : {}) };
   const payload = { type: MSG.RUN_PROGRESS, runId, stage: 'error', error };
   if (grant && grant.host) { payload.grantHost = grant.host; payload.grantLabel = grant.label || grant.host; }
   chrome.runtime.sendMessage(payload).catch(() => {});
