@@ -62,11 +62,6 @@
     <select id="targetLang" data-i18n-title="target_lang" title="Target language"></select>
   </div>
 
-  <div style="margin-top:10px"><button id="translateBtn" class="primary" data-i18n="translate_page">Translate this page</button></div>
-  <div class="row"><span id="status"></span></div>
-  <div class="bar"><div id="progress"></div></div>
-  <div id="error"></div>
-
   <div class="row" style="justify-content:space-between;margin-bottom:2px">
     <h2 data-i18n="translation_backend" style="margin:0">Translating engine</h2>
     <span id="cacheInfo" data-i18n-title="pagecache_title" title="Translated page cache" style="font-size:12px;color:#9a9aa0;white-space:nowrap">…</span>
@@ -77,6 +72,11 @@
     <option value="lmstudio" data-i18n="backend_lmstudio">LM Studio (local)</option>
   </select>
   <button id="clearCacheBtn" data-i18n="pagecache_clear" style="padding:6px 12px;font-size:12px;white-space:nowrap">Clear cache</button></div>
+
+  <div style="margin-top:10px"><button id="translateBtn" class="primary" data-i18n="translate_page">Translate this page</button></div>
+  <div class="row"><span id="status"></span></div>
+  <div class="bar"><div id="progress"></div></div>
+  <div id="error"></div>
 
   <div class="foot">
     <a href="#" id="options" data-i18n="options_settings">Settings</a>
