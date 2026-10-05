@@ -329,27 +329,28 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
       };
     }
   }
-  btn.onclick = async () => {
-    const { settings: s } = await chrome.storage.local.get('settings');
-    const cur = { ...(s || {}) };
-    const wl = new Set(cur.siteWhitelist || []);
-    if (isSiteAllowed(currentHost, [...wl])) {
-      // remove the entry that matches
-      for (const e of [...wl]) {
+  btn.onclick = () => {
+    const wl = new Set(settings.siteWhitelist || []);
+    const granting = !isSiteAllowed(currentHost, [...wl]);
+    // Granting host access here (a user gesture) lets auto-translate and
+    // full-resolution image fetch work on this site without further clicks.
+    // The permission request must run synchronously in the click turn — no
+    // awaits before permissions.request() or Firefox drops the transient
+    // activation and the prompt silently never fires.
+    let req = null;
+    if (granting) {
+      try { req = requestSiteAccessNow(currentHost); } catch { /* keep going */ }
+    }
+    Promise.resolve(req).catch(() => false).then(async () => {
+      if (granting) wl.add(currentHost);
+      else for (const e of [...wl]) {
         const w = String(e).toLowerCase();
         if (currentHost === w || currentHost.endsWith('.' + w)) wl.delete(e);
       }
-    } else {
-      // Granting host access here (a user gesture) lets auto-translate and
-      // full-resolution image fetch work on this site without further clicks.
-      // Request synchronously in the click — no awaits before
-      // permissions.request() or Firefox drops the user gesture.
-      await requestSiteAccessNow(currentHost);
-      wl.add(currentHost);
-    }
-    cur.siteWhitelist = [...wl];
-    await chrome.storage.local.set({ settings: cur });
-    refreshSite(cur);
+      const cur = { ...settings, siteWhitelist: [...wl] };
+      await chrome.storage.local.set({ settings: cur });
+      refreshSite(cur);
+    });
   };
 }
 
