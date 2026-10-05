@@ -109,8 +109,13 @@ async function cancelRunsForTab(tabId) {
 // in the background page (no offscreen API there).
 
 // ---------------------------------------------------------------- capture
-function bitmapToRGBA(bmp, maxDim) {
-  const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
+// Capture resolution budget: scale by AREA, not max dimension. A maxDim cap
+// crushes long strips (413x15402 -> 69x2560: text becomes undetectable mush
+// and the re-render is blurry). 6.5MP keeps strips at full res while still
+// bounding huge squares (8000x8000 -> 2560x2560, as before).
+const CAPTURE_MAX_PIXELS = 2560 * 2560;
+function bitmapToRGBA(bmp, maxPixels = CAPTURE_MAX_PIXELS) {
+  const scale = Math.min(1, Math.sqrt(maxPixels / (bmp.width * bmp.height)));
   const w = Math.max(1, Math.round(bmp.width * scale));
   const h = Math.max(1, Math.round(bmp.height * scale));
   const canvas = makeCanvas(w, h);
@@ -124,9 +129,9 @@ function bitmapToRGBA(bmp, maxDim) {
 // Decode a data-URL image into RGBA pixels. The content script transports
 // binary as data URL strings because raw ArrayBuffers are silently emptied
 // by extension messaging (verified in both directions).
-async function dataUrlToRGBA(dataUrl, maxDim) {
+async function dataUrlToRGBA(dataUrl, maxPixels = CAPTURE_MAX_PIXELS) {
   const blob = await (await fetch(dataUrl)).blob();
-  return bitmapToRGBA(await createImageBitmap(blob), maxDim);
+  return bitmapToRGBA(await createImageBitmap(blob), maxPixels);
 }
 
 // Direct download of the page image (needs the host permission the popup
@@ -144,7 +149,7 @@ async function fetchImagePixels(url, referrer) {
   }
   const res = await fetch(url, init);
   if (!res.ok) throw new Error('image download failed: HTTP ' + res.status);
-  return bitmapToRGBA(await createImageBitmap(await res.blob()), 2560);
+  return bitmapToRGBA(await createImageBitmap(await res.blob()));
 }
 
 // Pipeline input: the page's own picture — never a screenshot of the page.
@@ -190,7 +195,7 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
       const p = await chrome.tabs.sendMessage(tabId,
         manualSrc ? { type: 'ct/get-image-pixels', srcUrl: manualSrc } : { type: 'ct/get-image-pixels' });
       if (p && p.ok && typeof p.dataUrl === 'string') {
-        const { rgba, w, h } = await dataUrlToRGBA(p.dataUrl, 2560);
+        const { rgba, w, h } = await dataUrlToRGBA(p.dataUrl);
         // A blank (all-black) capture fed to the detector yields 2 bogus
         // full-page boxes, so validate the pixels before accepting them.
         if (meanBrightness(rgba) >= 0.004) return { rgba, w, h, mode: 'replace', tier: 'page-canvas' };
@@ -212,7 +217,7 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   try {
     const f = await chrome.tabs.sendMessage(tabId, { type: 'ct/fetch-image-bytes', srcUrl: info.src });
     if (f && f.ok && typeof f.dataUrl === 'string' && f.dataUrl.startsWith('data:')) {
-      const { rgba, w, h } = await dataUrlToRGBA(f.dataUrl, 2560);
+      const { rgba, w, h } = await dataUrlToRGBA(f.dataUrl);
       if (!manualSrc) tooSmall(w, h);
       return { rgba, w, h, mode: 'replace', tier: 'page-fetch' };
     }

@@ -9,6 +9,31 @@ import { resizeBilinearRGBA, toNCHW } from './image-ops.js';
 
 const SIZE = 640;
 
+// Long-strip support: squishing a 413x15402 page into the model's 640x640
+// input makes text sub-pixel and undetectable (this is why words "didn't show
+// up" on long-strip pages). Images more extreme than STRIP_ASPECT are split
+// into overlapping ~2:1 segments along the long axis; each segment is
+// detected separately and the boxes are merged back with overlap dedup.
+const STRIP_ASPECT = 4;
+const SEG_RATIO = 2;    // segment long side = SEG_RATIO x short side
+const SEG_OVERLAP = 128; // px overlap between adjacent segments
+
+function cropRGBA(rgba, w, x, y, cw, ch) {
+  const out = new Uint8ClampedArray(cw * ch * 4);
+  for (let r = 0; r < ch; r++)
+    out.set(rgba.subarray(((y + r) * w + x) * 4, ((y + r) * w + x + cw) * 4), r * cw * 4);
+  return out;
+}
+
+function boxIoU(a, b) {
+  const x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]);
+  const x2 = Math.min(a[2], b[2]), y2 = Math.min(a[3], b[3]);
+  const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+  if (inter <= 0) return 0;
+  const aa = (a[2] - a[0]) * (a[3] - a[1]), bb = (b[2] - b[0]) * (b[3] - b[1]);
+  return inter / (aa + bb - inter);
+}
+
 export class Detector {
   constructor() { this.session = null; }
 
@@ -29,6 +54,38 @@ export class Detector {
 
   // rgba: Uint8ClampedArray, w/h: image dims. Returns [{xyxy:[x1,y1,x2,y2], label, score}]
   async detect(rgba, w, h, threshold = 0.3) {
+    if (Math.max(w, h) / Math.min(w, h) <= STRIP_ASPECT) {
+      return this.detectSingle(rgba, w, h, threshold);
+    }
+    const vertical = h > w;
+    const shortSide = Math.min(w, h), longSide = Math.max(w, h);
+    const segLen = Math.round(shortSide * SEG_RATIO);
+    const step = segLen - SEG_OVERLAP;
+    const count = Math.max(1, Math.ceil((longSide - SEG_OVERLAP) / step));
+    const all = [];
+    for (let i = 0; i < count; i++) {
+      const o = count === 1 ? 0 : Math.round(i * (longSide - segLen) / (count - 1));
+      const n = Math.min(segLen, longSide - o);
+      const seg = vertical ? cropRGBA(rgba, w, 0, o, w, n) : cropRGBA(rgba, w, o, 0, n, h);
+      const boxes = await this.detectSingle(seg, vertical ? w : n, vertical ? n : h, threshold);
+      for (const b of boxes) {
+        const [x1, y1, x2, y2] = b.xyxy;
+        b.xyxy = vertical ? [x1, y1 + o, x2, y2 + o] : [x1 + o, y1, x2 + o, y2];
+        all.push(b);
+      }
+    }
+    // Dedup doubles detected in the overlap zones; keep the higher score.
+    all.sort((a, b) => b.score - a.score);
+    const kept = [];
+    for (const b of all) {
+      if (kept.some(k => boxIoU(k.xyxy, b.xyxy) >= 0.5)) continue;
+      kept.push(b);
+    }
+    kept.sort((a, b) => b.score - a.score);
+    return kept;
+  }
+
+  async detectSingle(rgba, w, h, threshold = 0.3) {
     const resized = resizeBilinearRGBA(rgba, w, h, SIZE, SIZE);
     const nchw = toNCHW(resized, SIZE, SIZE);
     const tImages = new ort.Tensor('float32', nchw, [1, 3, SIZE, SIZE]);
