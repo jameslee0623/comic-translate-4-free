@@ -376,6 +376,19 @@
     "message": "關閉",
     "description": "Dismiss link on the error pill"
   },
+  "pill_allow_host": {
+    "message": "允許 $HOST$",
+    "description": "Pill button: grant image-host access",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "pill_grant_denied": {
+    "message": "已拒絕 — 請從彈出視窗中允許",
+    "description": "Pill: image-host grant was denied"
+  },
   "pill_err_page_changed": {
     "message": "翻譯完成前頁面圖片發生了變化 — 請重新載入頁面後重試",
     "description": "Pill error: pill_err_page_changed"

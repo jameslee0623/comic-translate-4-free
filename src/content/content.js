@@ -312,16 +312,53 @@
     clearTimeout(pillTimer);
     if (!sticky) pillTimer = setTimeout(() => { p.style.display = 'none'; }, 4000);
   }
-  function showPillError(text) {
+  function pillAllowLabel(host) {
+    try {
+      const m = chrome.i18n.getMessage('pill_allow_host', host);
+      if (m) return m;
+    } catch { /* fall through */ }
+    return 'Allow ' + host;
+  }
+  function pillDeniedLabel() {
+    try {
+      const m = chrome.i18n.getMessage('pill_grant_denied');
+      if (m) return m;
+    } catch { /* fall through */ }
+    return 'access denied — allow it from the popup';
+  }
+  function showPillError(text, grant) {
     const p = ensurePill();
     const errLabel = stageLabel('error');
-    p.innerHTML = 'comic-translate-4-free — ' + esc(errLabel) + ': ' + esc(text) +
-      ' <a href="#" id="ct-pill-x" style="color:#8ab4f8;margin-left:8px">' +
+    let html = 'comic-translate-4-free — ' + esc(errLabel) + ': ' + esc(text);
+    if (grant && grant.host) {
+      html += ' <button id="ct-pill-grant" style="margin-left:8px;padding:4px 10px;border:1px solid #1a73e8;border-radius:6px;' +
+        'background:#1a73e8;color:#fff;font:600 12px sans-serif;cursor:pointer">' +
+        esc(pillAllowLabel(grant.label || grant.host)) + '</button>';
+    }
+    html += ' <a href="#" id="ct-pill-x" style="color:#8ab4f8;margin-left:8px">' +
       esc(dismissLabel()) + '</a>';
+    p.innerHTML = html;
     p.style.display = 'block';
     p.style.borderColor = '#a33';
     const x = document.getElementById('ct-pill-x');
     if (x) x.onclick = e => { e.preventDefault(); p.style.display = 'none'; };
+    const g = document.getElementById('ct-pill-grant');
+    if (g) g.onclick = e => {
+      e.preventDefault();
+      g.disabled = true;
+      g.style.opacity = '.6';
+      // Classic script (no modules): use the literal message type.
+      chrome.runtime.sendMessage({ type: 'ct/grant-image-host', host: grant.host }, r => {
+        if (r && r.ok) {
+          // Granted — the worker re-runs the pipeline; hide the error.
+          p.style.display = 'none';
+        } else {
+          g.disabled = false;
+          g.style.opacity = '';
+          g.textContent = pillDeniedLabel();
+        }
+      });
+    };
   }
   // Stage labels come from the shared stage_* i18n keys (also used by the
   // popup), English fallback if a locale is missing one.
@@ -576,7 +613,8 @@
     if (msg.type === 'ct/run-progress') {
       if (!msg.direct) return false; // broadcasts are for the popup; the pill takes targeted copies
       const st = msg.stage;
-      if (st === 'error') showPillError(msg.error || stageLabel('error'));
+      if (st === 'error') showPillError(msg.error || stageLabel('error'),
+        msg.grantHost ? { host: msg.grantHost, label: msg.grantLabel } : null);
       else if (st === 'done') { showPill('comic-translate-4-free — ' + esc(stageLabel('done')) + ' ✓'); maybeDing(); }
       else if (st === 'cancelled') showPill('comic-translate-4-free — ' + esc(stageLabel('cancelled')));
       else if (st && st !== 'idle') pillProgress(st, msg.progress);

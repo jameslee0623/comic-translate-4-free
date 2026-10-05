@@ -19,7 +19,7 @@ import {
   initPageCache, buildCacheKey, pageCacheGet, pageCachePut,
   pageCacheStats, clearPageCache,
 } from '../shared/page-cache.js';
-import { displayHost, hostOf, isSiteAllowed } from '../shared/site-access.js';
+import { displayHost, hostOf, isSiteAllowed, imageHostOrigins } from '../shared/site-access.js';
 
 // Translated-page cache is session-scoped: initPageCache() wipes the store on
 // every browser startup (via a chrome.storage.session marker) and the
@@ -245,15 +245,19 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   // (keystamp=...), so on revisit that saved link is dead — the fix is a
   // page reload for a fresh link, not another access grant.
   const staleOriginal = !!info.translated;
-  throw new Error(
+  const grantable = !serverRefused && !!imgHost && !staleOriginal;
+  const err = new Error(
     `couldn't read the page's picture (${failures.join('; ')}). ` +
     (serverRefused
       ? `The image server${imgHostLabel ? ' (' + imgHostLabel + ')' : ''} refused the download${staleOriginal ? ' — the saved image link has likely expired' : ' even though access was granted'} — the download was refused even when made from the page itself, which points to bot protection (e.g. Cloudflare) rather than a permission problem. Reload the page and try again; if it persists, this site can't be translated right now.`
       : imgHost
         ? staleOriginal
           ? `The picture lives on ${imgHostLabel} but its saved image link no longer loads (these links expire, or the access grant was revoked) — reload the page for a fresh link and translate again; if the popup offers it, grant access to ${imgHostLabel} first.`
-          : `The picture is hosted on ${imgHostLabel} — open the extension popup on this page and click "Grant access to ${imgHostLabel}".`
+          : `The picture is hosted on ${imgHostLabel} — click "Allow ${imgHostLabel}" in the notice on the page, or grant it from the extension popup ("Grant access to ${imgHostLabel}").`
         : `If the picture is hosted on another site, open the extension popup on this page and click "Grant access".`));
+  // The pill renders an "Allow <host>" button for this case (see broadcastError).
+  if (grantable) err.grantHost = imgHost;
+  throw err;
 }
 
 // ---------------------------------------------------------------- pixel helpers
@@ -396,9 +400,10 @@ function setProgress(runId, stage, progress) {
   }
 }
 
-function broadcastError(runId, error) {
+function broadcastError(runId, error, grant) {
   currentRun = { runId, stage: 'error', progress: 0, error };
   const payload = { type: MSG.RUN_PROGRESS, runId, stage: 'error', error };
+  if (grant && grant.host) { payload.grantHost = grant.host; payload.grantLabel = grant.label || grant.host; }
   chrome.runtime.sendMessage(payload).catch(() => {});
   const tabId = runs.get(runId)?.tabId;
   if (tabId != null) {
@@ -832,7 +837,7 @@ async function runPipeline(tabId, opts = {}) {
       msg = 'cancelled';
     } else {
       msg = String((e && e.message) || e);
-      broadcastError(runId, msg);
+      broadcastError(runId, msg, e && e.grantHost ? { host: e.grantHost, label: displayHost(e.grantHost) } : null);
       try {
         await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
         await chrome.tabs.sendMessage(tabId, { type: MSG.DEBUG_STAGE, runId, stage: 'error', payload: { title: 'Error', error: msg } });
@@ -1000,6 +1005,28 @@ chrome.storage.onChanged.addListener((changes, area) => {
 refreshContextMenu().catch(() => {});
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Pill "Allow <host>" button (content script). permissions.request() must be
+  // called synchronously in the message turn — the click's user gesture only
+  // survives one sync hop across sendMessage, so nothing may be awaited first
+  // (same constraint as the popup's grant button; see requestSiteAccessNow).
+  if (msg && msg.type === MSG.GRANT_IMAGE_HOST && msg.host) {
+    let req;
+    try {
+      req = chrome.permissions.request({ origins: imageHostOrigins(msg.host) });
+    } catch (e) {
+      sendResponse({ ok: false, error: String((e && e.message) || e).slice(0, 120) });
+      return false;
+    }
+    Promise.resolve(req).then(granted => {
+      if (granted && sender.tab && sender.tab.id != null) {
+        // Access granted — re-run the pipeline so the user doesn't have to
+        // click Translate again. Failures surface through the normal pill.
+        runPipeline(sender.tab.id).catch(() => {});
+      }
+      sendResponse({ ok: !!granted });
+    }, () => sendResponse({ ok: false }));
+    return true;
+  }
   (async () => {
     try {
       switch (msg && msg.type) {

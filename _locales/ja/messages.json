@@ -376,6 +376,19 @@
     "message": "閉じる",
     "description": "Dismiss link on the error pill"
   },
+  "pill_allow_host": {
+    "message": "$HOST$を許可",
+    "description": "Pill button: grant image-host access",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "pill_grant_denied": {
+    "message": "拒否されました — ポップアップから許可してください",
+    "description": "Pill: image-host grant was denied"
+  },
   "pill_err_page_changed": {
     "message": "翻訳完了前にページ画像が変更されました — ページを再読み込みして再試行してください",
     "description": "Pill error: pill_err_page_changed"

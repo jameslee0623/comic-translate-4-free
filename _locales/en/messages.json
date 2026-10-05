@@ -376,6 +376,19 @@
     "message": "dismiss",
     "description": "Dismiss link on the error pill"
   },
+  "pill_allow_host": {
+    "message": "Allow $HOST$",
+    "description": "Pill button: grant image-host access",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "pill_grant_denied": {
+    "message": "access denied — allow it from the popup",
+    "description": "Pill: image-host grant was denied"
+  },
   "pill_err_page_changed": {
     "message": "the page image changed before translation finished — reload the page to retry",
     "description": "Pill error: pill_err_page_changed"
