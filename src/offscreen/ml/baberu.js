@@ -354,14 +354,17 @@ export class BaberuOCR {
   async ocrChunked(rgba, w, h, opts = {}) {
     const { lang = 'ja', axis = null, shouldAbort = null, depth = 0 } = opts;
     const first = await this._decode(rgba, w, h);
-    // The upstream cap makes the model emit EOS right at ~64 chars, so an EOS
     // this late is the symptom, not a natural sentence end. Length is the
     // trigger, not the stop reason (MAX_NEW_TOKENS is only a safety cap that a
     // real bubble never reaches).
     const hitCeiling = first.nTok >= CEILING_TOKENS;
     const plain = { text: first.text, chunks: 1, hitCeiling, firstPass: first.text, stopped: first.stopped };
     if (!hitCeiling || depth >= MAX_SPLIT_DEPTH) return plain;
-    const { axis: ax, rightFirst } = splitAxisFor(w, h, lang, axis);
+    // 'auto' source: detect the script from the first-pass decode so the
+    // split axis matches the text (vertical Japanese splits on x, everything
+    // else on y). Undetectable -> 'ja', the old default.
+    const effLang = lang === 'auto' ? (detectBlockLang(first.text) || 'ja') : lang;
+    const { axis: ax, rightFirst } = splitAxisFor(w, h, effLang, axis);
     const len = ax === 'x' ? w : h;
     if (len < MIN_CHUNK_PX * 2) return plain; // too small to split usefully
     const mid = Math.round(len / 2), ov = Math.round(len * SPLIT_OVERLAP);
@@ -375,8 +378,8 @@ export class BaberuOCR {
     }
     if (ax === 'x' && rightFirst) { const t = a; a = b; b = t; }
     if (shouldAbort && shouldAbort()) throw new Error('cancelled');
-    const ra = await this.ocrChunked(a.rgba, a.w, a.h, { lang, axis: ax, shouldAbort, depth: depth + 1 });
-    const rb = await this.ocrChunked(b.rgba, b.w, b.h, { lang, axis: ax, shouldAbort, depth: depth + 1 });
+    const ra = await this.ocrChunked(a.rgba, a.w, a.h, { lang: effLang, axis: ax, shouldAbort, depth: depth + 1 });
+    const rb = await this.ocrChunked(b.rgba, b.w, b.h, { lang: effLang, axis: ax, shouldAbort, depth: depth + 1 });
     const text = overlapJoin(ra.text, rb.text);
     // Splitting must not lose text: if the stitched result isn't longer than the
     // clipped single-pass decode, keep the simpler result.

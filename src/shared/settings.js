@@ -2,7 +2,7 @@
 // (Content scripts use chrome.storage directly via messaging to avoid duplication.)
 
 export const DEFAULT_SETTINGS = {
-  sourceLang: 'ja',
+  sourceLang: 'auto', // 'auto' = detect from the OCR'd text; or 'ja' | 'en' | 'zh-CN' | 'zh-TW'
   targetLang: 'en',
   translationBackend: 'google', // 'google' | 'azure' | 'lmstudio' | 'local-llm'
   azureKey: '',

@@ -195,6 +195,9 @@
   "source_lang": {
     "message": "來源語言"
   },
+  "source_auto": {
+    "message": "自動偵測"
+  },
   "target_lang": {
     "message": "目標語言"
   },

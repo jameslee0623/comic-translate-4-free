@@ -259,7 +259,7 @@ function setChecked(id, v) {
 }
 function applyToForm(s) {
   if (s.translationBackend === 'local-llm') s.translationBackend = 'google'; // backend retired from UI
-  fillLangs($('sourceLang'), LANGS, s.sourceLang);
+  fillLangs($('sourceLang'), [['auto', ctMsg('source_auto') || 'Auto-detect'], ...LANGS], s.sourceLang);
   fillLangs($('targetLang'), TARGET_LANGS, s.targetLang);
   setVal('backend', s.translationBackend);
   setVal('azureKey', s.azureKey || '');

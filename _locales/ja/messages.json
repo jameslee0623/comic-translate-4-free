@@ -195,6 +195,9 @@
   "source_lang": {
     "message": "翻訳元言語"
   },
+  "source_auto": {
+    "message": "自動検出"
+  },
   "target_lang": {
     "message": "翻訳先言語"
   },

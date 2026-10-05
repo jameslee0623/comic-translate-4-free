@@ -162,7 +162,9 @@ function setRunning(r) {
 }
 
 function fillLangs() {
-  $('sourceLang').innerHTML = LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
+  const autoLabel = ctMsg('source_auto') || 'Auto-detect';
+  $('sourceLang').innerHTML = [`<option value="auto">${autoLabel}</option>`,
+    ...LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`)].join('');
   $('targetLang').innerHTML = TARGET_LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
 }
 

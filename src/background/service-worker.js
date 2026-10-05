@@ -13,6 +13,7 @@ import { pixelPut, pixelTake, pixelDrop } from '../shared/pixel-bus.js';
 import { generateMask } from '../offscreen/ml/mask.js';
 import { mergePaddedBoxes } from '../offscreen/ml/inpaint.js';
 import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL } from './translators.js';
+import { detectPageLang } from '../shared/lang-detect.js';
 import { mlHostAlive, ensureMlHost, callMl, makeCanvas, canvasToBlob, directHandlers } from './ml-bridge.js';
 import {
   initPageCache, buildCacheKey, pageCacheGet, pageCachePut,
@@ -629,6 +630,15 @@ async function runPipeline(tabId, opts = {}) {
       });
     }
 
+    // Auto-detect source language: Baberu reads all four scripts, so vote
+    // across the OCR'd blocks. Undetectable -> 'ja', the old default.
+    let effSettings = settings;
+    if (settings.sourceLang === 'auto') {
+      const detected = detectPageLang(blocks.map(b => b.text));
+      effSettings = { ...settings, sourceLang: detected || 'ja' };
+      for (const b of blocks) b.source_lang = effSettings.sourceLang;
+    }
+
     // ---- 5+6+7. translate || (mask -> inpaint). Translate and mask both need
     // only the OCR text and are independent of each other (translate: network
     // I/O here; mask: CPU here). Inpaint needs the mask, so it chains off the
@@ -649,7 +659,7 @@ async function runPipeline(tabId, opts = {}) {
     const runTranslate = async () => {
       parProgress('translate', 0);
       const t0t = performance.now();
-      const translated = await translateBlocks(blocks, settings);
+      const translated = await translateBlocks(blocks, effSettings);
       checkCancelled(runId);
       blocks.forEach((b, i) => { b.translation = translated[i]; });
       const translateMs = Math.round(performance.now() - t0t);
