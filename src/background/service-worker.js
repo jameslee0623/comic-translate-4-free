@@ -136,20 +136,29 @@ async function dataUrlToRGBA(dataUrl, maxPixels = CAPTURE_MAX_PIXELS) {
 
 // Direct download of the page image (needs the host permission the popup
 // requests on click). Full resolution, no viewport limits.
-// The request mimics the page's own <img> load: some image hosts 403 requests
-// with no Referer (hotlink protection) or need the user's cookies, and the
-// fetch defaults (no referrer, no credentials) look like a bot.
+// Referrer strategy: try WITHOUT a Referer first, then with the page origin.
+// Pages with `Referrer-Policy: same-origin` load their cross-origin images
+// with NO Referer, and some hosts/WAFs 403 anything else (myreadingmanga);
+// hosts with hotlink protection 403 requests with NO Referer. Trying both
+// covers both kinds; only a 403 falls through to the next attempt.
 async function fetchImagePixels(url, referrer) {
-  const init = { credentials: 'include' };
-  if (referrer) {
-    init.referrer = referrer;
-    // Browser default: an <img> load sends the page origin as Referer for a
-    // cross-origin image host. Match it exactly.
-    init.referrerPolicy = 'strict-origin-when-cross-origin';
+  // Mimic the page's <img> load: image Accept header, user cookies.
+  const base = {
+    credentials: 'include',
+    headers: { Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' },
+  };
+  const tries = [{ ...base, referrerPolicy: 'no-referrer' }];
+  if (referrer) tries.push({ ...base, referrer, referrerPolicy: 'strict-origin-when-cross-origin' });
+  let lastErr = new Error('image download failed');
+  for (const init of tries) {
+    let res;
+    try { res = await fetch(url, init); }
+    catch (e) { lastErr = e; break; }
+    if (res.ok) return bitmapToRGBA(await createImageBitmap(await res.blob()));
+    lastErr = new Error('image download failed: HTTP ' + res.status);
+    if (res.status !== 403) break;
   }
-  const res = await fetch(url, init);
-  if (!res.ok) throw new Error('image download failed: HTTP ' + res.status);
-  return bitmapToRGBA(await createImageBitmap(await res.blob()));
+  throw lastErr;
 }
 
 // Pipeline input: the page's own picture — never a screenshot of the page.
