@@ -64,8 +64,8 @@ async function ensureModel(kind) {
       const vocabJson = await assetText(BABERU_VOCAB_ASSET);
       try {
         await baberu.loadVis(await modelBuffer('ocr-baberu-vision'));
-        await baberu.loadPre(await modelBuffer('ocr-baberu-prefill'));
-        await baberu.loadStep(await modelBuffer('ocr-baberu-step'));
+        await baberu.loadPre(await modelBuffer('ocr-baberu-prefill-v11'));
+        await baberu.loadStep(await modelBuffer('ocr-baberu-step-v11'));
       } catch (e) { baberu.reset(); throw e; }
       baberu.setVocab(vocabJson);
     } else if (kind === 'inpaint' && !inpainter.loaded) {
@@ -205,8 +205,8 @@ const handlers = {
           results.push({ id: c.id, text: '', chars: 0, chunks: 0, hitCeiling: false, stopped: 'eos', skipped: true });
           continue;
         }
-        // Baberu clips at ~64 chars (upstream training cap), so the chunked
-        // path re-OCRs an over-long crop in overlapping pieces.
+        // Baberu v1.1 reads up to ~256 chars; the chunked path is a rare
+        // fallback for over-long crops, re-OCR'd in overlapping pieces.
         const r = await baberu.ocrChunked(u8, c.width, c.height, {
           lang: sourceLang || 'ja',
           shouldAbort: () => cancelledRuns.has(runId),

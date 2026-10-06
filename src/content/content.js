@@ -541,10 +541,10 @@
     if (p.crops) {
       html += p.crops.map(c => {
         const n = c.chars != null ? c.chars : (c.text || '').length;
-        // Baberu's decoder was trained with a 64-char label cap, so a crop whose
-        // first pass stopped at ~64 chars gets re-OCR'd in overlapping chunks.
+        // Baberu v1.1 reads up to ~256 chars; a crop hitting that ceiling gets
+        // re-OCR'd in overlapping chunks (rare).
         const cap = c.hitCeiling
-          ? ` <span style="color:#fc6">⚠ 64-char model cap` +
+          ? ` <span style="color:#fc6">⚠ 256-char model cap` +
             (c.chunks > 1 ? ` — re-OCR'd in ${c.chunks} chunks` : ' — could not split further') + `</span>`
           : '';
         const looped = c.stopped === 'limit'

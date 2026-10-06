@@ -645,7 +645,7 @@ async function runPipeline(tabId, opts = {}) {
       }
       let ocrMs = 0, ocrEngineLabel = '';
       // Per-crop OCR diagnostics for the debug panel: char count and whether
-      // this crop needed the Baberu ~64-char-ceiling chunked re-OCR.
+      // this crop needed the Baberu chunked re-OCR (v1.1: >256 chars, rare).
       const ocrStats = new Map();
       if (crops.length) {
         const r = await callMlChecked(runId, {
@@ -676,7 +676,7 @@ async function runPipeline(tabId, opts = {}) {
       const clippedCount = [...ocrStats.values()].filter(s => s.hitCeiling).length;
       await emitDebug(runId, tabId, settings, 'ocr', {
         title: `OCR — ${crops.length} crops, ${ocrTextCount} with text${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}` +
-          (clippedCount ? `, ${clippedCount} hit the 64-char model cap (re-OCR'd in chunks)` : ''),
+          (clippedCount ? `, ${clippedCount} hit the 256-char model cap (re-OCR'd in chunks)` : ''),
         crops: ocrThumbs, ms: ocrMs,
       });
     }

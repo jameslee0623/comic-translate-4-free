@@ -24,9 +24,12 @@ export const MODEL_GROUPS = [
     files: [
       { id: 'ocr-baberu-vision', file: 'vision_int4.onnx', bytes: 52293486,
         url: hf('genshiai-daichi/baberu-ocr', 'onnx/vision_int4.onnx') },
-      { id: 'ocr-baberu-prefill', file: 'decoder_prefill_int8.onnx', bytes: 35133596,
+      // v1.1 (2026-10-06): decoder retrained on labels up to 256 chars —
+      // the v1.0 64-char training cap is gone. File IDs bumped (-v11) so
+      // cached v1.0 files are re-downloaded; vision is byte-identical.
+      { id: 'ocr-baberu-prefill-v11', file: 'decoder_prefill_int8.onnx', bytes: 35133596,
         url: hf('genshiai-daichi/baberu-ocr', 'onnx/decoder_prefill_int8.onnx') },
-      { id: 'ocr-baberu-step', file: 'decoder_step_int8.onnx', bytes: 33929034,
+      { id: 'ocr-baberu-step-v11', file: 'decoder_step_int8.onnx', bytes: 34715466,
         url: hf('genshiai-daichi/baberu-ocr', 'onnx/decoder_step_int8.onnx') },
     ],
   },

@@ -23,30 +23,34 @@
 import { detectBlockLang } from '../../shared/lang-detect.js';
 export const BABERU_IMG = 224;
 const BOS = 1, EOS = 2;
-// NOTE (2026-09-29, corrected): the ~64-character ceiling on long text is a
-// TRAINING-TIME limit of the upstream checkpoint, not an ONNX/architecture
-// limit. genshiai-daichi/baberu-ocr trains its decoder with a 64-char label cap
-// (data_ocr.py: `ids = [bos] + [t2i[c] for c in text[:max_text_len]] + [eos]`,
-// max_text_len default 64 in train_ocr.py), so the model only ever saw
-// [BOS] + <=64 chars + [EOS] and learned to emit EOS right after ~64 chars.
-// The exported graphs are fully dynamic — decoder_step_int8.onnx declares
-// past_* as [1,2,'past_len',64], RoPE is computed in-graph, and config.json has
-// max_position_embeddings 2048 and no learned position table — so nothing here
-// is tunable. MAX_NEW_TOKENS/REPETITION_PENALTY match the published decode
-// (onnx_infer.py) and were correctly reverted. What we CAN do is re-OCR an
-// oversized crop in overlapping chunks (ocrChunked below).
-const MAX_NEW_TOKENS = 128;
+// NOTE (2026-10-06): Baberu v1.1 (genshiai-daichi/baberu-ocr, 2026-10-06)
+// fixed the ~64-character training cap. v1.0 trained labels were cut at 64
+// chars (with EOS after the cut), so the model learned to stop at char 64;
+// v1.1 was retrained on labels up to 256 chars with no EOS after a cut, and
+// the ONNX step graph's RoPE now covers 2,048 positions (was 512 — a read
+// past 255 tokens would have failed in a Gather). Upstream numbers on our
+// tier (vision_int4 + decoder_*_int8): English bubbles of 65–256 chars,
+// lCER 0.381 → 0.031, exact match 12% → 72%. Up to ~128 chars it reads
+// almost everything; past ~190 the tail garbles (letters too small at
+// 224×224). The chunked re-OCR below is now a rare fallback (only for
+// >254-token decodes), not the primary path.
+const MAX_NEW_TOKENS = 256;
 const REPETITION_PENALTY = 1.2;
 const MAX_CONTENT_RUN = 12;
+// Upstream onnx_infer.py: stop a run of one symbol (ー/～/・) at 16 — now that
+// a read can go past 64, an over-stretched ー could otherwise run to the 256
+// cap. Vocab ids: ・=1472, ー=1473, ～=14239.
+const SYMBOL_RUN_IDS = new Set([1472, 1473, 14239]);
+const MAX_SYMBOL_RUN = 16;
 const NUM_LAYERS = 6;
-// Upstream data_ocr.py max_text_len: emitted text is truncated at ~this many
-// chars. CEILING_TOKENS is the point at which we treat a decode as clipped and
-// re-OCR the crop in chunks (64 minus room for a trailing space/EOS).
-const BABERU_MAX_CHARS = 64;
+// v1.1 ceiling: emitted text is truncated at ~this many chars. CEILING_TOKENS
+// is the point at which we treat a decode as clipped and re-OCR the crop in
+// chunks (256 minus room for a trailing space/EOS). Rarely hit now.
+const BABERU_MAX_CHARS = 256;
 const CEILING_TOKENS = BABERU_MAX_CHARS - 2;
 const SPLIT_OVERLAP = 0.15;  // fraction of the split axis duplicated at the seam
 const MIN_CHUNK_PX = 40;     // don't split a crop whose split axis is smaller
-const MAX_SPLIT_DEPTH = 2;   // up to 4 leaves -> ~4x64 chars of capacity
+const MAX_SPLIT_DEPTH = 2;   // up to 4 leaves -> ~4x256 chars of capacity
 
 const MEAN = [0.485, 0.456, 0.406];
 const STD = [0.229, 0.224, 0.225];
@@ -106,10 +110,11 @@ function isContentChar(ch) {
 }
 
 // ---------------------------------------------------------------- chunking
-// The upstream checkpoint only ever learned to emit ~64 chars (see NOTE above),
-// so a crop whose text is longer comes back clipped. To recover the rest we
-// split an oversized crop into two overlapping sub-crops along the axis its
-// text lines STACK on (so concatenating the halves keeps reading order), OCR
+// v1.1 reads up to ~256 chars natively, so this is now a rare fallback for
+// crops whose text runs past the new ceiling (only extreme cases hit it).
+// To recover the rest we split an oversized crop into two overlapping
+// sub-crops along the axis its text lines STACK on (so concatenating the
+// halves keeps reading order), OCR
 // each, and stitch the pieces with the duplicated seam removed.
 
 // Straight rectangle copy of an RGBA buffer (mirrors cropRGBA in
@@ -250,7 +255,7 @@ export class BaberuOCR {
     }
     const visOut = await this.vis.run(visIn);
     // Tensors hold WASM-heap buffers — every undisposed run leaks, and this
-    // loop does up to 128 runs per crop. That leak was the 10~40-image
+    // loop does up to 256 runs per crop. That leak was the 10~40-image
     // browser crash: dispose every input/output once its data is copied out.
     tPixel.dispose();
     const visEmbeds = visOut[this.vis.outputNames[0]];
@@ -296,6 +301,15 @@ export class BaberuOCR {
         for (let i = toks.length - 1; i >= 0 && toks[i] === last; i--) run++;
         if (run >= MAX_CONTENT_RUN && last < vocabSize) logits[last] = -Infinity;
       }
+      // v1.1: stop a run of one symbol (ー/～/・) at 16 (matches onnx_infer.py).
+      // Now that reads can go past 64, an over-stretched ー could otherwise
+      // run all the way to the 256 cap.
+      if (toks.length && SYMBOL_RUN_IDS.has(toks[toks.length - 1])) {
+        const last = toks[toks.length - 1];
+        let run = 0;
+        for (let i = toks.length - 1; i >= 0 && toks[i] === last; i--) run++;
+        if (run >= MAX_SYMBOL_RUN && last < vocabSize) logits[last] = -Infinity;
+      }
       let nxt = 0;
       for (let i = 1; i < vocabSize && i < logits.length; i++) {
         if (logits[i] > logits[nxt]) nxt = i;
@@ -333,7 +347,7 @@ export class BaberuOCR {
       if (ch !== undefined) text += ch;
     }
     // nTok is what decides "clipped": an EOS landing at >= CEILING_TOKENS chars
-    // is the upstream 64-char training cap showing through, not a real ending.
+    // is the v1.1 256-char ceiling showing through, not a real ending.
     return { text, nTok: toks.length, stopped };
   }
 
@@ -348,8 +362,8 @@ export class BaberuOCR {
   // symbolic). Batching needs a re-export with dynamic batch axes, which is
   // a model-side project, not a code change.
 
-  // Chunked OCR for crops whose text runs past the model's ~64-char training
-  // cap. Returns { text, chunks, hitCeiling, firstPass, stopped }: `chunks` is
+  // Chunked OCR for crops whose text runs past the model's ~256-char ceiling
+  // (v1.1). Returns { text, chunks, hitCeiling, firstPass, stopped }: `chunks` is
   // how many decodes produced `text` (1 = no split), `firstPass` is the plain
   // single-crop decode (the fallback), and `stopped` is 'eos' | 'limit'.
   async ocrChunked(rgba, w, h, opts = {}) {
