@@ -258,7 +258,7 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   const err = new Error(
     `couldn't read the page's picture (${failures.join('; ')}). ` +
     (serverRefused
-      ? `The image server${imgHostLabel ? ' (' + imgHostLabel + ')' : ''} refused the download${staleOriginal ? ' — the saved image link has likely expired' : ' even though access was granted'} — the download was refused even when made from the page itself, which points to bot protection (e.g. Cloudflare) rather than a permission problem. Reload the page and try again; if it persists, this site can't be translated right now.`
+      ? `The image server${imgHostLabel ? ' (' + imgHostLabel + ')' : ''} refused the download${staleOriginal ? ' — the saved image link has likely expired' : ' even though access was granted'}. The page's own download attempt was blocked before it got an answer (cross-origin restrictions), and the background download got an HTTP refusal — this points to bot protection (e.g. Cloudflare) telling our automated download apart from the page's own image load, rather than a permission problem. Reload the page and try again; if it persists, this site can't be translated right now.`
       : imgHost
         ? staleOriginal
           ? `The picture lives on ${imgHostLabel} but its saved image link no longer loads (these links expire, or the access grant was revoked) — reload the page for a fresh link and translate again; if the popup offers it, grant access to ${imgHostLabel} first.`

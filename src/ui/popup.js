@@ -169,6 +169,7 @@ function fillLangs() {
 }
 
 async function saveLang(key, value) {
+  markDirty(key);
   await writeSettings({ [key]: value });
 }
 
@@ -187,6 +188,23 @@ function writeSettings(patch) {
 }
 
 let lastStatus = null;
+
+// ---- init race guards ----
+// refreshSettings() is async and can finish AFTER the user has already used a
+// control. Two hazards:
+//  1. A dropdown the user already changed: re-setting .value from the stale
+//     storage read snaps their pick back ("needs 2 tries").
+//  2. A control the user is interacting with right now (focused / dropdown
+//     open): re-setting its value mid-interaction disrupts the native widget.
+// During init the user's value wins; after init, storage wins (cross-page
+// sync). A focused control is never stomped.
+let initDone = false;
+const initDirty = new Set();
+function markDirty(id) { if (!initDone) initDirty.add(id); }
+function keepUserValue(id) {
+  const el = $(id);
+  return (!initDone && initDirty.has(id)) || (el && document.activeElement === el);
+}
 async function refreshStatus() {
   const st = await chrome.runtime.sendMessage({ type: 'ct/get-status' }).catch(() => null);
   if (st && st.ok) {
@@ -220,13 +238,19 @@ async function refreshSettings() {
     }
   } catch { /* permissions API unavailable — leave storage alone */ }
   if (settings) {
-    if (settings.translationBackend) $('backend').value =
+    // Never stomp a control the user already set or is using (see the init
+    // race guards above): during init their pick wins, and a focused control
+    // keeps its value so an open dropdown isn't disrupted mid-interaction.
+    if (!keepUserValue('backend') && settings.translationBackend) $('backend').value =
       settings.translationBackend === 'local-llm' ? 'google' : settings.translationBackend;
-    if (settings.sourceLang) $('sourceLang').value = settings.sourceLang;
-    if (settings.targetLang && TARGET_LANGS.some(([c]) => c === settings.targetLang)) $('targetLang').value = settings.targetLang;
-    else $('targetLang').value = 'en';
-    $('allowAllSites').checked = !!(settings && settings.allowAllSites);
+    if (!keepUserValue('sourceLang') && settings.sourceLang) $('sourceLang').value = settings.sourceLang;
+    if (!keepUserValue('targetLang')) {
+      if (settings.targetLang && TARGET_LANGS.some(([c]) => c === settings.targetLang)) $('targetLang').value = settings.targetLang;
+      else $('targetLang').value = 'en';
+    }
+    if (!keepUserValue('allowAllSites')) $('allowAllSites').checked = !!(settings && settings.allowAllSites);
   }
+  initDone = true;
   await refreshSite(settings || {});
 }
 
@@ -418,6 +442,7 @@ $('translateBtn').onclick = async () => {
 };
 
 $('backend').onchange = e => {
+  markDirty('backend');
   writeSettings({ translationBackend: e.target.value }).catch(() => {});
 };
 
@@ -474,6 +499,7 @@ $('targetLang').onchange = e => saveLang('targetLang', e.target.value);
 // with it on the next popup open, so one click is enough.
 $('allowAllSites').onchange = e => {
   const on = e.target.checked;
+  markDirty('allowAllSites');
   let p;
   try {
     p = on

@@ -130,6 +130,9 @@ const TARGET_LANGS = [
 const DEFAULTS = DEFAULT_SETTINGS;
 
 function fillLangs(sel, list, val) {
+  // Don't rebuild a dropdown the user is interacting with right now — the
+  // innerHTML reset would collapse their open list mid-selection.
+  if (document.activeElement === sel) return;
   sel.innerHTML = list.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
   sel.value = list.some(([c]) => c === val) ? val : list[0][0];
 }
