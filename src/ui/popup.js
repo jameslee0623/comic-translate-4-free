@@ -2,6 +2,8 @@
 import { BUILD } from '../shared/version.js';
 import { baseDomain, imageHostOrigins, originAccessPatterns, displayHost, hostOf, isSiteAllowed } from '../shared/site-access.js';
 const $ = id => document.getElementById(id);
+// Escape for innerHTML interpolation (hostnames are DNS-safe, but explicit).
+const escHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // Stage labels come from i18n (stage_* keys), English fallback if missing.
 const STAGE_LABEL = {
   idle: 'idle', capture: 'Capturing page…', detect: 'Detecting bubbles & text…',
@@ -320,7 +322,7 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
   }
   const allowAll = !!settings.allowAllSites;
   const ok = allowAll || isSiteAllowed(currentHost, list);
-  const hostHtml = `<b>${currentHost}</b>`;
+  const hostHtml = `<b>${escHtml(currentHost)}</b>`;
   const statusHtml = allowAll
     ? `<span class="ok">${ctMsg('all_sites_on') || 'all sites allowed ✓'}</span>`
     : ok
