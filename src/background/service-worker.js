@@ -142,10 +142,16 @@ async function dataUrlToRGBA(dataUrl, maxPixels = CAPTURE_MAX_PIXELS) {
 // hosts with hotlink protection 403 requests with NO Referer. Trying both
 // covers both kinds; only a 403 falls through to the next attempt.
 async function fetchImagePixels(url, referrer) {
-  // Mimic the page's <img> load: image Accept header, user cookies.
+  // Mimic the page's <img> load: image Accept header, user cookies, and the
+  // Priority header browsers send on subresource image loads. (Sec-Fetch-Dest
+  // can't be forged — fetch always sends `empty`, never `image` — so a strict
+  // bot filter can still tell us apart.)
   const base = {
     credentials: 'include',
-    headers: { Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8' },
+    headers: {
+      Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      Priority: 'i',
+    },
   };
   const tries = [{ ...base, referrerPolicy: 'no-referrer' }];
   if (referrer) tries.push({ ...base, referrer, referrerPolicy: 'strict-origin-when-cross-origin' });
@@ -258,7 +264,7 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   const err = new Error(
     `couldn't read the page's picture (${failures.join('; ')}). ` +
     (serverRefused
-      ? `The image server${imgHostLabel ? ' (' + imgHostLabel + ')' : ''} refused the download${staleOriginal ? ' — the saved image link has likely expired' : ' even though access was granted'}. The page's own download attempt was blocked before it got an answer (cross-origin restrictions), and the background download got an HTTP refusal — this points to bot protection (e.g. Cloudflare) telling our automated download apart from the page's own image load, rather than a permission problem. Reload the page and try again; if it persists, this site can't be translated right now.`
+      ? `The image server${imgHostLabel ? ' (' + imgHostLabel + ')' : ''} refused the download${staleOriginal ? ' — the saved image link has likely expired' : ' even though access was granted'}. The page's own download attempt was blocked before it got an answer (cross-origin restrictions), and the background download got an HTTP refusal — this points to bot protection (e.g. Cloudflare) telling our automated download apart from the page's own image load, rather than a permission problem. This can be intermittent (works sometimes, blocked other times). Reload the page and try again; if it persists, wait a bit and retry — repeated attempts can trigger rate limiting.`
       : imgHost
         ? staleOriginal
           ? `The picture lives on ${imgHostLabel} but its saved image link no longer loads (these links expire, or the access grant was revoked) — reload the page for a fresh link and translate again; if the popup offers it, grant access to ${imgHostLabel} first.`
@@ -852,7 +858,10 @@ async function runPipeline(tabId, opts = {}) {
       broadcastError(runId, msg, e && e.grantHost ? { host: e.grantHost, label: displayHost(e.grantHost) } : null);
       try {
         await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
-        await chrome.tabs.sendMessage(tabId, { type: MSG.DEBUG_STAGE, runId, stage: 'error', payload: { title: 'Error', error: msg } });
+        // Show the debug panel on failure too (emitDebug sets debug:true and
+        // respects debugMode) — otherwise a capture-stage failure leaves
+        // James with only the error text and no stage/tier diagnostics.
+        await emitDebug(runId, tabId, settings, 'error', { title: 'Error', error: msg });
       } catch { /* ignore */ }
     }
     result = { runId, ok: false, error: msg, cancelled: !!(e && e.cancelled) };
