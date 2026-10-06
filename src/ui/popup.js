@@ -169,8 +169,21 @@ function fillLangs() {
 }
 
 async function saveLang(key, value) {
-  const { settings } = await chrome.storage.local.get('settings');
-  await chrome.storage.local.set({ settings: { ...(settings || {}), [key]: value } });
+  await writeSettings({ [key]: value });
+}
+
+// All popup settings writes go through this chain. Concurrent
+// read-modify-write cycles would otherwise clobber each other: two quick
+// dropdown changes → the second get() returns pre-first-set() state → the
+// first change is silently lost ("needs multiple tries").
+let settingsWriteChain = Promise.resolve();
+function writeSettings(patch) {
+  const w = settingsWriteChain.then(async () => {
+    const { settings } = await chrome.storage.local.get('settings');
+    await chrome.storage.local.set({ settings: { ...(settings || {}), ...patch } });
+  }).catch(() => {});
+  settingsWriteChain = w;
+  return w;
 }
 
 let lastStatus = null;
@@ -347,6 +360,16 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
   btn.onclick = () => {
     const wl = new Set(settings.siteWhitelist || []);
     const granting = !isSiteAllowed(currentHost, [...wl]);
+    if (granting) {
+      // Optimistic list write FIRST, without awaiting: the permission prompt
+      // can close the popup and kill this context before the .then() below
+      // runs (same hazard as the allow-all-sites checkbox). The intent must
+      // already be in storage. Denial rolls it back below.
+      wl.add(currentHost);
+      chrome.storage.local.set({
+        settings: { ...settings, siteWhitelist: [...wl] },
+      }).catch(() => {});
+    }
     // Granting host access here (a user gesture) lets auto-translate and
     // full-resolution image fetch work on this site without further clicks.
     // The permission request must run synchronously in the click turn — no
@@ -356,15 +379,22 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
     if (granting) {
       try { req = requestSiteAccessNow(currentHost); } catch { /* keep going */ }
     }
-    Promise.resolve(req).catch(() => false).then(async () => {
-      if (granting) wl.add(currentHost);
-      else for (const e of [...wl]) {
+    Promise.resolve(req).catch(() => false).then(async granted => {
+      // Re-read: the optimistic write above (or a Settings-page edit) may
+      // have moved the list since this handler ran.
+      let cur = null;
+      try { ({ settings: cur } = await chrome.storage.local.get('settings')); } catch { /* keep going */ }
+      const wl2 = new Set((cur && cur.siteWhitelist) || []);
+      if (granting) {
+        if (!granted) wl2.delete(currentHost); // denied: roll back the optimistic add
+        else wl2.add(currentHost);
+      } else for (const e of [...wl2]) {
         const w = String(e).toLowerCase();
-        if (currentHost === w || currentHost.endsWith('.' + w)) wl.delete(e);
+        if (currentHost === w || currentHost.endsWith('.' + w)) wl2.delete(e);
       }
-      const cur = { ...settings, siteWhitelist: [...wl] };
-      await chrome.storage.local.set({ settings: cur });
-      refreshSite(cur);
+      const next = { ...(cur || {}), siteWhitelist: [...wl2] };
+      await writeSettings({ siteWhitelist: next.siteWhitelist });
+      refreshSite(next);
     });
   };
 }
@@ -387,9 +417,8 @@ $('translateBtn').onclick = async () => {
   refresh();
 };
 
-$('backend').onchange = async e => {
-  const { settings } = await chrome.storage.local.get('settings');
-  await chrome.storage.local.set({ settings: { ...(settings || {}), translationBackend: e.target.value } });
+$('backend').onchange = e => {
+  writeSettings({ translationBackend: e.target.value }).catch(() => {});
 };
 
 // ---- translated page cache (same stats as the Settings page) ----
@@ -455,8 +484,7 @@ $('allowAllSites').onchange = e => {
   }
   Promise.resolve(p).then(async granted => {
     if (on && !granted) { e.target.checked = false; return; } // denied: revert
-    const { settings } = await chrome.storage.local.get('settings');
-    await chrome.storage.local.set({ settings: { ...(settings || {}), allowAllSites: on } });
+    await writeSettings({ allowAllSites: on });
     refresh();
   }).catch(() => { if (on) e.target.checked = false; });
 };

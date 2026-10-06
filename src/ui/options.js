@@ -284,11 +284,8 @@ async function load() {
   refreshCacheStats();
 }
 
-// All writes go through here so we can tell our own storage.onChanged echo
-// apart from genuine remote changes (e.g. from the popup).
-let lastLocalWrite = 0;
+// All settings writes go through here.
 function persistSettings(s) {
-  lastLocalWrite = Date.now();
   return chrome.storage.local.set({ settings: s });
 }
 
@@ -296,9 +293,13 @@ function persistSettings(s) {
 // update the form. lastSettings is refreshed too, because collect() spreads
 // it — without this, the next auto-save would clobber the remote change
 // with stale values.
+// No echo guard: our own writes echo back through here, but re-applying our
+// own values is harmless (setVal skips the focused text input, so in-progress
+// typing is never stomped), and a time-based guard has a real hazard — a
+// popup write landing inside the window gets ignored, then the next
+// auto-save overwrites it with the stale form.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !changes.settings) return;
-  if (Date.now() - lastLocalWrite < 800) return; // our own echo
   const s = { ...DEFAULTS, ...((changes.settings && changes.settings.newValue) || {}) };
   lastSettings = s;
   if (formLoaded) applyToForm(s);
