@@ -272,6 +272,11 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
         : `If the picture is hosted on another site, open the extension popup on this page and click "Grant access".`));
   // The pill renders an "Allow <host>" button for this case (see broadcastError).
   if (grantable) err.grantHost = imgHost;
+  // A server refusal (403) can be worked around by opening the image URL
+  // directly in a tab: there it's same-origin, so the canvas tier reads it
+  // with no download. The manual-send handler uses this for an automatic
+  // background-tab fallback.
+  if (serverRefused && info.src) err.fallbackUrl = info.src;
   throw err;
 }
 
@@ -864,7 +869,8 @@ async function runPipeline(tabId, opts = {}) {
         await emitDebug(runId, tabId, settings, 'error', { title: 'Error', error: msg });
       } catch { /* ignore */ }
     }
-    result = { runId, ok: false, error: msg, cancelled: !!(e && e.cancelled) };
+    result = { runId, ok: false, error: msg, cancelled: !!(e && e.cancelled),
+      ...(e && e.fallbackUrl ? { fallbackUrl: e.fallbackUrl } : {}) };
   } finally {
     runs.delete(runId);
     // Drop any pixel payloads this run staged but never got taken.
@@ -1007,9 +1013,67 @@ async function handleTranslateImage(tabId, srcUrl) {
     }
     // Any in-flight run for this tab is dropped first — the new request wins.
     await cancelRunsForTab(tabId);
-    await runPipeline(tabId, { srcUrl });
+    const r = await runPipeline(tabId, { srcUrl });
+    // 403 fallback: the image server refused our download, but opening the
+    // image URL directly makes it same-origin, so the canvas tier can read it
+    // with no download at all. Do that in a background tab automatically.
+    if (!r.ok && r.fallbackUrl) {
+      await fallbackTranslateInNewTab(tabId, r.fallbackUrl);
+    }
   } catch (e) {
     console.warn('[ct] manual image send failed:', String((e && e.message) || e).slice(0, 160));
+  }
+}
+
+// 403 fallback for "Send to comic-translate-4-free": open the image URL in a
+// background tab and translate it there. In its own tab the picture is
+// same-origin, so tier 1a (page canvas) reads the pixels directly — no
+// download, no bot-protection fight.
+async function fallbackTranslateInNewTab(origTabId, imageUrl) {
+  const notice = (text, sticky) =>
+    chrome.tabs.sendMessage(origTabId, { type: MSG.PILL_NOTICE, text, sticky }).catch(() => {});
+  await notice('Direct download blocked — translating in a background tab…', true);
+  let newTab = null;
+  try {
+    newTab = await chrome.tabs.create({ url: imageUrl, active: false });
+  } catch { /* popup blocker or invalid URL */ }
+  if (!newTab || newTab.id == null) {
+    await notice('Could not open a background tab for the image.', false);
+    return;
+  }
+  const newTabId = newTab.id;
+  try {
+    // Wait for the image document to finish loading (its <img> is the page).
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('timed out waiting for the image tab to load')), 30000);
+      const listener = (tabId, changeInfo) => {
+        if (tabId === newTabId && changeInfo.status === 'complete') {
+          clearTimeout(timeout);
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+      // Already loaded (fast cache hit): don't wait for an event that fired.
+      chrome.tabs.get(newTabId).then(t => {
+        if (t && t.status === 'complete') {
+          clearTimeout(timeout);
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      }).catch(() => {});
+    });
+    const r = await runPipeline(newTabId, { srcUrl: imageUrl });
+    if (r.ok) {
+      // Show the finished translation.
+      await chrome.tabs.update(newTabId, { active: true }).catch(() => {});
+      await notice('Translation ready.', false);
+    } else {
+      throw new Error(r.error || 'translation failed');
+    }
+  } catch (e) {
+    await chrome.tabs.remove(newTabId).catch(() => {});
+    await notice('Background-tab translation failed: ' + String((e && e.message) || e).slice(0, 120), false);
   }
 }
 if (chrome.contextMenus && chrome.contextMenus.onClicked) {

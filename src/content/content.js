@@ -610,6 +610,12 @@
       })();
       return true;
     }
+    if (msg.type === 'ct/pill-notice') {
+      // Custom pill message from the SW (e.g. 403-fallback status). Sticky
+      // keeps it visible while the background work runs.
+      showPill('comic-translate-4-free — ' + esc(msg.text || ''), !!msg.sticky);
+      return false;
+    }
     if (msg.type === 'ct/run-progress') {
       if (!msg.direct) return false; // broadcasts are for the popup; the pill takes targeted copies
       const st = msg.stage;
