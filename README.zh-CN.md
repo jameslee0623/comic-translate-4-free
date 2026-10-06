@@ -81,7 +81,8 @@
 请记得手动清除缓存）。关闭浏览器时缓存会自动清除，隐身窗口中不会使用缓存。
 
 **设置**（点击图标 → 设置）：网站访问、页面加载时自动翻译、
-源语言/目标语言、翻译引擎（Google 免费 / Azure Translator / LM Studio）、
+源语言（含**自动检测** — 从 OCR 文本识别日语/英语/简体/繁体中文）/目标语言、
+翻译引擎（Google 免费 / Azure Translator / LM Studio）、
 Azure 与 LM Studio 的连接测试按钮、检测阈值、
 最小图片尺寸（默认 500px — 更小的捕获会被跳过）、
 字体大小、调试模式，以及已翻译页面缓存的管理。
@@ -192,8 +193,8 @@ background — 编排、捕获、文本块、遮罩、翻译 API、
 - `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
 
 流水线阶段：capture → detect → blocks → OCR → mask → inpaint →
-translate → render。检测在 640×640 下运行；
-纵横比超过 3.5:1 的高图以重叠垂直切片处理。
+translate → render。检测在 640×640 下运行；捕获按面积缩放（6.5MP 预算），
+长条图保持全分辨率，纵横比超过 4:1 的页面以重叠的 2:1 分段处理。
 
 **Chrome 与 Firefox 流水线：** 两个构建版本都在 OCR 之后并行执行翻译与
 mask/inpaint。Chrome 通过 Promise.all 并行 —— ML 会话运行在 offscreen
@@ -208,6 +209,10 @@ translate 顺序；单线程的后台页面无法在不卡死的情况下运行�
 - 自动翻译每页只处理一张图片（页面的主图）。
   要翻译页面上的其他图片，请右键点击它并选择
   **Send to comic-translate-4-free**。
+- 某些图片服务器会阻止自动下载（HTTP 403，例如 Cloudflare 机器人防护），
+  即使页面本身能正常显示图片。右键的 **Send to comic-translate-4-free**
+  可通过后台标签页绕过此限制；自动翻译在此类网站上可能会报 403 错误。
+  这种阻止可能是间歇性的。
 - Firefox：AI 模型在浏览器的后台页面内运行（Firefox 没有离屏文档），
   与其他所有内容共享内存。在非常大的页面或长时间使用后，引擎可能内存不足
   并报告 "no available backend found"。重启浏览器可释放内存；Chrome 不受影响，

@@ -66,6 +66,10 @@
    即使小於最小圖片尺寸也會處理 — 並就地取代。
    該選單項目僅在您已允許的網站上出現。
 
+若圖片伺服器拒絕下載（HTTP 403，例如 Cloudflare 機器人防護），擴充功能會
+自動在背景分頁中開啟該圖片 — 在那裡它是同源的，可直接讀取無需下載 —
+翻譯後關閉分頁，並在原頁面就地取代圖片。
+
 ![右鍵選單](docs/images/right-click.png)
 
 處理流程的輸入為頁面中最大的圖片，受最小圖片尺寸設定限制
@@ -77,7 +81,8 @@
 所有圖片。請記得手動清除快取）。關閉瀏覽器時快取會自動清除，無痕視窗中不會使用快取。
 
 **設定**（點擊圖示 → 設定）：網站存取、頁面載入時自動翻譯、
-來源/目標語言、翻譯引擎（Google 免費 / Azure Translator / LM Studio）、
+來源語言（含**自動偵測** — 從 OCR 文字識別日文/英文/簡體/繁體中文）/目標語言、
+翻譯引擎（Google 免費 / Azure Translator / LM Studio）、
 Azure 與 LM Studio 的連線測試按鈕、偵測閾值、
 最小圖片尺寸（預設 500px — 更小的擷取會被略過）、
 字型大小、除錯模式，以及已翻譯頁面快取的管理。
@@ -188,8 +193,8 @@ background — 編排、擷取、文字區塊、遮罩、翻譯 API、
 - `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
 
 處理階段：capture → detect → blocks → OCR → mask → inpaint →
-translate → render。偵測在 640×640 下執行；
-長寬比超過 3.5:1 的高圖以重疊的垂直切片處理。
+translate → render。偵測在 640×640 下執行；擷取按面積縮放（6.5MP 預算），
+長條圖保持全解析度，長寬比超過 4:1 的頁面以重疊的 2:1 分段處理。
 
 **Chrome 與 Firefox 流水線：** 兩個建置版本都在 OCR 之後並行執行翻譯與
 mask/inpaint。Chrome 透過 Promise.all 並行 —— ML 會話運行在 offscreen
@@ -204,6 +209,10 @@ translate 順序；單一執行緒的背景頁面無法在不卡死的情況下�
 - 自動翻譯每頁只處理一張圖片（頁面的主圖）。
   要翻譯頁面上的其他圖片，請在該圖片上按右鍵並選擇
   **Send to comic-translate-4-free**。
+- 某些圖片伺服器會阻擋自動下載（HTTP 403，例如 Cloudflare 機器人防護），
+  即使頁面本身能正常顯示圖片。右鍵的 **Send to comic-translate-4-free**
+  可透過背景分頁繞過此限制；自動翻譯在此類網站上可能會出現 403 錯誤。
+  這種阻擋可能是間歇性的。
 - Firefox：AI 模型在瀏覽器的背景頁面內執行（Firefox 沒有離屏文件），
   與其他所有內容共用記憶體。在非常大的頁面或長時間使用後，引擎可能記憶體不足
   並報告 "no available backend found"。重新啟動瀏覽器可釋放記憶體；Chrome 不受影響，
