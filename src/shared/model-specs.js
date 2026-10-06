@@ -89,7 +89,9 @@ export async function deleteModelGroup(groupId) {
 // en/chinese, superseded 2026-09-28; manga-ocr encoder/decoder, superseded
 // 2026-09-29 by Baberu): with no group row left in the UI
 // there'd be no way to delete them otherwise.
-const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav', 'ocr-pororo', 'ocr-ppocr-en', 'ocr-ppocr-chinese', 'ocr-ppocrv6', 'ocr-ppocr-ko', 'ocr-encoder', 'ocr-decoder-init', 'ocr-decoder-step'];
+// Baberu v1.0 decoders (2026-10-06): superseded by v1.1 (-v11 IDs); pruned
+// before the v1.1 download so users don't carry ~70MB of stale weights.
+const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav', 'ocr-pororo', 'ocr-ppocr-en', 'ocr-ppocr-chinese', 'ocr-ppocrv6', 'ocr-ppocr-ko', 'ocr-encoder', 'ocr-decoder-init', 'ocr-decoder-step', 'ocr-baberu-prefill', 'ocr-baberu-step'];
 export { PRUNED_MODEL_IDS };
 export async function pruneModelIds(ids) {
   const db = await openDb();
