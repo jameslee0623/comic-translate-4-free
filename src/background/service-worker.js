@@ -529,7 +529,18 @@ async function runPipeline(tabId, opts = {}) {
     // ---- 1. capture: the page's own picture (min-size gated), else viewport
     setProgress(runId, 'capture', 0.02);
     let t0 = performance.now();
-    const { rgba, w, h, mode, tier } = await getPipelineImage(tabId, settings, tabUrl, { srcUrl: manualSrc });
+    let rgba, w, h, mode, tier;
+    if (opts.preCaptured) {
+      // 403 fallback: pixels were read from a background tab where the image
+      // is same-origin. Skip the download tiers entirely; the rest of the
+      // pipeline (detect → OCR → translate → inpaint → render) runs normally
+      // on the original tab, replacing the picture in place.
+      ({ rgba, w, h } = opts.preCaptured);
+      mode = 'replace';
+      tier = 'fallback-tab';
+    } else {
+      ({ rgba, w, h, mode, tier } = await getPipelineImage(tabId, settings, tabUrl, { srcUrl: manualSrc }));
+    }
     timings.capture = Math.round(performance.now() - t0);
     const capMean = meanBrightness(rgba);
     if (capMean < 0.004) {
@@ -1016,9 +1027,18 @@ async function handleTranslateImage(tabId, srcUrl) {
     const r = await runPipeline(tabId, { srcUrl });
     // 403 fallback: the image server refused our download, but opening the
     // image URL directly makes it same-origin, so the canvas tier can read it
-    // with no download at all. Do that in a background tab automatically.
+    // with no download at all. Capture the pixels in a background tab, then
+    // run the normal pipeline on the original tab — the translated picture
+    // replaces the original in place.
     if (!r.ok && r.fallbackUrl) {
-      await fallbackTranslateInNewTab(tabId, r.fallbackUrl);
+      try {
+        const preCaptured = await fallbackCaptureViaTab(tabId, r.fallbackUrl);
+        await runPipeline(tabId, { srcUrl, preCaptured });
+      } catch (e) {
+        // Fallback failed — the 403 error pill from the first attempt is
+        // already showing; leave it.
+        console.warn('[ct] fallback capture failed:', String((e && e.message) || e).slice(0, 160));
+      }
     }
   } catch (e) {
     console.warn('[ct] manual image send failed:', String((e && e.message) || e).slice(0, 160));
@@ -1026,23 +1046,18 @@ async function handleTranslateImage(tabId, srcUrl) {
 }
 
 // 403 fallback for "Send to comic-translate-4-free": open the image URL in a
-// background tab and translate it there. In its own tab the picture is
-// same-origin, so tier 1a (page canvas) reads the pixels directly — no
-// download, no bot-protection fight.
-async function fallbackTranslateInNewTab(origTabId, imageUrl) {
+// background tab, read its pixels via the canvas tier (same-origin there —
+// no download, no bot-protection fight), close the tab, and hand the pixels
+// back so the normal pipeline runs on the original tab.
+async function fallbackCaptureViaTab(origTabId, imageUrl) {
   const notice = (text, sticky) =>
     chrome.tabs.sendMessage(origTabId, { type: MSG.PILL_NOTICE, text, sticky }).catch(() => {});
-  await notice('Direct download blocked — translating in a background tab…', true);
-  let newTab = null;
+  await notice('Direct download blocked — reading the image in a background tab…', true);
+  let newTabId = null;
   try {
-    newTab = await chrome.tabs.create({ url: imageUrl, active: false });
-  } catch { /* popup blocker or invalid URL */ }
-  if (!newTab || newTab.id == null) {
-    await notice('Could not open a background tab for the image.', false);
-    return;
-  }
-  const newTabId = newTab.id;
-  try {
+    const newTab = await chrome.tabs.create({ url: imageUrl, active: false });
+    if (!newTab || newTab.id == null) throw new Error('could not open background tab');
+    newTabId = newTab.id;
     // Wait for the image document to finish loading (its <img> is the page).
     await new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('timed out waiting for the image tab to load')), 30000);
@@ -1063,17 +1078,14 @@ async function fallbackTranslateInNewTab(origTabId, imageUrl) {
         }
       }).catch(() => {});
     });
-    const r = await runPipeline(newTabId, { srcUrl: imageUrl });
-    if (r.ok) {
-      // Show the finished translation.
-      await chrome.tabs.update(newTabId, { active: true }).catch(() => {});
-      await notice('Translation ready.', false);
-    } else {
-      throw new Error(r.error || 'translation failed');
+    await chrome.scripting.executeScript({ target: { tabId: newTabId }, files: CONTENT_SCRIPT_FILES });
+    const p = await chrome.tabs.sendMessage(newTabId, { type: 'ct/get-image-pixels', srcUrl: imageUrl });
+    if (!p || !p.ok || typeof p.dataUrl !== 'string') {
+      throw new Error((p && p.error) || 'could not read the image');
     }
-  } catch (e) {
-    await chrome.tabs.remove(newTabId).catch(() => {});
-    await notice('Background-tab translation failed: ' + String((e && e.message) || e).slice(0, 120), false);
+    return await dataUrlToRGBA(p.dataUrl);
+  } finally {
+    if (newTabId != null) await chrome.tabs.remove(newTabId).catch(() => {});
   }
 }
 if (chrome.contextMenus && chrome.contextMenus.onClicked) {
