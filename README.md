@@ -73,6 +73,12 @@ that exact image through the pipeline — even when it is smaller than the
 minimum image size — and still replaces it in place. The menu item only
 appears on sites you have allowed.
 
+If the image server refuses the download (HTTP 403, e.g. Cloudflare bot
+protection), the extension automatically opens the image in a background
+tab — there it is same-origin, so the picture is read directly with no
+download — translates it, closes the tab, and replaces the picture on your
+page in place.
+
    ![The right-click menu](docs/images/right-click.png)
 
 The pipeline input is the page's largest image, gated by the minimum image
@@ -87,7 +93,9 @@ cache manually). The cache is cleared automatically when the browser closes,
 and is never used in incognito windows.
 
 **Settings** (click the icon → Settings): site access, auto-translate on
-page load, source/target languages, translation engine (Google free / Azure
+page load, source language (including **Auto-detect**, which identifies
+Japanese / English / Simplified / Traditional Chinese from the OCR'd text)
+and target language, translation engine (Google free / Azure
 Translator / LM Studio), connection-test buttons for Azure and LM Studio,
 detection threshold, minimum image size (default 500px — smaller captures are
 skipped), font sizes, debug mode, and the translated-page cache controls.
@@ -197,8 +205,9 @@ Models (Hugging Face, downloaded on demand):
 - `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
 
 Pipeline stages: capture → detect → blocks → OCR → mask → inpaint →
-translate → render. Detection runs at 640×640; pages taller than 3.5:1 are
-processed in overlapping vertical slices.
+translate → render. Detection runs at 640×640; capture is scaled by area
+(6.5 MP budget) so long strips keep full resolution, and pages more extreme
+than 4:1 aspect are processed in overlapping 2:1 segments.
 
 **Chrome vs Firefox pipeline:** both builds run translate in parallel with
 mask/inpaint after OCR. Chrome does it via Promise.all — the ML sessions
@@ -214,6 +223,11 @@ blocked when the WASM inpaint hogs the main thread.
 - Auto-translate handles a single picture per page (the page's main image).
   To translate any other picture on the page, right-click it and choose
   **Send to comic-translate-4-free**.
+- Some image hosts block automated downloads (HTTP 403, e.g. Cloudflare bot
+  protection) even though the page itself loads the image fine. The
+  right-click **Send to comic-translate-4-free** works around this via a
+  background tab; auto-translate on such sites may fail with a 403 error.
+  This blocking can be intermittent.
 - Firefox: the AI models run inside the browser's background page (Firefox has
   no offscreen documents), sharing memory with everything else. On very large
   pages or long sessions the engine can run out of memory and report

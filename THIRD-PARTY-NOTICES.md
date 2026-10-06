@@ -76,15 +76,20 @@ files, a few KB to ~130 KB). Their licenses belong to their publishers:
 | Baberu OCR (`vision_int4.onnx`, `decoder_prefill_int8.onnx`, `decoder_step_int8.onnx`) — Japanese, English, Simplified/Traditional Chinese | `genshiai-daichi/baberu-ocr` — manga-bubble-trained character OCR | **Apache-2.0** (license tag on the model card; LICENSE file in the repo) |
 | Baberu character vocab (`src/offscreen/ml/dicts/baberu-vocab.json`, bundled) | `tokenizer/vocab.json` from `genshiai-daichi/baberu-ocr` | **Apache-2.0** |
 
-## 4. Not used
+## 4. Not used / not shipped
 
 The following Python packages are dependencies of the desktop
 ogkalu2/comic-translate app and are **not** used anywhere in this browser
 extension (it is pure JavaScript, no Python): py7zr, PySide6, certifi,
 pypdfium2, Shapely/GEOS.
 
+**WebLLM** (`@mlc-ai/web-llm`): listed in the source tree's dev `package.json`
+but **not bundled** — the `localLlm()` backend throws ("removed from this
+build") and the UI maps a stored `local-llm` setting to Google Translate.
+No WebLLM code ships in the extension package.
+
 Translation backends (Google free translate endpoint, Azure Translator,
-LM Studio local server, WebLLM) are remote services or user-supplied models,
+LM Studio local server) are remote services or user-supplied models,
 not redistributed software.
 
 ---

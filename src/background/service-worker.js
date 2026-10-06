@@ -261,7 +261,14 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   // page reload for a fresh link, not another access grant.
   const staleOriginal = !!info.translated;
   const grantable = !serverRefused && !!imgHost && !staleOriginal;
+  // For auto-translate 403s (not manual sends — those trigger the automatic
+  // background-tab fallback), lead with the bypass: right-click the picture
+  // and use "Send to comic-translate-4-free".
+  const bypassTip = (serverRefused && !opts.srcUrl)
+    ? `Tip: right-click the picture and choose "Send to comic-translate-4-free" to bypass this block. `
+    : '';
   const err = new Error(
+    bypassTip +
     `couldn't read the page's picture (${failures.join('; ')}). ` +
     (serverRefused
       ? `The image server${imgHostLabel ? ' (' + imgHostLabel + ')' : ''} refused the download${staleOriginal ? ' — the saved image link has likely expired' : ' even though access was granted'}. The page's own download attempt was blocked before it got an answer (cross-origin restrictions), and the background download got an HTTP refusal — this points to bot protection (e.g. Cloudflare) telling our automated download apart from the page's own image load, rather than a permission problem. This can be intermittent (works sometimes, blocked other times). Reload the page and try again; if it persists, wait a bit and retry — repeated attempts can trigger rate limiting.`
