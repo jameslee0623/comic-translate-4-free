@@ -1,1 +1,400 @@
-{"add":{"message":"Добавить"},"all_downloaded":{"message":"Все модели скачаны ✓"},"all_sites_on":{"description":"site access","message":"все сайты разрешены ✓"},"allow_all_desc":{"description":"site access","message":"Переводить на любом сайте без предварительного разрешения каждого. Это даёт расширению доступ ко всем сайтам."},"allow_all_sites":{"description":"site access","message":"Разрешить все сайты"},"appDesc":{"message":"Переводите страницы манги и комиксов в браузере: детекция, OCR, инпейнтинг, перевод. Весь ML работает локально."},"appName":{"message":"comic-translate-4-free"},"auto_hint":{"message":"Когда включено, разрешённые страницы начинают переводиться автоматически сразу после загрузки — кнопку нажимать не нужно. (Совет: разрешите сайт во всплывающем окне, чтобы расширение получило доступ к его изображениям.)"},"auto_translate":{"message":"Автоперевод при загрузке страницы"},"automation":{"message":"Автоматизация"},"azure_key":{"message":"Ключ API Azure"},"azure_region":{"message":"Регион Azure"},"azure_region_ph":{"message":"например, japaneast"},"backend":{"message":"Движок перевода"},"backend_azure":{"message":"Azure Translator"},"backend_azure_opt":{"message":"Azure Translator (требуется ключ)"},"backend_google":{"message":"Google (бесплатно)"},"backend_google_opt":{"message":"Google (бесплатно, без ключа)"},"backend_hint":{"message":"Ключ и регион Azure хранятся только в хранилище расширения этого браузера. LM Studio должен быть запущен с включённым OpenAI-совместимым сервером (по умолчанию http://127.0.0.1:1234)."},"backend_lmstudio":{"message":"LM Studio (локально)"},"backend_lmstudio_opt":{"message":"LM Studio (локальный сервер)"},"bg_unreachable":{"message":"не удалось связаться с фоновой службой"},"bg_unreachable_hint":{"message":"Попробуйте перезагрузить расширение в about:debugging, затем снова откройте эту страницу."},"cancel":{"message":"Отмена"},"check_azure":{"message":"Проверить соединение с Azure"},"check_lmstudio":{"message":"Проверить соединение с LM Studio"},"checking":{"message":"проверка…"},"ctx_send_image":{"description":"Context menu item on images: send this image to the translation pipeline","message":"Отправить в comic-translate-4-free"},"debug":{"message":"Отладка"},"debug_hint":{"message":"Показывает вывод каждого этапа конвейера в боковой панели, чтобы можно было проверить каждый этап."},"debug_mode":{"message":"Режим отладки (инспектор этапов)"},"delete":{"message":"Удалить"},"det_threshold":{"message":"Порог уверенности детекции"},"detection_hint":{"message":"Страницы меньше минимального размера изображения пропускаются. Размер шрифта для рендеринга автоматически оценивается по исходному тексту на странице (ограничен максимумом выше)."},"detection_rendering":{"message":"Детекция и рендеринг"},"download":{"message":"Скачать"},"download_all":{"message":"Скачать все модели"},"download_all_n":{"message":"Скачать все модели (осталось: $N$)","placeholders":{"n":{"content":"$1"}}},"download_failed":{"message":"✗ ошибка скачивания: $ERR$","placeholders":{"err":{"content":"$1"}}},"downloaded":{"message":"✓ скачано ($SIZE$)","placeholders":{"size":{"content":"$1"}}},"downloaded_short":{"message":"✓ скачано"},"downloading":{"message":"скачивание… $PCT$%","placeholders":{"pct":{"content":"$1"}}},"downloading_generic":{"message":"Скачивание…"},"grant_access":{"message":"Разрешить доступ"},"grant_access_to":{"message":"Разрешить доступ к $HOST$","placeholders":{"host":{"content":"$1"}}},"grant_warning":{"message":"Разрешено, но у расширения нет доступа к этому сайту — перевод не может начаться."},"languages":{"message":"Языки"},"lmstudio_api":{"message":"API LM Studio"},"lmstudio_api_openai":{"message":"OpenAI-совместимый (/v1/chat/completions)"},"lmstudio_api_v1":{"message":"LM Studio REST API v1 (/api/v1/chat)"},"lmstudio_key":{"message":"Ключ API LM Studio (необязательно)"},"lmstudio_url":{"message":"URL сервера LM Studio"},"max_font_size":{"message":"Максимальный размер шрифта (px)"},"min_font_size":{"message":"Минимальный размер шрифта (px)"},"min_image_size":{"message":"Минимальный размер изображения (px)"},"model_baberu":{"message":"Baberu OCR (日本語 + English + 简体中文, обучен на манге)"},"model_detector":{"message":"Детектор текста (RT-DETR-v2)"},"model_inpaint":{"message":"Инпейнтер LaMa (манга)"},"models":{"message":"Модели"},"models_hint":{"message":"Модели скачиваются с Hugging Face один раз и кэшируются в браузере (IndexedDB)."},"no_site":{"message":"сайт не определён"},"not_downloaded":{"message":"не скачано"},"not_whitelisted":{"message":"не разрешён"},"options_settings":{"message":"Настройки"},"options_title":{"message":"Настройки"},"pagecache_clear":{"message":"Очистить кэш"},"pagecache_cleared":{"message":"Кэш очищен ($COUNT$ изображений, освобождено $SIZE$)","placeholders":{"count":{"content":"$1"},"size":{"content":"$2"}}},"pagecache_clearing":{"message":"Очистка…"},"pagecache_desc":{"message":"Страницы, к которым вы возвращаетесь в текущей сессии браузера, мгновенно загружаются из временного кэша. Кэш автоматически очищается при закрытии браузера."},"pagecache_stats":{"message":"$COUNT$ изображений · $SIZE$","placeholders":{"count":{"content":"$1"},"size":{"content":"$2"}}},"pagecache_title":{"message":"Кэш переведённых страниц"},"pill_allow_host":{"description":"Pill button: grant image-host access","message":"Разрешить $HOST$","placeholders":{"host":{"content":"$1"}}},"pill_dismiss":{"description":"Dismiss link on the error pill","message":"закрыть"},"pill_err_page_changed":{"description":"Pill error: pill_err_page_changed","message":"изображение страницы изменилось до завершения перевода — перезагрузите страницу и попробуйте снова"},"pill_err_render_mode":{"description":"Pill error: pill_err_render_mode","message":"неожиданный режим рендеринга — перезагрузите страницу и попробуйте снова"},"pill_grant_denied":{"description":"Pill: image-host grant was denied","message":"доступ запрещён — разрешите во всплывающем окне"},"play_ding":{"message":"Проигрывать звук по завершении перевода"},"redownload":{"message":"Скачать заново"},"remove":{"message":"Убрать"},"required_badge":{"message":"обязательно"},"saved":{"message":"Сохранено ✓"},"site_this":{"message":"этот сайт: $HOST$ — $STATUS$","placeholders":{"host":{"content":"$1"},"status":{"content":"$2"}}},"site_whitelist":{"message":"Доступ к сайтам"},"source_auto":{"message":"Автоопределение"},"source_lang":{"message":"Исходный язык"},"stage_blocks":{"message":"Сборка текстовых блоков…"},"stage_cancelled":{"message":"Отменено"},"stage_capture":{"message":"Захват страницы…"},"stage_detect":{"message":"Поиск облачков и текста…"},"stage_done":{"message":"Готово"},"stage_error":{"message":"Ошибка"},"stage_idle":{"message":"ожидание"},"stage_inpaint":{"message":"Инпейнтинг…"},"stage_mask":{"message":"Построение масок…"},"stage_ocr":{"message":"Чтение текста (OCR)…"},"stage_render":{"message":"Рендеринг…"},"stage_translate":{"message":"Перевод…"},"support_hint":{"message":"Это расширение бесплатно и с открытым исходным кодом. Если оно экономит ваше время, вы можете поддержать его разработку."},"support_project":{"message":"❤️ Поддержать проект"},"support_title":{"message":"Поддержать проект"},"target_lang":{"message":"Целевой язык"},"translate_page":{"message":"Перевести эту страницу"},"translation_backend":{"message":"Движок перевода"},"whitelist_add":{"message":"Разрешить этот сайт"},"whitelist_desc":{"message":"Перевод работает только на разрешённых вами сайтах. Добавьте сайт во всплывающем окне или введите его хост здесь."},"whitelist_empty":{"message":"пусто — перевод отключён везде, пока вы не разрешите сайт"},"whitelist_remove":{"message":"Запретить этот сайт"},"whitelisted":{"message":"разрешён ✓"},"wl_placeholder":{"message":"например, example.com"},"wrong_file":{"message":"⚠ закэширован неверный файл ($FILES$) — нажмите «Скачать» ниже, чтобы получить правильный","placeholders":{"files":{"content":"$1"}}}}
+{
+  "add": {
+    "message": "Добавить"
+  },
+  "all_downloaded": {
+    "message": "Все модели скачаны ✓"
+  },
+  "all_sites_on": {
+    "description": "site access",
+    "message": "все сайты разрешены ✓"
+  },
+  "allow_all_desc": {
+    "description": "site access",
+    "message": "Переводить на любом сайте без предварительного разрешения каждого. Это даёт расширению доступ ко всем сайтам."
+  },
+  "allow_all_sites": {
+    "description": "site access",
+    "message": "Разрешить все сайты"
+  },
+  "appDesc": {
+    "message": "Переводите страницы манги и комиксов в браузере: детекция, OCR, инпейнтинг, перевод. Весь ML работает локально."
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "Когда включено, разрешённые страницы начинают переводиться автоматически сразу после загрузки — кнопку нажимать не нужно. (Совет: разрешите сайт во всплывающем окне, чтобы расширение получило доступ к его изображениям.)"
+  },
+  "auto_translate": {
+    "message": "Автоперевод при загрузке страницы"
+  },
+  "automation": {
+    "message": "Автоматизация"
+  },
+  "azure_key": {
+    "message": "Ключ API Azure"
+  },
+  "azure_region": {
+    "message": "Регион Azure"
+  },
+  "azure_region_ph": {
+    "message": "например, japaneast"
+  },
+  "backend": {
+    "message": "Движок перевода"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator (требуется ключ)"
+  },
+  "backend_google": {
+    "message": "Google (бесплатно)"
+  },
+  "backend_google_opt": {
+    "message": "Google (бесплатно, без ключа)"
+  },
+  "backend_hint": {
+    "message": "Ключ и регион Azure хранятся только в хранилище расширения этого браузера. LM Studio должен быть запущен с включённым OpenAI-совместимым сервером (по умолчанию http://127.0.0.1:1234)."
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio (локально)"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio (локальный сервер)"
+  },
+  "bg_unreachable": {
+    "message": "не удалось связаться с фоновой службой"
+  },
+  "bg_unreachable_hint": {
+    "message": "Попробуйте перезагрузить расширение в about:debugging, затем снова откройте эту страницу."
+  },
+  "cancel": {
+    "message": "Отмена"
+  },
+  "check_azure": {
+    "message": "Проверить соединение с Azure"
+  },
+  "check_lmstudio": {
+    "message": "Проверить соединение с LM Studio"
+  },
+  "checking": {
+    "message": "проверка…"
+  },
+  "ctx_send_image": {
+    "description": "Context menu item on images: send this image to the translation pipeline",
+    "message": "Отправить в comic-translate-4-free"
+  },
+  "debug": {
+    "message": "Отладка"
+  },
+  "debug_hint": {
+    "message": "Показывает вывод каждого этапа конвейера в боковой панели, чтобы можно было проверить каждый этап."
+  },
+  "debug_mode": {
+    "message": "Режим отладки (инспектор этапов)"
+  },
+  "delete": {
+    "message": "Удалить"
+  },
+  "det_threshold": {
+    "message": "Порог уверенности детекции"
+  },
+  "detection_hint": {
+    "message": "Страницы меньше минимального размера изображения пропускаются. Размер шрифта для рендеринга автоматически оценивается по исходному тексту на странице (ограничен максимумом выше)."
+  },
+  "detection_rendering": {
+    "message": "Детекция и рендеринг"
+  },
+  "download": {
+    "message": "Скачать"
+  },
+  "download_all": {
+    "message": "Скачать все модели"
+  },
+  "download_all_n": {
+    "message": "Скачать все модели (осталось: $N$)",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "download_failed": {
+    "message": "✗ ошибка скачивания: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded": {
+    "message": "✓ скачано ($SIZE$)",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ скачано"
+  },
+  "downloading": {
+    "message": "скачивание… $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading_generic": {
+    "message": "Скачивание…"
+  },
+  "grant_access": {
+    "message": "Разрешить доступ"
+  },
+  "grant_access_to": {
+    "message": "Разрешить доступ к $HOST$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "Разрешено, но у расширения нет доступа к этому сайту — перевод не может начаться."
+  },
+  "languages": {
+    "message": "Языки"
+  },
+  "lmstudio_api": {
+    "message": "API LM Studio"
+  },
+  "lmstudio_api_openai": {
+    "message": "OpenAI-совместимый (/v1/chat/completions)"
+  },
+  "lmstudio_api_v1": {
+    "message": "LM Studio REST API v1 (/api/v1/chat)"
+  },
+  "lmstudio_key": {
+    "message": "Ключ API LM Studio (необязательно)"
+  },
+  "lmstudio_url": {
+    "message": "URL сервера LM Studio"
+  },
+  "max_font_size": {
+    "message": "Максимальный размер шрифта (px)"
+  },
+  "min_font_size": {
+    "message": "Минимальный размер шрифта (px)"
+  },
+  "min_image_size": {
+    "message": "Минимальный размер изображения (px)"
+  },
+  "model_baberu": {
+    "message": "Baberu OCR (日本語 + English + 简体中文, обучен на манге)"
+  },
+  "model_detector": {
+    "message": "Детектор текста (RT-DETR-v2)"
+  },
+  "model_inpaint": {
+    "message": "Инпейнтер LaMa (манга)"
+  },
+  "models": {
+    "message": "Модели"
+  },
+  "models_hint": {
+    "message": "Модели скачиваются с Hugging Face один раз и кэшируются в браузере (IndexedDB)."
+  },
+  "no_site": {
+    "message": "сайт не определён"
+  },
+  "not_downloaded": {
+    "message": "не скачано"
+  },
+  "not_whitelisted": {
+    "message": "не разрешён"
+  },
+  "options_settings": {
+    "message": "Настройки"
+  },
+  "options_title": {
+    "message": "Настройки"
+  },
+  "pagecache_clear": {
+    "message": "Очистить кэш"
+  },
+  "pagecache_cleared": {
+    "message": "Кэш очищен ($COUNT$ изображений, освобождено $SIZE$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clearing": {
+    "message": "Очистка…"
+  },
+  "pagecache_desc": {
+    "message": "Страницы, к которым вы возвращаетесь в текущей сессии браузера, мгновенно загружаются из временного кэша. Кэш автоматически очищается при закрытии браузера."
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$ изображений · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_title": {
+    "message": "Кэш переведённых страниц"
+  },
+  "pill_allow_host": {
+    "description": "Pill button: grant image-host access",
+    "message": "Разрешить $HOST$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "pill_dismiss": {
+    "description": "Dismiss link on the error pill",
+    "message": "закрыть"
+  },
+  "pill_err_page_changed": {
+    "description": "Pill error: pill_err_page_changed",
+    "message": "изображение страницы изменилось до завершения перевода — перезагрузите страницу и попробуйте снова"
+  },
+  "pill_err_render_mode": {
+    "description": "Pill error: pill_err_render_mode",
+    "message": "неожиданный режим рендеринга — перезагрузите страницу и попробуйте снова"
+  },
+  "pill_grant_denied": {
+    "description": "Pill: image-host grant was denied",
+    "message": "доступ запрещён — разрешите во всплывающем окне"
+  },
+  "play_ding": {
+    "message": "Проигрывать звук по завершении перевода"
+  },
+  "redownload": {
+    "message": "Скачать заново"
+  },
+  "remove": {
+    "message": "Убрать"
+  },
+  "required_badge": {
+    "message": "обязательно"
+  },
+  "saved": {
+    "message": "Сохранено ✓"
+  },
+  "site_this": {
+    "message": "этот сайт: $HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "Доступ к сайтам"
+  },
+  "source_auto": {
+    "message": "Автоопределение"
+  },
+  "source_lang": {
+    "message": "Исходный язык"
+  },
+  "stage_blocks": {
+    "message": "Сборка текстовых блоков…"
+  },
+  "stage_cancelled": {
+    "message": "Отменено"
+  },
+  "stage_capture": {
+    "message": "Захват страницы…"
+  },
+  "stage_detect": {
+    "message": "Поиск облачков и текста…"
+  },
+  "stage_done": {
+    "message": "Готово"
+  },
+  "stage_error": {
+    "message": "Ошибка"
+  },
+  "stage_idle": {
+    "message": "ожидание"
+  },
+  "stage_inpaint": {
+    "message": "Инпейнтинг…"
+  },
+  "stage_mask": {
+    "message": "Построение масок…"
+  },
+  "stage_ocr": {
+    "message": "Чтение текста (OCR)…"
+  },
+  "stage_render": {
+    "message": "Рендеринг…"
+  },
+  "stage_translate": {
+    "message": "Перевод…"
+  },
+  "support_hint": {
+    "message": "Это расширение бесплатно и с открытым исходным кодом. Если оно экономит ваше время, вы можете поддержать его разработку."
+  },
+  "support_project": {
+    "message": "❤️ Поддержать проект"
+  },
+  "support_title": {
+    "message": "Поддержать проект"
+  },
+  "target_lang": {
+    "message": "Целевой язык"
+  },
+  "translate_page": {
+    "message": "Перевести эту страницу"
+  },
+  "translation_backend": {
+    "message": "Движок перевода"
+  },
+  "whitelist_add": {
+    "message": "Разрешить этот сайт"
+  },
+  "whitelist_desc": {
+    "message": "Перевод работает только на разрешённых вами сайтах. Добавьте сайт во всплывающем окне или введите его хост здесь."
+  },
+  "whitelist_empty": {
+    "message": "пусто — перевод отключён везде, пока вы не разрешите сайт"
+  },
+  "whitelist_remove": {
+    "message": "Запретить этот сайт"
+  },
+  "whitelisted": {
+    "message": "разрешён ✓"
+  },
+  "wl_placeholder": {
+    "message": "например, example.com"
+  },
+  "wrong_file": {
+    "message": "⚠ закэширован неверный файл ($FILES$) — нажмите «Скачать» ниже, чтобы получить правильный",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  }
+}

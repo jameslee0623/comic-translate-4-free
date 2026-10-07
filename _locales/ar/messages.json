@@ -1,1 +1,400 @@
-{"add":{"message":"إضافة"},"all_downloaded":{"message":"تم تنزيل كل النماذج ✓"},"all_sites_on":{"description":"site access","message":"كل المواقع مسموحة ✓"},"allow_all_desc":{"description":"site access","message":"ترجم على أي موقع دون السماح لكل موقع أولًا. هذا يمنح الإضافة وصولًا إلى كل المواقع."},"allow_all_sites":{"description":"site access","message":"السماح لكل المواقع"},"appDesc":{"message":"ترجم صفحات المانغا والكوميكس في متصفحك: الكشف، التعرف الضوئي، الترميم، الترجمة. كل نماذج الذكاء الاصطناعي تعمل محليًا."},"appName":{"message":"comic-translate-4-free"},"auto_hint":{"message":"عند التفعيل، تبدأ الصفحات المسموح بها الترجمة تلقائيًا فور انتهاء تحميلها — دون الحاجة للنقر على أي زر. (تلميح: اسمح لموقع من النافذة المنبثقة لمنح الإضافة إذن قراءة صوره.)"},"auto_translate":{"message":"الترجمة التلقائية عند تحميل الصفحة"},"automation":{"message":"الأتمتة"},"azure_key":{"message":"مفتاح Azure API"},"azure_region":{"message":"منطقة Azure"},"azure_region_ph":{"message":"مثال: japaneast"},"backend":{"message":"محرك الترجمة"},"backend_azure":{"message":"Azure Translator"},"backend_azure_opt":{"message":"Azure Translator (يتطلب مفتاحًا)"},"backend_google":{"message":"Google (مجاني)"},"backend_google_opt":{"message":"Google (مجاني، بلا مفتاح)"},"backend_hint":{"message":"يُخزَّن مفتاح Azure والمنطقة في مخزن الإضافة في هذا المتصفح فقط. يجب تشغيل LM Studio مع تفعيل خادم OpenAI المتوافق (الافتراضي http://127.0.0.1:1234)."},"backend_lmstudio":{"message":"LM Studio (محلي)"},"backend_lmstudio_opt":{"message":"LM Studio (خادم محلي)"},"bg_unreachable":{"message":"تعذر الوصول إلى خدمة الخلفية"},"bg_unreachable_hint":{"message":"جرّب إعادة تحميل الإضافة من about:debugging، ثم أعد فتح هذه الصفحة."},"cancel":{"message":"إلغاء"},"check_azure":{"message":"اختبار اتصال Azure"},"check_lmstudio":{"message":"اختبار اتصال LM Studio"},"checking":{"message":"جارٍ الفحص…"},"ctx_send_image":{"description":"Context menu item on images: send this image to the translation pipeline","message":"إرسال إلى comic-translate-4-free"},"debug":{"message":"تصحيح"},"debug_hint":{"message":"يعرض مخرجات كل مرحلة من مراحل المعالجة في لوحة جانبية لفحص كل مرحلة."},"debug_mode":{"message":"وضع التصحيح (فاحص المراحل)"},"delete":{"message":"حذف"},"det_threshold":{"message":"عتبة ثقة الكشف"},"detection_hint":{"message":"تُتخطى الصفحات الأصغر من الحد الأدنى لحجم الصورة. يُقدَّر حجم خط العرض تلقائيًا من النص الأصلي في الصفحة (بحد أقصى هو الحد الأعلى أعلاه)."},"detection_rendering":{"message":"الكشف والعرض"},"download":{"message":"تنزيل"},"download_all":{"message":"تنزيل كل النماذج"},"download_all_n":{"message":"تنزيل كل النماذج ($N$ متبقٍّ)","placeholders":{"n":{"content":"$1"}}},"download_failed":{"message":"✗ فشل التنزيل: $ERR$","placeholders":{"err":{"content":"$1"}}},"downloaded":{"message":"✓ تم التنزيل ($SIZE$)","placeholders":{"size":{"content":"$1"}}},"downloaded_short":{"message":"✓ تم التنزيل"},"downloading":{"message":"جارٍ التنزيل… $PCT$%","placeholders":{"pct":{"content":"$1"}}},"downloading_generic":{"message":"جارٍ التنزيل…"},"grant_access":{"message":"منح الوصول"},"grant_access_to":{"message":"منح الوصول إلى $HOST$","placeholders":{"host":{"content":"$1"}}},"grant_warning":{"message":"مسموح، لكن الإضافة لا تملك وصولًا إلى هذا الموقع — لا يمكن بدء الترجمة."},"languages":{"message":"اللغات"},"lmstudio_api":{"message":"LM Studio API"},"lmstudio_api_openai":{"message":"متوافق مع OpenAI (/v1/chat/completions)"},"lmstudio_api_v1":{"message":"LM Studio REST API v1 (/api/v1/chat)"},"lmstudio_key":{"message":"مفتاح LM Studio API (اختياري)"},"lmstudio_url":{"message":"رابط خادم LM Studio"},"max_font_size":{"message":"أقصى حجم خط (بكسل)"},"min_font_size":{"message":"أدنى حجم خط (بكسل)"},"min_image_size":{"message":"أدنى حجم صورة (بكسل)"},"model_baberu":{"message":"Baberu OCR (اليابانية + الإنجليزية + الصينية المبسطة، مُدرَّب على المانغا)"},"model_detector":{"message":"كاشف النص (RT-DETR-v2)"},"model_inpaint":{"message":"مُرمِّم LaMa (مانغا)"},"models":{"message":"النماذج"},"models_hint":{"message":"تُنزَّل النماذج من Hugging Face مرة واحدة وتُخزَّن مؤقتًا في المتصفح (IndexedDB)."},"no_site":{"message":"لم يُكتشف موقع"},"not_downloaded":{"message":"غير مُنزَّل"},"not_whitelisted":{"message":"غير مسموح"},"options_settings":{"message":"الإعدادات"},"options_title":{"message":"الإعدادات"},"pagecache_clear":{"message":"مسح الذاكرة"},"pagecache_cleared":{"message":"تم مسح الذاكرة ($COUNT$ صور، تم تحرير $SIZE$)","placeholders":{"count":{"content":"$1"},"size":{"content":"$2"}}},"pagecache_clearing":{"message":"جارٍ المسح…"},"pagecache_desc":{"message":"الصفحات التي تعود إليها في جلسة المتصفح هذه تُحمَّل فورًا من ذاكرة مؤقتة. تُمسح الذاكرة تلقائيًا عند إغلاق المتصفح."},"pagecache_stats":{"message":"$COUNT$ صور · $SIZE$","placeholders":{"count":{"content":"$1"},"size":{"content":"$2"}}},"pagecache_title":{"message":"ذاكرة الصفحات المترجمة المؤقتة"},"pill_allow_host":{"description":"Pill button: grant image-host access","message":"السماح لـ $HOST$","placeholders":{"host":{"content":"$1"}}},"pill_dismiss":{"description":"Dismiss link on the error pill","message":"إغلاق"},"pill_err_page_changed":{"description":"Pill error: pill_err_page_changed","message":"تغيّرت صورة الصفحة قبل اكتمال الترجمة — أعد تحميل الصفحة لإعادة المحاولة"},"pill_err_render_mode":{"description":"Pill error: pill_err_render_mode","message":"وضع عرض غير متوقع — أعد تحميل الصفحة لإعادة المحاولة"},"pill_grant_denied":{"description":"Pill: image-host grant was denied","message":"رُفض الوصول — اسمح له من النافذة المنبثقة"},"play_ding":{"message":"تشغيل صوت عند اكتمال الترجمة"},"redownload":{"message":"إعادة التنزيل"},"remove":{"message":"إزالة"},"required_badge":{"message":"مطلوب"},"saved":{"message":"تم الحفظ ✓"},"site_this":{"message":"هذا الموقع: $HOST$ — $STATUS$","placeholders":{"host":{"content":"$1"},"status":{"content":"$2"}}},"site_whitelist":{"message":"الوصول إلى المواقع"},"source_auto":{"message":"كشف تلقائي"},"source_lang":{"message":"لغة المصدر"},"stage_blocks":{"message":"جارٍ تجميع الكتل النصية…"},"stage_cancelled":{"message":"أُلغي"},"stage_capture":{"message":"جارٍ التقاط الصفحة…"},"stage_detect":{"message":"جارٍ كشف الفقاعات والنص…"},"stage_done":{"message":"تم"},"stage_error":{"message":"خطأ"},"stage_idle":{"message":"خامل"},"stage_inpaint":{"message":"جارٍ الترميم…"},"stage_mask":{"message":"جارٍ بناء الأقنعة…"},"stage_ocr":{"message":"جارٍ قراءة النص (OCR)…"},"stage_render":{"message":"جارٍ العرض…"},"stage_translate":{"message":"جارٍ الترجمة…"},"support_hint":{"message":"هذه الإضافة مجانية ومفتوحة المصدر. إذا وفّرت عليك وقتًا، يمكنك دعم تطويرها المستمر."},"support_project":{"message":"❤️ ادعم هذا المشروع"},"support_title":{"message":"ادعم هذا المشروع"},"target_lang":{"message":"اللغة الهدف"},"translate_page":{"message":"ترجم هذه الصفحة"},"translation_backend":{"message":"محرك الترجمة"},"whitelist_add":{"message":"السماح لهذا الموقع"},"whitelist_desc":{"message":"الترجمة تعمل فقط على المواقع التي تسمح بها. أضف موقعًا من النافذة المنبثقة أو اكتب اسم المضيف هنا."},"whitelist_empty":{"message":"فارغ — الترجمة معطلة في كل مكان حتى تسمح لموقع"},"whitelist_remove":{"message":"منع هذا الموقع"},"whitelisted":{"message":"مسموح ✓"},"wl_placeholder":{"message":"مثال: example.com"},"wrong_file":{"message":"⚠ ملف خاطئ مخزَّن ($FILES$) — اضغط «تنزيل» بالأسفل لجلب الملف الصحيح","placeholders":{"files":{"content":"$1"}}}}
+{
+  "add": {
+    "message": "إضافة"
+  },
+  "all_downloaded": {
+    "message": "تم تنزيل كل النماذج ✓"
+  },
+  "all_sites_on": {
+    "description": "site access",
+    "message": "كل المواقع مسموحة ✓"
+  },
+  "allow_all_desc": {
+    "description": "site access",
+    "message": "ترجم على أي موقع دون السماح لكل موقع أولًا. هذا يمنح الإضافة وصولًا إلى كل المواقع."
+  },
+  "allow_all_sites": {
+    "description": "site access",
+    "message": "السماح لكل المواقع"
+  },
+  "appDesc": {
+    "message": "ترجم صفحات المانغا والكوميكس في متصفحك: الكشف، التعرف الضوئي، الترميم، الترجمة. كل نماذج الذكاء الاصطناعي تعمل محليًا."
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "عند التفعيل، تبدأ الصفحات المسموح بها الترجمة تلقائيًا فور انتهاء تحميلها — دون الحاجة للنقر على أي زر. (تلميح: اسمح لموقع من النافذة المنبثقة لمنح الإضافة إذن قراءة صوره.)"
+  },
+  "auto_translate": {
+    "message": "الترجمة التلقائية عند تحميل الصفحة"
+  },
+  "automation": {
+    "message": "الأتمتة"
+  },
+  "azure_key": {
+    "message": "مفتاح Azure API"
+  },
+  "azure_region": {
+    "message": "منطقة Azure"
+  },
+  "azure_region_ph": {
+    "message": "مثال: japaneast"
+  },
+  "backend": {
+    "message": "محرك الترجمة"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator (يتطلب مفتاحًا)"
+  },
+  "backend_google": {
+    "message": "Google (مجاني)"
+  },
+  "backend_google_opt": {
+    "message": "Google (مجاني، بلا مفتاح)"
+  },
+  "backend_hint": {
+    "message": "يُخزَّن مفتاح Azure والمنطقة في مخزن الإضافة في هذا المتصفح فقط. يجب تشغيل LM Studio مع تفعيل خادم OpenAI المتوافق (الافتراضي http://127.0.0.1:1234)."
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio (محلي)"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio (خادم محلي)"
+  },
+  "bg_unreachable": {
+    "message": "تعذر الوصول إلى خدمة الخلفية"
+  },
+  "bg_unreachable_hint": {
+    "message": "جرّب إعادة تحميل الإضافة من about:debugging، ثم أعد فتح هذه الصفحة."
+  },
+  "cancel": {
+    "message": "إلغاء"
+  },
+  "check_azure": {
+    "message": "اختبار اتصال Azure"
+  },
+  "check_lmstudio": {
+    "message": "اختبار اتصال LM Studio"
+  },
+  "checking": {
+    "message": "جارٍ الفحص…"
+  },
+  "ctx_send_image": {
+    "description": "Context menu item on images: send this image to the translation pipeline",
+    "message": "إرسال إلى comic-translate-4-free"
+  },
+  "debug": {
+    "message": "تصحيح"
+  },
+  "debug_hint": {
+    "message": "يعرض مخرجات كل مرحلة من مراحل المعالجة في لوحة جانبية لفحص كل مرحلة."
+  },
+  "debug_mode": {
+    "message": "وضع التصحيح (فاحص المراحل)"
+  },
+  "delete": {
+    "message": "حذف"
+  },
+  "det_threshold": {
+    "message": "عتبة ثقة الكشف"
+  },
+  "detection_hint": {
+    "message": "تُتخطى الصفحات الأصغر من الحد الأدنى لحجم الصورة. يُقدَّر حجم خط العرض تلقائيًا من النص الأصلي في الصفحة (بحد أقصى هو الحد الأعلى أعلاه)."
+  },
+  "detection_rendering": {
+    "message": "الكشف والعرض"
+  },
+  "download": {
+    "message": "تنزيل"
+  },
+  "download_all": {
+    "message": "تنزيل كل النماذج"
+  },
+  "download_all_n": {
+    "message": "تنزيل كل النماذج ($N$ متبقٍّ)",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "download_failed": {
+    "message": "✗ فشل التنزيل: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded": {
+    "message": "✓ تم التنزيل ($SIZE$)",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ تم التنزيل"
+  },
+  "downloading": {
+    "message": "جارٍ التنزيل… $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading_generic": {
+    "message": "جارٍ التنزيل…"
+  },
+  "grant_access": {
+    "message": "منح الوصول"
+  },
+  "grant_access_to": {
+    "message": "منح الوصول إلى $HOST$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "مسموح، لكن الإضافة لا تملك وصولًا إلى هذا الموقع — لا يمكن بدء الترجمة."
+  },
+  "languages": {
+    "message": "اللغات"
+  },
+  "lmstudio_api": {
+    "message": "LM Studio API"
+  },
+  "lmstudio_api_openai": {
+    "message": "متوافق مع OpenAI (/v1/chat/completions)"
+  },
+  "lmstudio_api_v1": {
+    "message": "LM Studio REST API v1 (/api/v1/chat)"
+  },
+  "lmstudio_key": {
+    "message": "مفتاح LM Studio API (اختياري)"
+  },
+  "lmstudio_url": {
+    "message": "رابط خادم LM Studio"
+  },
+  "max_font_size": {
+    "message": "أقصى حجم خط (بكسل)"
+  },
+  "min_font_size": {
+    "message": "أدنى حجم خط (بكسل)"
+  },
+  "min_image_size": {
+    "message": "أدنى حجم صورة (بكسل)"
+  },
+  "model_baberu": {
+    "message": "Baberu OCR (اليابانية + الإنجليزية + الصينية المبسطة، مُدرَّب على المانغا)"
+  },
+  "model_detector": {
+    "message": "كاشف النص (RT-DETR-v2)"
+  },
+  "model_inpaint": {
+    "message": "مُرمِّم LaMa (مانغا)"
+  },
+  "models": {
+    "message": "النماذج"
+  },
+  "models_hint": {
+    "message": "تُنزَّل النماذج من Hugging Face مرة واحدة وتُخزَّن مؤقتًا في المتصفح (IndexedDB)."
+  },
+  "no_site": {
+    "message": "لم يُكتشف موقع"
+  },
+  "not_downloaded": {
+    "message": "غير مُنزَّل"
+  },
+  "not_whitelisted": {
+    "message": "غير مسموح"
+  },
+  "options_settings": {
+    "message": "الإعدادات"
+  },
+  "options_title": {
+    "message": "الإعدادات"
+  },
+  "pagecache_clear": {
+    "message": "مسح الذاكرة"
+  },
+  "pagecache_cleared": {
+    "message": "تم مسح الذاكرة ($COUNT$ صور، تم تحرير $SIZE$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clearing": {
+    "message": "جارٍ المسح…"
+  },
+  "pagecache_desc": {
+    "message": "الصفحات التي تعود إليها في جلسة المتصفح هذه تُحمَّل فورًا من ذاكرة مؤقتة. تُمسح الذاكرة تلقائيًا عند إغلاق المتصفح."
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$ صور · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_title": {
+    "message": "ذاكرة الصفحات المترجمة المؤقتة"
+  },
+  "pill_allow_host": {
+    "description": "Pill button: grant image-host access",
+    "message": "السماح لـ $HOST$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "pill_dismiss": {
+    "description": "Dismiss link on the error pill",
+    "message": "إغلاق"
+  },
+  "pill_err_page_changed": {
+    "description": "Pill error: pill_err_page_changed",
+    "message": "تغيّرت صورة الصفحة قبل اكتمال الترجمة — أعد تحميل الصفحة لإعادة المحاولة"
+  },
+  "pill_err_render_mode": {
+    "description": "Pill error: pill_err_render_mode",
+    "message": "وضع عرض غير متوقع — أعد تحميل الصفحة لإعادة المحاولة"
+  },
+  "pill_grant_denied": {
+    "description": "Pill: image-host grant was denied",
+    "message": "رُفض الوصول — اسمح له من النافذة المنبثقة"
+  },
+  "play_ding": {
+    "message": "تشغيل صوت عند اكتمال الترجمة"
+  },
+  "redownload": {
+    "message": "إعادة التنزيل"
+  },
+  "remove": {
+    "message": "إزالة"
+  },
+  "required_badge": {
+    "message": "مطلوب"
+  },
+  "saved": {
+    "message": "تم الحفظ ✓"
+  },
+  "site_this": {
+    "message": "هذا الموقع: $HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "الوصول إلى المواقع"
+  },
+  "source_auto": {
+    "message": "كشف تلقائي"
+  },
+  "source_lang": {
+    "message": "لغة المصدر"
+  },
+  "stage_blocks": {
+    "message": "جارٍ تجميع الكتل النصية…"
+  },
+  "stage_cancelled": {
+    "message": "أُلغي"
+  },
+  "stage_capture": {
+    "message": "جارٍ التقاط الصفحة…"
+  },
+  "stage_detect": {
+    "message": "جارٍ كشف الفقاعات والنص…"
+  },
+  "stage_done": {
+    "message": "تم"
+  },
+  "stage_error": {
+    "message": "خطأ"
+  },
+  "stage_idle": {
+    "message": "خامل"
+  },
+  "stage_inpaint": {
+    "message": "جارٍ الترميم…"
+  },
+  "stage_mask": {
+    "message": "جارٍ بناء الأقنعة…"
+  },
+  "stage_ocr": {
+    "message": "جارٍ قراءة النص (OCR)…"
+  },
+  "stage_render": {
+    "message": "جارٍ العرض…"
+  },
+  "stage_translate": {
+    "message": "جارٍ الترجمة…"
+  },
+  "support_hint": {
+    "message": "هذه الإضافة مجانية ومفتوحة المصدر. إذا وفّرت عليك وقتًا، يمكنك دعم تطويرها المستمر."
+  },
+  "support_project": {
+    "message": "❤️ ادعم هذا المشروع"
+  },
+  "support_title": {
+    "message": "ادعم هذا المشروع"
+  },
+  "target_lang": {
+    "message": "اللغة الهدف"
+  },
+  "translate_page": {
+    "message": "ترجم هذه الصفحة"
+  },
+  "translation_backend": {
+    "message": "محرك الترجمة"
+  },
+  "whitelist_add": {
+    "message": "السماح لهذا الموقع"
+  },
+  "whitelist_desc": {
+    "message": "الترجمة تعمل فقط على المواقع التي تسمح بها. أضف موقعًا من النافذة المنبثقة أو اكتب اسم المضيف هنا."
+  },
+  "whitelist_empty": {
+    "message": "فارغ — الترجمة معطلة في كل مكان حتى تسمح لموقع"
+  },
+  "whitelist_remove": {
+    "message": "منع هذا الموقع"
+  },
+  "whitelisted": {
+    "message": "مسموح ✓"
+  },
+  "wl_placeholder": {
+    "message": "مثال: example.com"
+  },
+  "wrong_file": {
+    "message": "⚠ ملف خاطئ مخزَّن ($FILES$) — اضغط «تنزيل» بالأسفل لجلب الملف الصحيح",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  }
+}

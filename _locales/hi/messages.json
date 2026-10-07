@@ -1,1 +1,400 @@
-{"add":{"message":"जोड़ें"},"all_downloaded":{"message":"सभी मॉडल डाउनलोड हो गए ✓"},"all_sites_on":{"description":"site access","message":"सभी साइटों को अनुमति है ✓"},"allow_all_desc":{"description":"site access","message":"बिना हर साइट को अलग से अनुमति दिए किसी भी वेबसाइट पर अनुवाद करें। इससे एक्सटेंशन को सभी वेबसाइटों का एक्सेस मिल जाता है।"},"allow_all_sites":{"description":"site access","message":"सभी साइटों को अनुमति दें"},"appDesc":{"message":"आपके ब्राउज़र में मंगा और कॉमिक पेज का अनुवाद: डिटेक्शन, OCR, इनपेंटिंग, अनुवाद। सारा ML लोकल चलता है।"},"appName":{"message":"comic-translate-4-free"},"auto_hint":{"message":"चालू होने पर, अनुमत पेज लोड होते ही अपने आप अनुवाद शुरू कर देंगे — बटन दबाने की ज़रूरत नहीं। (टिप: पॉपअप से साइट को अनुमति दें ताकि एक्सटेंशन उसकी इमेज पढ़ सके।)"},"auto_translate":{"message":"पेज लोड पर ऑटो-अनुवाद"},"automation":{"message":"ऑटोमेशन"},"azure_key":{"message":"Azure API की"},"azure_region":{"message":"Azure रीजन"},"azure_region_ph":{"message":"जैसे japaneast"},"backend":{"message":"अनुवाद इंजन"},"backend_azure":{"message":"Azure Translator"},"backend_azure_opt":{"message":"Azure Translator (की ज़रूरी)"},"backend_google":{"message":"Google (मुफ़्त)"},"backend_google_opt":{"message":"Google (मुफ़्त, बिना की)"},"backend_hint":{"message":"Azure की/रीजन सिर्फ़ इसी ब्राउज़र के एक्सटेंशन स्टोरेज में रहते हैं। LM Studio चल रहा होना चाहिए और उसका OpenAI-कम्पैटिबल सर्वर चालू होना चाहिए (डिफ़ॉल्ट http://127.0.0.1:1234)।"},"backend_lmstudio":{"message":"LM Studio (लोकल)"},"backend_lmstudio_opt":{"message":"LM Studio (लोकल सर्वर)"},"bg_unreachable":{"message":"बैकग्राउंड सर्विस से संपर्क नहीं हो सका"},"bg_unreachable_hint":{"message":"about:debugging पर एक्सटेंशन रीलोड करके देखें, फिर यह पेज फिर से खोलें।"},"cancel":{"message":"रद्द करें"},"check_azure":{"message":"Azure कनेक्शन जांचें"},"check_lmstudio":{"message":"LM Studio कनेक्शन जांचें"},"checking":{"message":"जांच हो रही है…"},"ctx_send_image":{"description":"Context menu item on images: send this image to the translation pipeline","message":"Send to comic-translate-4-free"},"debug":{"message":"डीबग"},"debug_hint":{"message":"हर पाइपलाइन स्टेज का आउटपुट साइड पैनल में दिखाता है ताकि हर स्टेज की जांच हो सके।"},"debug_mode":{"message":"डीबग मोड (स्टेज इंस्पेक्टर)"},"delete":{"message":"हटाएं"},"det_threshold":{"message":"डिटेक्शन कॉन्फ़िडेंस थ्रेशोल्ड"},"detection_hint":{"message":"न्यूनतम इमेज साइज़ से छोटे पेज छोड़ दिए जाते हैं। रेंडर फ़ॉन्ट साइज़ पेज के मूल टेक्स्ट से अपने आप तय होता है (ऊपर दिए अधिकतम से सीमित)।"},"detection_rendering":{"message":"डिटेक्शन और रेंडरिंग"},"download":{"message":"डाउनलोड"},"download_all":{"message":"सभी मॉडल डाउनलोड करें"},"download_all_n":{"message":"सभी मॉडल डाउनलोड करें ($N$ बाकी)","placeholders":{"n":{"content":"$1"}}},"download_failed":{"message":"✗ डाउनलोड विफल: $ERR$","placeholders":{"err":{"content":"$1"}}},"downloaded":{"message":"✓ डाउनलोड हो गया ($SIZE$)","placeholders":{"size":{"content":"$1"}}},"downloaded_short":{"message":"✓ डाउनलोड हो गया"},"downloading":{"message":"डाउनलोड हो रहा है… $PCT$%","placeholders":{"pct":{"content":"$1"}}},"downloading_generic":{"message":"डाउनलोड हो रहा है…"},"grant_access":{"message":"एक्सेस दें"},"grant_access_to":{"message":"$HOST$ को एक्सेस दें","placeholders":{"host":{"content":"$1"}}},"grant_warning":{"message":"अनुमति है, लेकिन एक्सटेंशन के पास इस साइट का एक्सेस नहीं है — अनुवाद शुरू नहीं हो सकता।"},"languages":{"message":"भाषाएं"},"lmstudio_api":{"message":"LM Studio API"},"lmstudio_api_openai":{"message":"OpenAI-कम्पैटिबल (/v1/chat/completions)"},"lmstudio_api_v1":{"message":"LM Studio REST API v1 (/api/v1/chat)"},"lmstudio_key":{"message":"LM Studio API की (वैकल्पिक)"},"lmstudio_url":{"message":"LM Studio सर्वर URL"},"max_font_size":{"message":"अधिकतम फ़ॉन्ट साइज़ (px)"},"min_font_size":{"message":"न्यूनतम फ़ॉन्ट साइज़ (px)"},"min_image_size":{"message":"न्यूनतम इमेज साइज़ (px)"},"model_baberu":{"message":"Baberu OCR (जापानी + अंग्रेज़ी + चीनी सरलीकृत, मंगा-प्रशिक्षित)"},"model_detector":{"message":"टेक्स्ट डिटेक्टर (RT-DETR-v2)"},"model_inpaint":{"message":"LaMa इनपेंटर (मंगा)"},"models":{"message":"मॉडल"},"models_hint":{"message":"मॉडल Hugging Face से एक बार डाउनलोड होते हैं और ब्राउज़र (IndexedDB) में कैश रहते हैं।"},"no_site":{"message":"कोई साइट नहीं मिली"},"not_downloaded":{"message":"डाउनलोड नहीं हुआ"},"not_whitelisted":{"message":"अनुमति नहीं"},"options_settings":{"message":"सेटिंग्स"},"options_title":{"message":"सेटिंग्स"},"pagecache_clear":{"message":"कैश साफ़ करें"},"pagecache_cleared":{"message":"कैश साफ़ हो गया ($COUNT$ इमेज, $SIZE$ खाली हुआ)","placeholders":{"count":{"content":"$1"},"size":{"content":"$2"}}},"pagecache_clearing":{"message":"साफ़ हो रहा है…"},"pagecache_desc":{"message":"इस ब्राउज़र सेशन में दोबारा खोले गए पेज अस्थायी कैश से तुरंत लोड होते हैं। ब्राउज़र बंद होने पर कैश अपने आप साफ़ हो जाता है।"},"pagecache_stats":{"message":"$COUNT$ इमेज · $SIZE$","placeholders":{"count":{"content":"$1"},"size":{"content":"$2"}}},"pagecache_title":{"message":"अनूदित पेज कैश"},"pill_allow_host":{"description":"Pill button: grant image-host access","message":"$HOST$ को अनुमति दें","placeholders":{"host":{"content":"$1"}}},"pill_dismiss":{"description":"Dismiss link on the error pill","message":"हटाएं"},"pill_err_page_changed":{"description":"Pill error: pill_err_page_changed","message":"अनुवाद पूरा होने से पहले पेज की इमेज बदल गई — फिर से कोशिश के लिए पेज रीलोड करें"},"pill_err_render_mode":{"description":"Pill error: pill_err_render_mode","message":"अप्रत्याशित रेंडर मोड — फिर से कोशिश के लिए पेज रीलोड करें"},"pill_grant_denied":{"description":"Pill: image-host grant was denied","message":"एक्सेस अस्वीकृत — पॉपअप से अनुमति दें"},"play_ding":{"message":"अनुवाद पूरा होने पर आवाज़ बजाएं"},"redownload":{"message":"फिर से डाउनलोड करें"},"remove":{"message":"हटाएं"},"required_badge":{"message":"ज़रूरी"},"saved":{"message":"सेव हो गया ✓"},"site_this":{"message":"यह साइट: $HOST$ — $STATUS$","placeholders":{"host":{"content":"$1"},"status":{"content":"$2"}}},"site_whitelist":{"message":"साइट एक्सेस"},"source_auto":{"message":"ऑटो-डिटेक्ट"},"source_lang":{"message":"स्रोत भाषा"},"stage_blocks":{"message":"टेक्स्ट ब्लॉक जोड़े जा रहे हैं…"},"stage_cancelled":{"message":"रद्द किया गया"},"stage_capture":{"message":"पेज कैप्चर हो रहा है…"},"stage_detect":{"message":"बबल और टेक्स्ट पहचाने जा रहे हैं…"},"stage_done":{"message":"हो गया"},"stage_error":{"message":"त्रुटि"},"stage_idle":{"message":"निष्क्रिय"},"stage_inpaint":{"message":"इनपेंटिंग हो रही है…"},"stage_mask":{"message":"मास्क बनाए जा रहे हैं…"},"stage_ocr":{"message":"टेक्स्ट पढ़ा जा रहा है (OCR)…"},"stage_render":{"message":"रेंडर हो रहा है…"},"stage_translate":{"message":"अनुवाद हो रहा है…"},"support_hint":{"message":"यह एक्सटेंशन मुफ़्त और ओपन सोर्स है। अगर इससे आपका समय बचता है, तो आप इसके विकास में मदद कर सकते हैं।"},"support_project":{"message":"❤️ इस प्रोजेक्ट को सपोर्ट करें"},"support_title":{"message":"इस प्रोजेक्ट को सपोर्ट करें"},"target_lang":{"message":"लक्ष्य भाषा"},"translate_page":{"message":"इस पेज का अनुवाद करें"},"translation_backend":{"message":"अनुवाद इंजन"},"whitelist_add":{"message":"इस साइट को अनुमति दें"},"whitelist_desc":{"message":"अनुवाद सिर्फ़ उन्हीं साइटों पर चलता है जिन्हें आप अनुमति देते हैं। पॉपअप से साइट जोड़ें या यहां उसका होस्टनेम लिखें।"},"whitelist_empty":{"message":"खाली — जब तक कोई साइट अनुमति नहीं मिलती, अनुवाद हर जगह बंद रहेगा"},"whitelist_remove":{"message":"इस साइट की अनुमति हटाएं"},"whitelisted":{"message":"अनुमति है ✓"},"wl_placeholder":{"message":"जैसे example.com"},"wrong_file":{"message":"⚠ गलत फ़ाइल कैश है ($FILES$) — सही वाली पाने के लिए नीचे Download दबाएं","placeholders":{"files":{"content":"$1"}}}}
+{
+  "add": {
+    "message": "जोड़ें"
+  },
+  "all_downloaded": {
+    "message": "सभी मॉडल डाउनलोड हो गए ✓"
+  },
+  "all_sites_on": {
+    "description": "site access",
+    "message": "सभी साइटों को अनुमति है ✓"
+  },
+  "allow_all_desc": {
+    "description": "site access",
+    "message": "बिना हर साइट को अलग से अनुमति दिए किसी भी वेबसाइट पर अनुवाद करें। इससे एक्सटेंशन को सभी वेबसाइटों का एक्सेस मिल जाता है।"
+  },
+  "allow_all_sites": {
+    "description": "site access",
+    "message": "सभी साइटों को अनुमति दें"
+  },
+  "appDesc": {
+    "message": "आपके ब्राउज़र में मंगा और कॉमिक पेज का अनुवाद: डिटेक्शन, OCR, इनपेंटिंग, अनुवाद। सारा ML लोकल चलता है।"
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "चालू होने पर, अनुमत पेज लोड होते ही अपने आप अनुवाद शुरू कर देंगे — बटन दबाने की ज़रूरत नहीं। (टिप: पॉपअप से साइट को अनुमति दें ताकि एक्सटेंशन उसकी इमेज पढ़ सके।)"
+  },
+  "auto_translate": {
+    "message": "पेज लोड पर ऑटो-अनुवाद"
+  },
+  "automation": {
+    "message": "ऑटोमेशन"
+  },
+  "azure_key": {
+    "message": "Azure API की"
+  },
+  "azure_region": {
+    "message": "Azure रीजन"
+  },
+  "azure_region_ph": {
+    "message": "जैसे japaneast"
+  },
+  "backend": {
+    "message": "अनुवाद इंजन"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator (की ज़रूरी)"
+  },
+  "backend_google": {
+    "message": "Google (मुफ़्त)"
+  },
+  "backend_google_opt": {
+    "message": "Google (मुफ़्त, बिना की)"
+  },
+  "backend_hint": {
+    "message": "Azure की/रीजन सिर्फ़ इसी ब्राउज़र के एक्सटेंशन स्टोरेज में रहते हैं। LM Studio चल रहा होना चाहिए और उसका OpenAI-कम्पैटिबल सर्वर चालू होना चाहिए (डिफ़ॉल्ट http://127.0.0.1:1234)।"
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio (लोकल)"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio (लोकल सर्वर)"
+  },
+  "bg_unreachable": {
+    "message": "बैकग्राउंड सर्विस से संपर्क नहीं हो सका"
+  },
+  "bg_unreachable_hint": {
+    "message": "about:debugging पर एक्सटेंशन रीलोड करके देखें, फिर यह पेज फिर से खोलें।"
+  },
+  "cancel": {
+    "message": "रद्द करें"
+  },
+  "check_azure": {
+    "message": "Azure कनेक्शन जांचें"
+  },
+  "check_lmstudio": {
+    "message": "LM Studio कनेक्शन जांचें"
+  },
+  "checking": {
+    "message": "जांच हो रही है…"
+  },
+  "ctx_send_image": {
+    "description": "Context menu item on images: send this image to the translation pipeline",
+    "message": "Send to comic-translate-4-free"
+  },
+  "debug": {
+    "message": "डीबग"
+  },
+  "debug_hint": {
+    "message": "हर पाइपलाइन स्टेज का आउटपुट साइड पैनल में दिखाता है ताकि हर स्टेज की जांच हो सके।"
+  },
+  "debug_mode": {
+    "message": "डीबग मोड (स्टेज इंस्पेक्टर)"
+  },
+  "delete": {
+    "message": "हटाएं"
+  },
+  "det_threshold": {
+    "message": "डिटेक्शन कॉन्फ़िडेंस थ्रेशोल्ड"
+  },
+  "detection_hint": {
+    "message": "न्यूनतम इमेज साइज़ से छोटे पेज छोड़ दिए जाते हैं। रेंडर फ़ॉन्ट साइज़ पेज के मूल टेक्स्ट से अपने आप तय होता है (ऊपर दिए अधिकतम से सीमित)।"
+  },
+  "detection_rendering": {
+    "message": "डिटेक्शन और रेंडरिंग"
+  },
+  "download": {
+    "message": "डाउनलोड"
+  },
+  "download_all": {
+    "message": "सभी मॉडल डाउनलोड करें"
+  },
+  "download_all_n": {
+    "message": "सभी मॉडल डाउनलोड करें ($N$ बाकी)",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "download_failed": {
+    "message": "✗ डाउनलोड विफल: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded": {
+    "message": "✓ डाउनलोड हो गया ($SIZE$)",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ डाउनलोड हो गया"
+  },
+  "downloading": {
+    "message": "डाउनलोड हो रहा है… $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading_generic": {
+    "message": "डाउनलोड हो रहा है…"
+  },
+  "grant_access": {
+    "message": "एक्सेस दें"
+  },
+  "grant_access_to": {
+    "message": "$HOST$ को एक्सेस दें",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "अनुमति है, लेकिन एक्सटेंशन के पास इस साइट का एक्सेस नहीं है — अनुवाद शुरू नहीं हो सकता।"
+  },
+  "languages": {
+    "message": "भाषाएं"
+  },
+  "lmstudio_api": {
+    "message": "LM Studio API"
+  },
+  "lmstudio_api_openai": {
+    "message": "OpenAI-कम्पैटिबल (/v1/chat/completions)"
+  },
+  "lmstudio_api_v1": {
+    "message": "LM Studio REST API v1 (/api/v1/chat)"
+  },
+  "lmstudio_key": {
+    "message": "LM Studio API की (वैकल्पिक)"
+  },
+  "lmstudio_url": {
+    "message": "LM Studio सर्वर URL"
+  },
+  "max_font_size": {
+    "message": "अधिकतम फ़ॉन्ट साइज़ (px)"
+  },
+  "min_font_size": {
+    "message": "न्यूनतम फ़ॉन्ट साइज़ (px)"
+  },
+  "min_image_size": {
+    "message": "न्यूनतम इमेज साइज़ (px)"
+  },
+  "model_baberu": {
+    "message": "Baberu OCR (जापानी + अंग्रेज़ी + चीनी सरलीकृत, मंगा-प्रशिक्षित)"
+  },
+  "model_detector": {
+    "message": "टेक्स्ट डिटेक्टर (RT-DETR-v2)"
+  },
+  "model_inpaint": {
+    "message": "LaMa इनपेंटर (मंगा)"
+  },
+  "models": {
+    "message": "मॉडल"
+  },
+  "models_hint": {
+    "message": "मॉडल Hugging Face से एक बार डाउनलोड होते हैं और ब्राउज़र (IndexedDB) में कैश रहते हैं।"
+  },
+  "no_site": {
+    "message": "कोई साइट नहीं मिली"
+  },
+  "not_downloaded": {
+    "message": "डाउनलोड नहीं हुआ"
+  },
+  "not_whitelisted": {
+    "message": "अनुमति नहीं"
+  },
+  "options_settings": {
+    "message": "सेटिंग्स"
+  },
+  "options_title": {
+    "message": "सेटिंग्स"
+  },
+  "pagecache_clear": {
+    "message": "कैश साफ़ करें"
+  },
+  "pagecache_cleared": {
+    "message": "कैश साफ़ हो गया ($COUNT$ इमेज, $SIZE$ खाली हुआ)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clearing": {
+    "message": "साफ़ हो रहा है…"
+  },
+  "pagecache_desc": {
+    "message": "इस ब्राउज़र सेशन में दोबारा खोले गए पेज अस्थायी कैश से तुरंत लोड होते हैं। ब्राउज़र बंद होने पर कैश अपने आप साफ़ हो जाता है।"
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$ इमेज · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_title": {
+    "message": "अनूदित पेज कैश"
+  },
+  "pill_allow_host": {
+    "description": "Pill button: grant image-host access",
+    "message": "$HOST$ को अनुमति दें",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "pill_dismiss": {
+    "description": "Dismiss link on the error pill",
+    "message": "हटाएं"
+  },
+  "pill_err_page_changed": {
+    "description": "Pill error: pill_err_page_changed",
+    "message": "अनुवाद पूरा होने से पहले पेज की इमेज बदल गई — फिर से कोशिश के लिए पेज रीलोड करें"
+  },
+  "pill_err_render_mode": {
+    "description": "Pill error: pill_err_render_mode",
+    "message": "अप्रत्याशित रेंडर मोड — फिर से कोशिश के लिए पेज रीलोड करें"
+  },
+  "pill_grant_denied": {
+    "description": "Pill: image-host grant was denied",
+    "message": "एक्सेस अस्वीकृत — पॉपअप से अनुमति दें"
+  },
+  "play_ding": {
+    "message": "अनुवाद पूरा होने पर आवाज़ बजाएं"
+  },
+  "redownload": {
+    "message": "फिर से डाउनलोड करें"
+  },
+  "remove": {
+    "message": "हटाएं"
+  },
+  "required_badge": {
+    "message": "ज़रूरी"
+  },
+  "saved": {
+    "message": "सेव हो गया ✓"
+  },
+  "site_this": {
+    "message": "यह साइट: $HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "साइट एक्सेस"
+  },
+  "source_auto": {
+    "message": "ऑटो-डिटेक्ट"
+  },
+  "source_lang": {
+    "message": "स्रोत भाषा"
+  },
+  "stage_blocks": {
+    "message": "टेक्स्ट ब्लॉक जोड़े जा रहे हैं…"
+  },
+  "stage_cancelled": {
+    "message": "रद्द किया गया"
+  },
+  "stage_capture": {
+    "message": "पेज कैप्चर हो रहा है…"
+  },
+  "stage_detect": {
+    "message": "बबल और टेक्स्ट पहचाने जा रहे हैं…"
+  },
+  "stage_done": {
+    "message": "हो गया"
+  },
+  "stage_error": {
+    "message": "त्रुटि"
+  },
+  "stage_idle": {
+    "message": "निष्क्रिय"
+  },
+  "stage_inpaint": {
+    "message": "इनपेंटिंग हो रही है…"
+  },
+  "stage_mask": {
+    "message": "मास्क बनाए जा रहे हैं…"
+  },
+  "stage_ocr": {
+    "message": "टेक्स्ट पढ़ा जा रहा है (OCR)…"
+  },
+  "stage_render": {
+    "message": "रेंडर हो रहा है…"
+  },
+  "stage_translate": {
+    "message": "अनुवाद हो रहा है…"
+  },
+  "support_hint": {
+    "message": "यह एक्सटेंशन मुफ़्त और ओपन सोर्स है। अगर इससे आपका समय बचता है, तो आप इसके विकास में मदद कर सकते हैं।"
+  },
+  "support_project": {
+    "message": "❤️ इस प्रोजेक्ट को सपोर्ट करें"
+  },
+  "support_title": {
+    "message": "इस प्रोजेक्ट को सपोर्ट करें"
+  },
+  "target_lang": {
+    "message": "लक्ष्य भाषा"
+  },
+  "translate_page": {
+    "message": "इस पेज का अनुवाद करें"
+  },
+  "translation_backend": {
+    "message": "अनुवाद इंजन"
+  },
+  "whitelist_add": {
+    "message": "इस साइट को अनुमति दें"
+  },
+  "whitelist_desc": {
+    "message": "अनुवाद सिर्फ़ उन्हीं साइटों पर चलता है जिन्हें आप अनुमति देते हैं। पॉपअप से साइट जोड़ें या यहां उसका होस्टनेम लिखें।"
+  },
+  "whitelist_empty": {
+    "message": "खाली — जब तक कोई साइट अनुमति नहीं मिलती, अनुवाद हर जगह बंद रहेगा"
+  },
+  "whitelist_remove": {
+    "message": "इस साइट की अनुमति हटाएं"
+  },
+  "whitelisted": {
+    "message": "अनुमति है ✓"
+  },
+  "wl_placeholder": {
+    "message": "जैसे example.com"
+  },
+  "wrong_file": {
+    "message": "⚠ गलत फ़ाइल कैश है ($FILES$) — सही वाली पाने के लिए नीचे Download दबाएं",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  }
+}
