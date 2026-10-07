@@ -27,7 +27,11 @@
     let area = (block.text_class === 'text_bubble' && block.bubble_xyxy)
       ? shrinkBbox(block.bubble_xyxy, 0.3)
       : block.xyxy.slice();
-    if (!['zh-CN', 'zh-TW'].includes(srcLang)) {
+    // 5px inset was for Latin source text (to avoid bubble outlines).
+    // Don't apply it to CJK sources — vertical CJK in small bubbles
+    // gets over-shrunk (e.g. 44px bubble -> 20px render width).
+    const isCjkSrc = ['ja', 'zh-CN', 'zh-TW', 'ko'].includes(srcLang);
+    if (!isCjkSrc) {
       area = [area[0] + 5, area[1] + 5, area[2] - 5, area[3] - 5];
     }
     return area;
