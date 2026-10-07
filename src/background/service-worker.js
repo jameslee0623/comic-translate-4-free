@@ -311,6 +311,26 @@ function pasteRGBA(dst, dw, src, x, y) {
   }
 }
 
+// Mask-aware paste: only copies pixels where mask is non-zero.
+// Used for inpaint compositing to avoid LaMa's slight alterations to
+// unmasked areas (which cause visible blur when the whole patch is pasted).
+function pasteMaskedRGBA(dst, dw, src, mask, x, y) {
+  const w = src.w, h = src.h;
+  for (let r = 0; r < h; r++) {
+    const dstRow = (y + r) * dw;
+    const srcRow = r * w;
+    for (let c = 0; c < w; c++) {
+      if (mask.data[srcRow + c]) {
+        const di = (dstRow + x + c) * 4, si = (srcRow + c) * 4;
+        dst[di] = src.data[si];
+        dst[di + 1] = src.data[si + 1];
+        dst[di + 2] = src.data[si + 2];
+        dst[di + 3] = src.data[si + 3];
+      }
+    }
+  }
+}
+
 function cssColor(r, g, b) {
   return `rgb(${r | 0},${g | 0},${b | 0})`;
 }
@@ -763,7 +783,14 @@ async function runPipeline(tabId, opts = {}) {
           const p = patches[res.id];
           pxKeys.push(res.key);
           const buf = await pixelTake(res.key);
-          pasteRGBA(inpainted, w, { data: new Uint8ClampedArray(buf), w: p.width, h: p.height }, p.x, p.y);
+          const maskBuf = await pixelTake(p.maskKey);
+          // Mask-aware paste: only copy pixels where the mask is set.
+          // LaMa can slightly alter unmasked areas; pasting the whole patch
+          // causes visible blur/color shift. Keep original pixels where mask=0.
+          pasteMaskedRGBA(inpainted, w,
+            { data: new Uint8ClampedArray(buf), w: p.width, h: p.height },
+            { data: new Uint8Array(maskBuf), w: p.width, h: p.height },
+            p.x, p.y);
         }
       }
       const totalInpaintMs = Math.round(performance.now() - t0i);
