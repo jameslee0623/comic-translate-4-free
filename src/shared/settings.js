@@ -161,8 +161,11 @@ export async function getSettings() {
   }
   // One-time migration (2026-09-28): Latin/Russian source languages were
   // removed. A stored sourceLang that's no longer offered falls back to
-  // Japanese (the default); the orphaned OCR models are deleted.
-  const offered = new Set(LANGS.map(([code]) => code));
+  // the default; the orphaned OCR models are deleted.
+  // 'auto' must be in the offered set (source auto-detect, 2026-10-05):
+  // without it the default itself fails validation and every getSettings()
+  // writes storage, which re-fires onChanged -> infinite write loop.
+  const offered = new Set(['auto', ...LANGS.map(([code]) => code)]);
   if (s.sourceLang && !offered.has(s.sourceLang)) {
     s.sourceLang = DEFAULT_SETTINGS.sourceLang;
     chrome.storage.local.set({ settings: s }).catch(() => {});
