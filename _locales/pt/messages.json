@@ -1,0 +1,400 @@
+{
+  "add": {
+    "message": "Adicionar"
+  },
+  "appDesc": {
+    "message": "Traduza páginas de mangá e quadrinhos no navegador: detecção, OCR, inpainting, tradução. Todo o ML roda localmente."
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "Quando ativado, as páginas permitidas começam a ser traduzidas automaticamente assim que terminam de carregar — sem precisar clicar em botões. (Dica: permita um site pelo popup para que a extensão tenha permissão de ler as imagens.)"
+  },
+  "auto_translate": {
+    "message": "Traduzir automaticamente ao carregar a página"
+  },
+  "play_ding": {
+    "message": "Tocar um som quando a tradução terminar"
+  },
+  "automation": {
+    "message": "Automação"
+  },
+  "azure_key": {
+    "message": "Chave de API do Azure"
+  },
+  "azure_region": {
+    "message": "Região do Azure"
+  },
+  "azure_region_ph": {
+    "message": "ex.: japaneast"
+  },
+  "backend": {
+    "message": "Mecanismo de tradução"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator (requer chave)"
+  },
+  "backend_google": {
+    "message": "Google (grátis)"
+  },
+  "backend_google_opt": {
+    "message": "Google (grátis, sem chave)"
+  },
+  "backend_hint": {
+    "message": "A chave/região do Azure ficam armazenadas apenas neste navegador. O LM Studio precisa estar rodando com o servidor compatível com OpenAI ativado (padrão http://127.0.0.1:1234)."
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio (local)"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio (servidor local)"
+  },
+  "cancel": {
+    "message": "Cancelar"
+  },
+  "check_azure": {
+    "message": "Testar conexão do Azure"
+  },
+  "check_lmstudio": {
+    "message": "Testar conexão do LM Studio"
+  },
+  "ctx_send_image": {
+    "message": "Enviar para comic-translate-4-free",
+    "description": "Context menu item on images: send this image to the translation pipeline"
+  },
+  "debug": {
+    "message": "Depuração"
+  },
+  "debug_hint": {
+    "message": "Mostra a saída de cada etapa do pipeline em um painel lateral para que cada etapa possa ser verificada."
+  },
+  "debug_mode": {
+    "message": "Modo de depuração (inspetor de etapas)"
+  },
+  "delete": {
+    "message": "Excluir"
+  },
+  "det_threshold": {
+    "message": "Limite de confiança da detecção"
+  },
+  "detection_hint": {
+    "message": "Páginas menores que o tamanho mínimo de imagem são ignoradas. O tamanho da fonte de renderização é estimado automaticamente a partir do texto original da página (limitado pelo máximo acima)."
+  },
+  "detection_rendering": {
+    "message": "Detecção e renderização"
+  },
+  "download": {
+    "message": "Baixar"
+  },
+  "download_all": {
+    "message": "Baixar todos os modelos"
+  },
+  "downloaded": {
+    "message": "✓ baixado ($SIZE$)",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_access": {
+    "message": "Conceder acesso"
+  },
+  "grant_access_to": {
+    "message": "Conceder acesso a $HOST$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "Permitido, mas a extensão não tem acesso a este site — a tradução não pode começar."
+  },
+  "languages": {
+    "message": "Idiomas"
+  },
+  "lmstudio_api": {
+    "message": "API do LM Studio"
+  },
+  "lmstudio_api_openai": {
+    "message": "Compatível com OpenAI (/v1/chat/completions)"
+  },
+  "lmstudio_api_v1": {
+    "message": "API REST v1 do LM Studio (/api/v1/chat)"
+  },
+  "lmstudio_key": {
+    "message": "Chave de API do LM Studio (opcional)"
+  },
+  "lmstudio_url": {
+    "message": "URL do servidor LM Studio"
+  },
+  "max_font_size": {
+    "message": "Tamanho máximo da fonte (px)"
+  },
+  "min_font_size": {
+    "message": "Tamanho mínimo da fonte (px)"
+  },
+  "min_image_size": {
+    "message": "Tamanho mínimo da imagem (px)"
+  },
+  "model_baberu": {
+    "message": "Baberu OCR (japonês + inglês + chinês simplificado, treinado em mangá)"
+  },
+  "model_detector": {
+    "message": "Detector de texto (RT-DETR-v2)"
+  },
+  "model_inpaint": {
+    "message": "Inpainter LaMa (mangá)"
+  },
+  "models": {
+    "message": "Modelos"
+  },
+  "models_hint": {
+    "message": "Os modelos são baixados do Hugging Face uma vez e armazenados no navegador (IndexedDB)."
+  },
+  "no_site": {
+    "message": "nenhum site detectado"
+  },
+  "not_whitelisted": {
+    "message": "não permitido"
+  },
+  "options_settings": {
+    "message": "Configurações"
+  },
+  "options_title": {
+    "message": "Configurações"
+  },
+  "redownload": {
+    "message": "Baixar novamente"
+  },
+  "required_badge": {
+    "message": "obrigatório"
+  },
+  "saved": {
+    "message": "Salvo ✓"
+  },
+  "site_this": {
+    "message": "este site: $HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "Acesso a sites"
+  },
+  "source_lang": {
+    "message": "Idioma de origem"
+  },
+  "source_auto": {
+    "message": "Detecção automática"
+  },
+  "target_lang": {
+    "message": "Idioma de destino"
+  },
+  "translate_page": {
+    "message": "Traduzir esta página"
+  },
+  "translation_backend": {
+    "message": "Mecanismo de tradução"
+  },
+  "whitelist_add": {
+    "message": "Permitir este site"
+  },
+  "whitelist_desc": {
+    "message": "A tradução só funciona em sites que você permitir. Adicione um site pelo popup ou digite o nome do host aqui."
+  },
+  "whitelist_remove": {
+    "message": "Bloquear este site"
+  },
+  "whitelisted": {
+    "message": "permitido ✓"
+  },
+  "wl_placeholder": {
+    "message": "ex.: exemplo.com"
+  },
+  "whitelist_empty": {
+    "message": "vazio — a tradução está desativada em todos os lugares até você permitir um site"
+  },
+  "remove": {
+    "message": "Remover"
+  },
+  "checking": {
+    "message": "verificando…"
+  },
+  "download_failed": {
+    "message": "✗ falha no download: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading": {
+    "message": "baixando… $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "bg_unreachable": {
+    "message": "não foi possível alcançar o serviço em segundo plano"
+  },
+  "bg_unreachable_hint": {
+    "message": "Tente recarregar a extensão em about:debugging e reabra esta página."
+  },
+  "stage_idle": {
+    "message": "ocioso"
+  },
+  "stage_capture": {
+    "message": "Capturando página…"
+  },
+  "stage_detect": {
+    "message": "Detectando balões e texto…"
+  },
+  "stage_blocks": {
+    "message": "Montando blocos de texto…"
+  },
+  "stage_ocr": {
+    "message": "Lendo texto (OCR)…"
+  },
+  "stage_mask": {
+    "message": "Criando máscaras…"
+  },
+  "stage_inpaint": {
+    "message": "Inpainting…"
+  },
+  "stage_translate": {
+    "message": "Traduzindo…"
+  },
+  "stage_render": {
+    "message": "Renderizando…"
+  },
+  "stage_done": {
+    "message": "Concluído"
+  },
+  "stage_cancelled": {
+    "message": "Cancelado"
+  },
+  "stage_error": {
+    "message": "Erro"
+  },
+  "downloading_generic": {
+    "message": "Baixando…"
+  },
+  "download_all_n": {
+    "message": "Baixar todos os modelos ($N$ restantes)",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "all_downloaded": {
+    "message": "Todos os modelos baixados ✓"
+  },
+  "wrong_file": {
+    "message": "⚠ arquivo incorreto em cache ($FILES$) — pressione Baixar abaixo para obter o correto",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ baixado"
+  },
+  "not_downloaded": {
+    "message": "não baixado"
+  },
+  "support_project": {
+    "message": "❤️ Apoie este projeto"
+  },
+  "support_title": {
+    "message": "Apoie este projeto"
+  },
+  "support_hint": {
+    "message": "Esta extensão é gratuita e de código aberto. Se ela economiza seu tempo, você pode apoiar seu desenvolvimento contínuo."
+  },
+  "pagecache_title": {
+    "message": "Cache de páginas traduzidas"
+  },
+  "pagecache_desc": {
+    "message": "As páginas que você revisita nesta sessão do navegador carregam instantaneamente de um cache temporário. O cache é limpo automaticamente quando o navegador é fechado."
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$ imagens · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clear": {
+    "message": "Limpar cache"
+  },
+  "pagecache_clearing": {
+    "message": "Limpando…"
+  },
+  "pagecache_cleared": {
+    "message": "Cache limpo ($COUNT$ imagens, $SIZE$ liberados)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "allow_all_sites": {
+    "message": "Permitir todos os sites",
+    "description": "site access"
+  },
+  "allow_all_desc": {
+    "message": "Traduzir em qualquer site sem precisar permitir cada um antes. Isso concede à extensão acesso a todos os sites.",
+    "description": "site access"
+  },
+  "all_sites_on": {
+    "message": "todos os sites permitidos ✓",
+    "description": "site access"
+  },
+  "pill_dismiss": {
+    "message": "dispensar",
+    "description": "Dismiss link on the error pill"
+  },
+  "pill_allow_host": {
+    "message": "Permitir $HOST$",
+    "description": "Pill button: grant image-host access",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "pill_grant_denied": {
+    "message": "acesso negado — permita pelo popup",
+    "description": "Pill: image-host grant was denied"
+  },
+  "pill_err_page_changed": {
+    "message": "a imagem da página mudou antes da tradução terminar — recarregue a página para tentar novamente",
+    "description": "Pill error: pill_err_page_changed"
+  },
+  "pill_err_render_mode": {
+    "message": "modo de renderização inesperado — recarregue a página para tentar novamente",
+    "description": "Pill error: pill_err_render_mode"
+  }
+}

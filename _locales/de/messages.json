@@ -1,0 +1,400 @@
+{
+  "add": {
+    "message": "Hinzufügen"
+  },
+  "appDesc": {
+    "message": "Übersetzen Sie Manga- und Comic-Seiten in Ihrem Browser: Erkennung, OCR, Inpainting, Übersetzung. Sämtliches ML läuft lokal."
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "Wenn aktiviert, werden zugelassene Seiten automatisch übersetzt, sobald sie fertig geladen sind — kein Klick erforderlich. (Tipp: Lassen Sie eine Website über das Popup zu, damit die Erweiterung deren Bilder lesen darf.)"
+  },
+  "auto_translate": {
+    "message": "Beim Seitenladen automatisch übersetzen"
+  },
+  "play_ding": {
+    "message": "Ton abspielen, wenn die Übersetzung fertig ist"
+  },
+  "automation": {
+    "message": "Automatisierung"
+  },
+  "azure_key": {
+    "message": "Azure-API-Schlüssel"
+  },
+  "azure_region": {
+    "message": "Azure-Region"
+  },
+  "azure_region_ph": {
+    "message": "z. B. japaneast"
+  },
+  "backend": {
+    "message": "Übersetzungs-Engine"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator (Schlüssel erforderlich)"
+  },
+  "backend_google": {
+    "message": "Google (kostenlos)"
+  },
+  "backend_google_opt": {
+    "message": "Google (kostenlos, kein Schlüssel)"
+  },
+  "backend_hint": {
+    "message": "Azure-Schlüssel/Region werden nur im Speicher dieser Erweiterung in diesem Browser gespeichert. LM Studio muss mit aktiviertem OpenAI-kompatiblen Server laufen (Standard: http://127.0.0.1:1234)."
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio (lokal)"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio (lokaler Server)"
+  },
+  "cancel": {
+    "message": "Abbrechen"
+  },
+  "check_azure": {
+    "message": "Azure-Verbindung prüfen"
+  },
+  "check_lmstudio": {
+    "message": "LM-Studio-Verbindung prüfen"
+  },
+  "ctx_send_image": {
+    "message": "An comic-translate-4-free senden",
+    "description": "Context menu item on images: send this image to the translation pipeline"
+  },
+  "debug": {
+    "message": "Debug"
+  },
+  "debug_hint": {
+    "message": "Zeigt die Ausgabe jeder Pipeline-Stufe in einer Seitenleiste an, sodass jede Stufe geprüft werden kann."
+  },
+  "debug_mode": {
+    "message": "Debug-Modus (Stufen-Inspektor)"
+  },
+  "delete": {
+    "message": "Löschen"
+  },
+  "det_threshold": {
+    "message": "Schwellenwert für Erkennungsgenauigkeit"
+  },
+  "detection_hint": {
+    "message": "Seiten, die kleiner als die Mindestbildgröße sind, werden übersprungen. Die Render-Schriftgröße wird anhand des Originaltextes auf der Seite automatisch geschätzt (begrenzt durch das Maximum oben)."
+  },
+  "detection_rendering": {
+    "message": "Erkennung & Rendering"
+  },
+  "download": {
+    "message": "Herunterladen"
+  },
+  "download_all": {
+    "message": "Alle Modelle herunterladen"
+  },
+  "downloaded": {
+    "message": "✓ heruntergeladen ($SIZE$)",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_access": {
+    "message": "Zugriff gewähren"
+  },
+  "grant_access_to": {
+    "message": "Zugriff auf $HOST$ gewähren",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "Zugelassen, aber die Erweiterung hat keinen Zugriff auf diese Website — die Übersetzung kann nicht starten."
+  },
+  "languages": {
+    "message": "Sprachen"
+  },
+  "lmstudio_api": {
+    "message": "LM-Studio-API"
+  },
+  "lmstudio_api_openai": {
+    "message": "OpenAI-kompatibel (/v1/chat/completions)"
+  },
+  "lmstudio_api_v1": {
+    "message": "LM Studio REST API v1 (/api/v1/chat)"
+  },
+  "lmstudio_key": {
+    "message": "LM-Studio-API-Schlüssel (optional)"
+  },
+  "lmstudio_url": {
+    "message": "LM-Studio-Server-URL"
+  },
+  "max_font_size": {
+    "message": "Maximale Schriftgröße (px)"
+  },
+  "min_font_size": {
+    "message": "Minimale Schriftgröße (px)"
+  },
+  "min_image_size": {
+    "message": "Mindestbildgröße (px)"
+  },
+  "model_baberu": {
+    "message": "Baberu OCR (日本語 + English + 简体中文, auf Manga trainiert)"
+  },
+  "model_detector": {
+    "message": "Texterkennung (RT-DETR-v2)"
+  },
+  "model_inpaint": {
+    "message": "LaMa-Inpainter (Manga)"
+  },
+  "models": {
+    "message": "Modelle"
+  },
+  "models_hint": {
+    "message": "Modelle werden einmalig von Hugging Face heruntergeladen und im Browser zwischengespeichert (IndexedDB)."
+  },
+  "no_site": {
+    "message": "keine Website erkannt"
+  },
+  "not_whitelisted": {
+    "message": "nicht zugelassen"
+  },
+  "options_settings": {
+    "message": "Einstellungen"
+  },
+  "options_title": {
+    "message": "Einstellungen"
+  },
+  "redownload": {
+    "message": "Erneut herunterladen"
+  },
+  "required_badge": {
+    "message": "erforderlich"
+  },
+  "saved": {
+    "message": "Gespeichert ✓"
+  },
+  "site_this": {
+    "message": "diese Website: $HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "Website-Zugriff"
+  },
+  "source_lang": {
+    "message": "Ausgangssprache"
+  },
+  "source_auto": {
+    "message": "Automatisch erkennen"
+  },
+  "target_lang": {
+    "message": "Zielsprache"
+  },
+  "translate_page": {
+    "message": "Diese Seite übersetzen"
+  },
+  "translation_backend": {
+    "message": "Übersetzungs-Engine"
+  },
+  "whitelist_add": {
+    "message": "Diese Website zulassen"
+  },
+  "whitelist_desc": {
+    "message": "Die Übersetzung läuft nur auf Websites, die Sie zulassen. Lassen Sie eine Website über das Popup zu oder geben Sie hier deren Hostnamen ein."
+  },
+  "whitelist_remove": {
+    "message": "Diese Website sperren"
+  },
+  "whitelisted": {
+    "message": "zugelassen ✓"
+  },
+  "wl_placeholder": {
+    "message": "z. B. example.com"
+  },
+  "whitelist_empty": {
+    "message": "leer — die Übersetzung ist überall deaktiviert, bis Sie eine Website zulassen"
+  },
+  "remove": {
+    "message": "Entfernen"
+  },
+  "checking": {
+    "message": "wird geprüft…"
+  },
+  "download_failed": {
+    "message": "✗ Download fehlgeschlagen: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading": {
+    "message": "wird heruntergeladen… $PCT$ %",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "bg_unreachable": {
+    "message": "Hintergrunddienst nicht erreichbar"
+  },
+  "bg_unreachable_hint": {
+    "message": "Versuchen Sie, die Erweiterung unter about:debugging neu zu laden, und öffnen Sie diese Seite dann erneut."
+  },
+  "stage_idle": {
+    "message": "bereit"
+  },
+  "stage_capture": {
+    "message": "Seite wird erfasst…"
+  },
+  "stage_detect": {
+    "message": "Sprechblasen & Text werden erkannt…"
+  },
+  "stage_blocks": {
+    "message": "Textblöcke werden zusammengesetzt…"
+  },
+  "stage_ocr": {
+    "message": "Text wird gelesen (OCR)…"
+  },
+  "stage_mask": {
+    "message": "Masken werden erstellt…"
+  },
+  "stage_inpaint": {
+    "message": "Inpainting…"
+  },
+  "stage_translate": {
+    "message": "Wird übersetzt…"
+  },
+  "stage_render": {
+    "message": "Wird gerendert…"
+  },
+  "stage_done": {
+    "message": "Fertig"
+  },
+  "stage_cancelled": {
+    "message": "Abgebrochen"
+  },
+  "stage_error": {
+    "message": "Fehler"
+  },
+  "downloading_generic": {
+    "message": "Wird heruntergeladen…"
+  },
+  "download_all_n": {
+    "message": "Alle Modelle herunterladen ($N$ verbleibend)",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "all_downloaded": {
+    "message": "Alle Modelle heruntergeladen ✓"
+  },
+  "wrong_file": {
+    "message": "⚠ falsche Datei zwischengespeichert ($FILES$) — klicken Sie unten auf „Herunterladen“, um die korrekte Datei zu laden",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ heruntergeladen"
+  },
+  "not_downloaded": {
+    "message": "nicht heruntergeladen"
+  },
+  "support_project": {
+    "message": "❤️ Dieses Projekt unterstützen"
+  },
+  "support_title": {
+    "message": "Dieses Projekt unterstützen"
+  },
+  "support_hint": {
+    "message": "Diese Erweiterung ist kostenlos und Open Source. Wenn sie Ihnen Zeit spart, können Sie die Weiterentwicklung unterstützen."
+  },
+  "pagecache_title": {
+    "message": "Cache übersetzter Seiten"
+  },
+  "pagecache_desc": {
+    "message": "Seiten, die Sie in dieser Browser-Sitzung erneut besuchen, werden sofort aus einem temporären Cache geladen. Der Cache wird automatisch geleert, wenn der Browser geschlossen wird."
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$ Bilder · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clear": {
+    "message": "Cache leeren"
+  },
+  "pagecache_clearing": {
+    "message": "Wird geleert…"
+  },
+  "pagecache_cleared": {
+    "message": "Cache geleert ($COUNT$ Bilder, $SIZE$ freigegeben)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "allow_all_sites": {
+    "message": "Alle Websites zulassen",
+    "description": "site access"
+  },
+  "allow_all_desc": {
+    "message": "Auf jeder Website übersetzen, ohne jede einzeln zuzulassen. Dies gewährt der Erweiterung Zugriff auf alle Websites.",
+    "description": "site access"
+  },
+  "all_sites_on": {
+    "message": "alle Websites zugelassen ✓",
+    "description": "site access"
+  },
+  "pill_dismiss": {
+    "message": "schließen",
+    "description": "Dismiss link on the error pill"
+  },
+  "pill_allow_host": {
+    "message": "$HOST$ zulassen",
+    "description": "Pill button: grant image-host access",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "pill_grant_denied": {
+    "message": "Zugriff verweigert — lassen Sie ihn über das Popup zu",
+    "description": "Pill: image-host grant was denied"
+  },
+  "pill_err_page_changed": {
+    "message": "das Seitenbild hat sich geändert, bevor die Übersetzung fertig war — laden Sie die Seite neu, um es erneut zu versuchen",
+    "description": "Pill error: pill_err_page_changed"
+  },
+  "pill_err_render_mode": {
+    "message": "unerwarteter Render-Modus — laden Sie die Seite neu, um es erneut zu versuchen",
+    "description": "Pill error: pill_err_render_mode"
+  }
+}

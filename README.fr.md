@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-**Langue :** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md)
+**Langue :** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
 
 Traduisez des pages de manga/BD dans votre navigateur. Tout le pipeline s'exécute localement :
 détection des bulles/texte (RT-DETR-v2), OCR (Baberu pour le japonais/l'anglais/le chinois),
@@ -9,7 +9,7 @@ via inpainting LaMa, traduction (Google / Azure / LLM local), et re-rendu
 avec retour à la ligne dans les bulles d'origine.
 
 L'interface de l'extension suit le paramètre de langue de votre navigateur (anglais, japonais,
-coréen, chinois simplifié/traditionnel, hindi, espagnol, arabe, français).
+coréen, chinois simplifié/traditionnel, hindi, espagnol, arabe, français, bengali, portugais, russe, vietnamien, indonésien, ourdou, allemand).
 
 Ce projet s'inspire de [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate).
 

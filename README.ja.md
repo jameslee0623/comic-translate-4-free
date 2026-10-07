@@ -1,13 +1,13 @@
 # comic-translate-4-free
 
-**言語:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md)
+**言語:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
 
 マンガ・コミックのページをブラウザ内で翻訳します。全パイプラインがローカルで動作します：
 吹き出し・テキスト検出（RT-DETR-v2）、OCR（日本語・英語・中国語はBaberu）、
 LaMaインペインティングによる文字消去、翻訳（Google / Azure / ローカルLLM）、
 そして元の吹き出しへの折り返し再描画。
 
-拡張機能のUIはブラウザの言語設定に従います（英語、日本語、韓国語、中国語 簡体字/繁体字、ヒンディー語、スペイン語、アラビア語、フランス語）。
+拡張機能のUIはブラウザの言語設定に従います（英語、日本語、韓国語、中国語 簡体字/繁体字、ヒンディー語、スペイン語、アラビア語、フランス語、ベンガル語、ポルトガル語、ロシア語、ベトナム語、インドネシア語、ウルドゥー語、ドイツ語）。
 
 [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) を
 Manifest V3 + ONNX Runtime Web（WASM）に移植したものです。

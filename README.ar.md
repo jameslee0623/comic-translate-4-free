@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-**اللغة:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md)
+**اللغة:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
 
 ترجم صفحات المانغا والكوميكس داخل المتصفح. تعمل كل مراحل المعالجة محليًا:
 كشف الفقاعات/النص (RT-DETR-v2)، والتعرف الضوئي على الحروف (Baberu لليابانية/الإنجليزية/الصينية)،
@@ -9,7 +9,7 @@
 النص ملفوفًا داخل فقاعات الكلام الأصلية.
 
 تتبع واجهة الإضافة لغة متصفحك (الإنجليزية، اليابانية،
-الكورية، الصينية المبسطة/التقليدية، الهندية، الإسبانية، العربية، الفرنسية).
+الكورية، الصينية المبسطة/التقليدية، الهندية، الإسبانية، العربية، الفرنسية، البنغالية، البرتغالية، الروسية، الفيتنامية، الإندونيسية، الأردية، الألمانية).
 
 هذا المشروع مستوحى من [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate).
 

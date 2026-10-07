@@ -1,0 +1,400 @@
+{
+  "add": {
+    "message": "যোগ করুন"
+  },
+  "appDesc": {
+    "message": "আপনার ব্রাউজারে মাঙ্গা ও কমিক পেজ অনুবাদ করুন: ডিটেকশন, OCR, ইনপেইন্টিং, অনুবাদ। সব ML লোকালি চলে।"
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "চালু থাকলে, অনুমোদিত পেজগুলো লোড শেষ হওয়ার সাথে সাথে স্বয়ংক্রিয়ভাবে অনুবাদ শুরু করে — কোনো বাটনে ক্লিক করতে হয় না। (টিপ: পপআপ থেকে কোনো সাইটকে অনুমতি দিন যাতে এক্সটেনশনটি তার ছবি পড়তে পারে।)"
+  },
+  "auto_translate": {
+    "message": "পেজ লোডে স্বয়ং-অনুবাদ"
+  },
+  "play_ding": {
+    "message": "অনুবাদ শেষ হলে শব্দ বাজান"
+  },
+  "automation": {
+    "message": "অটোমেশন"
+  },
+  "azure_key": {
+    "message": "Azure API কী"
+  },
+  "azure_region": {
+    "message": "Azure অঞ্চল"
+  },
+  "azure_region_ph": {
+    "message": "যেমন japaneast"
+  },
+  "backend": {
+    "message": "অনুবাদ ইঞ্জিন"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator (কী আবশ্যক)"
+  },
+  "backend_google": {
+    "message": "Google (ফ্রি)"
+  },
+  "backend_google_opt": {
+    "message": "Google (ফ্রি, কী লাগে না)"
+  },
+  "backend_hint": {
+    "message": "Azure কী/অঞ্চল শুধুমাত্র এই ব্রাউজারের এক্সটেনশন স্টোরেজে সংরক্ষিত হয়। LM Studio-এর OpenAI-সামঞ্জস্যপূর্ণ সার্ভার চালু থাকতে হবে (ডিফল্ট http://127.0.0.1:1234)।"
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio (লোকাল)"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio (লোকাল সার্ভার)"
+  },
+  "cancel": {
+    "message": "বাতিল করুন"
+  },
+  "check_azure": {
+    "message": "Azure সংযোগ পরীক্ষা করুন"
+  },
+  "check_lmstudio": {
+    "message": "LM Studio সংযোগ পরীক্ষা করুন"
+  },
+  "ctx_send_image": {
+    "message": "Send to comic-translate-4-free",
+    "description": "Context menu item on images: send this image to the translation pipeline"
+  },
+  "debug": {
+    "message": "ডিবাগ"
+  },
+  "debug_hint": {
+    "message": "পাইপলাইনের প্রতিটি ধাপের আউটপুট পাশের প্যানেলে দেখায় যাতে প্রতিটি ধাপ যাচাই করা যায়।"
+  },
+  "debug_mode": {
+    "message": "ডিবাগ মোড (ধাপ পরিদর্শক)"
+  },
+  "delete": {
+    "message": "মুছুন"
+  },
+  "det_threshold": {
+    "message": "ডিটেকশন আত্মবিশ্বাসের সীমা"
+  },
+  "detection_hint": {
+    "message": "ন্যূনতম ছবির মাপের চেয়ে ছোট পেজগুলো এড়িয়ে যাওয়া হয়। রেন্ডার ফন্টের মাপ পেজের মূল লেখা থেকে স্বয়ংক্রিয়ভাবে অনুমান করা হয় (উপরে সর্বোচ্চ সীমা পর্যন্ত)।"
+  },
+  "detection_rendering": {
+    "message": "ডিটেকশন ও রেন্ডারিং"
+  },
+  "download": {
+    "message": "ডাউনলোড"
+  },
+  "download_all": {
+    "message": "সব মডেল ডাউনলোড করুন"
+  },
+  "downloaded": {
+    "message": "✓ ডাউনলোড হয়েছে ($SIZE$)",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_access": {
+    "message": "অ্যাক্সেস দিন"
+  },
+  "grant_access_to": {
+    "message": "$HOST$-কে অ্যাক্সেস দিন",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "অনুমোদিত, কিন্তু এই সাইটে এক্সটেনশনের অ্যাক্সেস নেই — অনুবাদ শুরু করা যাবে না।"
+  },
+  "languages": {
+    "message": "ভাষা"
+  },
+  "lmstudio_api": {
+    "message": "LM Studio API"
+  },
+  "lmstudio_api_openai": {
+    "message": "OpenAI-সামঞ্জস্যপূর্ণ (/v1/chat/completions)"
+  },
+  "lmstudio_api_v1": {
+    "message": "LM Studio REST API v1 (/api/v1/chat)"
+  },
+  "lmstudio_key": {
+    "message": "LM Studio API কী (ঐচ্ছিক)"
+  },
+  "lmstudio_url": {
+    "message": "LM Studio সার্ভার URL"
+  },
+  "max_font_size": {
+    "message": "সর্বোচ্চ ফন্টের মাপ (px)"
+  },
+  "min_font_size": {
+    "message": "সর্বনিম্ন ফন্টের মাপ (px)"
+  },
+  "min_image_size": {
+    "message": "ন্যূনতম ছবির মাপ (px)"
+  },
+  "model_baberu": {
+    "message": "Baberu OCR (জাপানি + ইংরেজি + সরলীকৃত চীনা, মাঙ্গা-প্রশিক্ষিত)"
+  },
+  "model_detector": {
+    "message": "টেক্সট ডিটেক্টর (RT-DETR-v2)"
+  },
+  "model_inpaint": {
+    "message": "LaMa ইনপেইন্টার (মাঙ্গা)"
+  },
+  "models": {
+    "message": "মডেল"
+  },
+  "models_hint": {
+    "message": "মডেলগুলো Hugging Face থেকে একবার ডাউনলোড হয়ে ব্রাউজারে (IndexedDB) ক্যাশ হয়।"
+  },
+  "no_site": {
+    "message": "কোনো সাইট পাওয়া যায়নি"
+  },
+  "not_whitelisted": {
+    "message": "অনুমোদিত নয়"
+  },
+  "options_settings": {
+    "message": "সেটিংস"
+  },
+  "options_title": {
+    "message": "সেটিংস"
+  },
+  "redownload": {
+    "message": "পুনরায় ডাউনলোড করুন"
+  },
+  "required_badge": {
+    "message": "আবশ্যক"
+  },
+  "saved": {
+    "message": "সংরক্ষিত ✓"
+  },
+  "site_this": {
+    "message": "এই সাইট: $HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "সাইট অ্যাক্সেস"
+  },
+  "source_lang": {
+    "message": "উৎস ভাষা"
+  },
+  "source_auto": {
+    "message": "স্বয়ং-শনাক্ত"
+  },
+  "target_lang": {
+    "message": "লক্ষ্য ভাষা"
+  },
+  "translate_page": {
+    "message": "এই পেজ অনুবাদ করুন"
+  },
+  "translation_backend": {
+    "message": "অনুবাদ ইঞ্জিন"
+  },
+  "whitelist_add": {
+    "message": "এই সাইটকে অনুমতি দিন"
+  },
+  "whitelist_desc": {
+    "message": "অনুবাদ শুধুমাত্র আপনার অনুমোদিত সাইটগুলোতে চলে। পপআপ থেকে সাইট যোগ করুন বা এখানে হোস্টনেম লিখুন।"
+  },
+  "whitelist_remove": {
+    "message": "এই সাইটের অনুমতি বাতিল করুন"
+  },
+  "whitelisted": {
+    "message": "অনুমোদিত ✓"
+  },
+  "wl_placeholder": {
+    "message": "যেমন example.com"
+  },
+  "whitelist_empty": {
+    "message": "খালি — কোনো সাইটকে অনুমতি না দেওয়া পর্যন্ত অনুবাদ সর্বত্র নিষ্ক্রিয়"
+  },
+  "remove": {
+    "message": "সরান"
+  },
+  "checking": {
+    "message": "পরীক্ষা চলছে…"
+  },
+  "download_failed": {
+    "message": "✗ ডাউনলোড ব্যর্থ: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading": {
+    "message": "ডাউনলোড হচ্ছে… $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "bg_unreachable": {
+    "message": "ব্যাকগ্রাউন্ড সার্ভিসে পৌঁছানো যায়নি"
+  },
+  "bg_unreachable_hint": {
+    "message": "about:debugging-এ এক্সটেনশনটি পুনরায় লোড করে এই পেজটি আবার খুলুন।"
+  },
+  "stage_idle": {
+    "message": "নিষ্ক্রিয়"
+  },
+  "stage_capture": {
+    "message": "পেজ ক্যাপচার করা হচ্ছে…"
+  },
+  "stage_detect": {
+    "message": "বাবল ও লেখা শনাক্ত করা হচ্ছে…"
+  },
+  "stage_blocks": {
+    "message": "টেক্সট ব্লক সাজানো হচ্ছে…"
+  },
+  "stage_ocr": {
+    "message": "লেখা পড়া হচ্ছে (OCR)…"
+  },
+  "stage_mask": {
+    "message": "মাস্ক তৈরি করা হচ্ছে…"
+  },
+  "stage_inpaint": {
+    "message": "ইনপেইন্টিং চলছে…"
+  },
+  "stage_translate": {
+    "message": "অনুবাদ চলছে…"
+  },
+  "stage_render": {
+    "message": "রেন্ডার হচ্ছে…"
+  },
+  "stage_done": {
+    "message": "সম্পন্ন"
+  },
+  "stage_cancelled": {
+    "message": "বাতিল হয়েছে"
+  },
+  "stage_error": {
+    "message": "ত্রুটি"
+  },
+  "downloading_generic": {
+    "message": "ডাউনলোড হচ্ছে…"
+  },
+  "download_all_n": {
+    "message": "সব মডেল ডাউনলোড করুন ($N$ বাকি)",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "all_downloaded": {
+    "message": "সব মডেল ডাউনলোড হয়েছে ✓"
+  },
+  "wrong_file": {
+    "message": "⚠ ভুল ফাইল ক্যাশ হয়েছে ($FILES$) — সঠিক ফাইল আনতে নিচে Download চাপুন",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ ডাউনলোড হয়েছে"
+  },
+  "not_downloaded": {
+    "message": "ডাউনলোড হয়নি"
+  },
+  "support_project": {
+    "message": "❤️ এই প্রকল্পকে সমর্থন করুন"
+  },
+  "support_title": {
+    "message": "এই প্রকল্পকে সমর্থন করুন"
+  },
+  "support_hint": {
+    "message": "এই এক্সটেনশনটি ফ্রি ও ওপেন সোর্স। এটি আপনার সময় বাঁচালে, এর চলমান উন্নয়নে সহায়তা করতে পারেন।"
+  },
+  "pagecache_title": {
+    "message": "অনূদিত পেজের ক্যাশ"
+  },
+  "pagecache_desc": {
+    "message": "এই ব্রাউজার সেশনে আপনি যে পেজগুলো আবার দেখেন সেগুলো অস্থায়ী ক্যাশ থেকে তাৎক্ষণিক লোড হয়। ব্রাউজার বন্ধ হলে ক্যাশ স্বয়ংক্রিয়ভাবে মুছে যায়।"
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$ ছবি · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clear": {
+    "message": "ক্যাশ মুছুন"
+  },
+  "pagecache_clearing": {
+    "message": "মুছা হচ্ছে…"
+  },
+  "pagecache_cleared": {
+    "message": "ক্যাশ মুছে গেছে ($COUNT$ ছবি, $SIZE$ মুক্ত)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "allow_all_sites": {
+    "message": "সব সাইটকে অনুমতি দিন",
+    "description": "site access"
+  },
+  "allow_all_desc": {
+    "message": "প্রতিটি সাইট আগে থেকে অনুমোদন না করেই যেকোনো ওয়েবসাইটে অনুবাদ করুন। এটি এক্সটেনশনকে সব ওয়েবসাইটে অ্যাক্সেস দেয়।",
+    "description": "site access"
+  },
+  "all_sites_on": {
+    "message": "সব সাইট অনুমোদিত ✓",
+    "description": "site access"
+  },
+  "pill_dismiss": {
+    "message": "বাতিল",
+    "description": "Dismiss link on the error pill"
+  },
+  "pill_allow_host": {
+    "message": "$HOST$-কে অনুমতি দিন",
+    "description": "Pill button: grant image-host access",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "pill_grant_denied": {
+    "message": "অ্যাক্সেস প্রত্যাখ্যাত — পপআপ থেকে অনুমতি দিন",
+    "description": "Pill: image-host grant was denied"
+  },
+  "pill_err_page_changed": {
+    "message": "অনুবাদ শেষ হওয়ার আগেই পেজের ছবি বদলে গেছে — আবার চেষ্টা করতে পেজটি রিলোড করুন",
+    "description": "Pill error: pill_err_page_changed"
+  },
+  "pill_err_render_mode": {
+    "message": "অপ্রত্যাশিত রেন্ডার মোড — আবার চেষ্টা করতে পেজটি রিলোড করুন",
+    "description": "Pill error: pill_err_render_mode"
+  }
+}

@@ -1,0 +1,400 @@
+{
+  "add": {
+    "message": "Tambah"
+  },
+  "appDesc": {
+    "message": "Terjemahkan halaman manga dan komik di browser: deteksi, OCR, inpainting, penerjemahan. Semua ML berjalan secara lokal."
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "Saat aktif, halaman yang diizinkan mulai diterjemahkan otomatis begitu selesai dimuat — tanpa perlu klik tombol. (Tip: izinkan situs dari popup agar ekstensi mendapat izin membaca gambarnya.)"
+  },
+  "auto_translate": {
+    "message": "Terjemahkan otomatis saat halaman dimuat"
+  },
+  "play_ding": {
+    "message": "Putar suara saat penerjemahan selesai"
+  },
+  "automation": {
+    "message": "Otomatisasi"
+  },
+  "azure_key": {
+    "message": "Kunci API Azure"
+  },
+  "azure_region": {
+    "message": "Wilayah Azure"
+  },
+  "azure_region_ph": {
+    "message": "mis. japaneast"
+  },
+  "backend": {
+    "message": "Mesin penerjemah"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator (perlu kunci API)"
+  },
+  "backend_google": {
+    "message": "Google (gratis)"
+  },
+  "backend_google_opt": {
+    "message": "Google (gratis, tanpa kunci API)"
+  },
+  "backend_hint": {
+    "message": "Kunci/wilayah Azure hanya disimpan di penyimpanan ekstensi browser ini. LM Studio harus berjalan dengan server yang kompatibel OpenAI diaktifkan (bawaan http://127.0.0.1:1234)."
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio (lokal)"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio (server lokal)"
+  },
+  "cancel": {
+    "message": "Batal"
+  },
+  "check_azure": {
+    "message": "Periksa koneksi Azure"
+  },
+  "check_lmstudio": {
+    "message": "Periksa koneksi LM Studio"
+  },
+  "ctx_send_image": {
+    "message": "Kirim ke comic-translate-4-free",
+    "description": "Context menu item on images: send this image to the translation pipeline"
+  },
+  "debug": {
+    "message": "Debug"
+  },
+  "debug_hint": {
+    "message": "Menampilkan output setiap tahap pipeline di panel samping agar tiap tahap bisa diperiksa."
+  },
+  "debug_mode": {
+    "message": "Mode debug (pemeriksa tahap)"
+  },
+  "delete": {
+    "message": "Hapus"
+  },
+  "det_threshold": {
+    "message": "Ambang keyakinan deteksi"
+  },
+  "detection_hint": {
+    "message": "Halaman yang lebih kecil dari ukuran gambar minimum dilewati. Ukuran font render diperkirakan otomatis dari teks asli di halaman (dibatasi oleh maksimum di atas)."
+  },
+  "detection_rendering": {
+    "message": "Deteksi & rendering"
+  },
+  "download": {
+    "message": "Unduh"
+  },
+  "download_all": {
+    "message": "Unduh semua model"
+  },
+  "downloaded": {
+    "message": "✓ diunduh ($SIZE$)",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_access": {
+    "message": "Beri akses"
+  },
+  "grant_access_to": {
+    "message": "Beri akses ke $HOST$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "Diizinkan, tetapi ekstensi tidak punya akses ke situs ini — penerjemahan tidak bisa dimulai."
+  },
+  "languages": {
+    "message": "Bahasa"
+  },
+  "lmstudio_api": {
+    "message": "API LM Studio"
+  },
+  "lmstudio_api_openai": {
+    "message": "Kompatibel OpenAI (/v1/chat/completions)"
+  },
+  "lmstudio_api_v1": {
+    "message": "LM Studio REST API v1 (/api/v1/chat)"
+  },
+  "lmstudio_key": {
+    "message": "Kunci API LM Studio (opsional)"
+  },
+  "lmstudio_url": {
+    "message": "URL server LM Studio"
+  },
+  "max_font_size": {
+    "message": "Ukuran font maksimum (px)"
+  },
+  "min_font_size": {
+    "message": "Ukuran font minimum (px)"
+  },
+  "min_image_size": {
+    "message": "Ukuran gambar minimum (px)"
+  },
+  "model_baberu": {
+    "message": "Baberu OCR (日本語 + English + 简体中文, terlatih manga)"
+  },
+  "model_detector": {
+    "message": "Detektor teks (RT-DETR-v2)"
+  },
+  "model_inpaint": {
+    "message": "Inpainter LaMa (manga)"
+  },
+  "models": {
+    "message": "Model"
+  },
+  "models_hint": {
+    "message": "Model diunduh dari Hugging Face sekali saja lalu disimpan di browser (IndexedDB)."
+  },
+  "no_site": {
+    "message": "tidak ada situs terdeteksi"
+  },
+  "not_whitelisted": {
+    "message": "tidak diizinkan"
+  },
+  "options_settings": {
+    "message": "Pengaturan"
+  },
+  "options_title": {
+    "message": "Pengaturan"
+  },
+  "redownload": {
+    "message": "Unduh ulang"
+  },
+  "required_badge": {
+    "message": "wajib"
+  },
+  "saved": {
+    "message": "Tersimpan ✓"
+  },
+  "site_this": {
+    "message": "situs ini: $HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "Akses situs"
+  },
+  "source_lang": {
+    "message": "Bahasa sumber"
+  },
+  "source_auto": {
+    "message": "Deteksi otomatis"
+  },
+  "target_lang": {
+    "message": "Bahasa target"
+  },
+  "translate_page": {
+    "message": "Terjemahkan halaman ini"
+  },
+  "translation_backend": {
+    "message": "Mesin penerjemah"
+  },
+  "whitelist_add": {
+    "message": "Izinkan situs ini"
+  },
+  "whitelist_desc": {
+    "message": "Penerjemahan hanya berjalan di situs yang Anda izinkan. Tambahkan situs dari popup atau ketik hostname-nya di sini."
+  },
+  "whitelist_remove": {
+    "message": "Batalkan izin situs ini"
+  },
+  "whitelisted": {
+    "message": "diizinkan ✓"
+  },
+  "wl_placeholder": {
+    "message": "mis. example.com"
+  },
+  "whitelist_empty": {
+    "message": "kosong — penerjemahan dinonaktifkan di semua situs sampai Anda mengizinkan sebuah situs"
+  },
+  "remove": {
+    "message": "Hapus"
+  },
+  "checking": {
+    "message": "memeriksa…"
+  },
+  "download_failed": {
+    "message": "✗ unduhan gagal: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading": {
+    "message": "mengunduh… $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "bg_unreachable": {
+    "message": "tidak dapat menghubungi layanan latar belakang"
+  },
+  "bg_unreachable_hint": {
+    "message": "Coba muat ulang ekstensi di about:debugging, lalu buka kembali halaman ini."
+  },
+  "stage_idle": {
+    "message": "siaga"
+  },
+  "stage_capture": {
+    "message": "Menangkap halaman…"
+  },
+  "stage_detect": {
+    "message": "Mendeteksi gelembung & teks…"
+  },
+  "stage_blocks": {
+    "message": "Menyusun blok teks…"
+  },
+  "stage_ocr": {
+    "message": "Membaca teks (OCR)…"
+  },
+  "stage_mask": {
+    "message": "Membuat mask…"
+  },
+  "stage_inpaint": {
+    "message": "Inpainting…"
+  },
+  "stage_translate": {
+    "message": "Menerjemahkan…"
+  },
+  "stage_render": {
+    "message": "Merender…"
+  },
+  "stage_done": {
+    "message": "Selesai"
+  },
+  "stage_cancelled": {
+    "message": "Dibatalkan"
+  },
+  "stage_error": {
+    "message": "Error"
+  },
+  "downloading_generic": {
+    "message": "Mengunduh…"
+  },
+  "download_all_n": {
+    "message": "Unduh semua model ($N$ tersisa)",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "all_downloaded": {
+    "message": "Semua model terunduh ✓"
+  },
+  "wrong_file": {
+    "message": "⚠ file yang tersimpan salah ($FILES$) — tekan Unduh di bawah untuk mengambil yang benar",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ terunduh"
+  },
+  "not_downloaded": {
+    "message": "belum diunduh"
+  },
+  "support_project": {
+    "message": "❤️ Dukung proyek ini"
+  },
+  "support_title": {
+    "message": "Dukung proyek ini"
+  },
+  "support_hint": {
+    "message": "Ekstensi ini gratis dan open source. Jika ini menghemat waktu Anda, Anda bisa mendukung pengembangannya."
+  },
+  "pagecache_title": {
+    "message": "Cache halaman terjemahan"
+  },
+  "pagecache_desc": {
+    "message": "Halaman yang Anda kunjungi kembali dalam sesi browser ini dimuat instan dari cache sementara. Cache dihapus otomatis saat browser ditutup."
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$ gambar · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clear": {
+    "message": "Hapus cache"
+  },
+  "pagecache_clearing": {
+    "message": "Menghapus…"
+  },
+  "pagecache_cleared": {
+    "message": "Cache dihapus ($COUNT$ gambar, $SIZE$ dibebaskan)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "allow_all_sites": {
+    "message": "Izinkan semua situs",
+    "description": "site access"
+  },
+  "allow_all_desc": {
+    "message": "Terjemahkan di situs web mana pun tanpa mengizinkan satu per satu terlebih dahulu. Ini memberi ekstensi akses ke semua situs web.",
+    "description": "site access"
+  },
+  "all_sites_on": {
+    "message": "semua situs diizinkan ✓",
+    "description": "site access"
+  },
+  "pill_dismiss": {
+    "message": "tutup",
+    "description": "Dismiss link on the error pill"
+  },
+  "pill_allow_host": {
+    "message": "Izinkan $HOST$",
+    "description": "Pill button: grant image-host access",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "pill_grant_denied": {
+    "message": "akses ditolak — izinkan dari popup",
+    "description": "Pill: image-host grant was denied"
+  },
+  "pill_err_page_changed": {
+    "message": "gambar halaman berubah sebelum penerjemahan selesai — muat ulang halaman untuk mencoba lagi",
+    "description": "Pill error: pill_err_page_changed"
+  },
+  "pill_err_render_mode": {
+    "message": "mode render tak terduga — muat ulang halaman untuk mencoba lagi",
+    "description": "Pill error: pill_err_render_mode"
+  }
+}

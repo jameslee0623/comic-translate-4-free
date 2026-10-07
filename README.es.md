@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-**Idioma:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md)
+**Idioma:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
 
 Traduce páginas de manga y cómics en el navegador. Todo el proceso se ejecuta localmente:
 detección de bocadillos y texto (RT-DETR-v2), OCR (Baberu para japonés, inglés y chino),
@@ -9,7 +9,7 @@ mediante inpainting con LaMa, traducción (Google / Azure / LLM local) y
 re-renderizado ajustado dentro de los bocadillos originales.
 
 La interfaz de la extensión sigue el idioma de tu navegador (inglés, japonés,
-coreano, chino simplificado/tradicional, hindi, español, árabe, francés).
+coreano, chino simplificado/tradicional, hindi, español, árabe, francés, bengalí, portugués, ruso, vietnamita, indonesio, urdu, alemán).
 
 Este proyecto está inspirado en [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate).
 

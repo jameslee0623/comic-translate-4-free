@@ -1,12 +1,12 @@
 # comic-translate-4-free
 
-**語言：** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md)
+**語言：** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
 
 在瀏覽器內翻譯漫畫頁面。完整處理流程在本機執行：
 對話框/文字偵測（RT-DETR-v2）、OCR（日文/英文/中文用 Baberu）、透過 LaMa 影像修補清除原文、翻譯
 （Google / Azure / 本機 LLM），以及將譯文換行重繪回原對話框。
 
-擴充功能 UI 會跟隨瀏覽器的語言設定（英文、日文、韓文、中文簡體/繁體、印地文、西班牙文、阿拉伯文、法文）。
+擴充功能 UI 會跟隨瀏覽器的語言設定（英文、日文、韓文、中文簡體/繁體、印地文、西班牙文、阿拉伯文、法文、孟加拉文、葡萄牙文、俄文、越南文、印尼文、烏爾都文、德文）。
 
 由 [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate)
 移植到 Manifest V3 + ONNX Runtime Web（WASM）。

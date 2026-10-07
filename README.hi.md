@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-**Language:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md)
+**Language:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
 
 ब्राउज़र में ही मंगा/कॉमिक पेज का अनुवाद करें। पूरी पाइपलाइन लोकल चलती है:
 बबल/टेक्स्ट डिटेक्शन (RT-DETR-v2), OCR (जापानी/अंग्रेज़ी/चीनी के लिए Baberu),
@@ -8,7 +8,7 @@ LaMa इनपेंटिंग से टेक्स्ट हटाना, �
 स्पीच बबल में लपेटकर दोबारा रेंडर करना।
 
 एक्सटेंशन का UI आपके ब्राउज़र की भाषा सेटिंग के अनुसार चलता है (अंग्रेज़ी, जापानी,
-कोरियाई, सरलीकृत/पारंपरिक चीनी, हिन्दी, स्पेनिश, अरबी, फ्रेंच)।
+कोरियाई, सरलीकृत/पारंपरिक चीनी, हिन्दी, स्पेनिश, अरबी, फ्रेंच, बांग्ला, पुर्तगाली, रूसी, वियतनामी, इंडोनेशियाई, उर्दू, जर्मन)।
 
 यह प्रोजेक्ट [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) से प्रेरित है।
 

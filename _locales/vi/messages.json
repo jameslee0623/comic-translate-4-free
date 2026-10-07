@@ -1,0 +1,400 @@
+{
+  "add": {
+    "message": "Thêm"
+  },
+  "appDesc": {
+    "message": "Dịch trang manga và comic trong trình duyệt: phát hiện, OCR, phục hồi nền, dịch thuật. Mọi ML đều chạy cục bộ."
+  },
+  "appName": {
+    "message": "comic-translate-4-free"
+  },
+  "auto_hint": {
+    "message": "Khi bật, các trang đã cho phép sẽ tự động dịch ngay sau khi tải xong — không cần bấm nút. (Mẹo: cho phép trang từ cửa sổ popup để tiện ích có quyền đọc ảnh của trang.)"
+  },
+  "auto_translate": {
+    "message": "Tự động dịch khi tải trang"
+  },
+  "play_ding": {
+    "message": "Phát âm thanh khi dịch xong"
+  },
+  "automation": {
+    "message": "Tự động hóa"
+  },
+  "azure_key": {
+    "message": "Khóa API Azure"
+  },
+  "azure_region": {
+    "message": "Vùng Azure"
+  },
+  "azure_region_ph": {
+    "message": "ví dụ: japaneast"
+  },
+  "backend": {
+    "message": "Công cụ dịch"
+  },
+  "backend_azure": {
+    "message": "Azure Translator"
+  },
+  "backend_azure_opt": {
+    "message": "Azure Translator (cần khóa)"
+  },
+  "backend_google": {
+    "message": "Google (miễn phí)"
+  },
+  "backend_google_opt": {
+    "message": "Google (miễn phí, không cần khóa)"
+  },
+  "backend_hint": {
+    "message": "Khóa/vùng Azure chỉ lưu trong bộ nhớ của tiện ích trên trình duyệt này. LM Studio phải đang chạy với máy chủ tương thích OpenAI đã bật (mặc định http://127.0.0.1:1234)."
+  },
+  "backend_lmstudio": {
+    "message": "LM Studio (cục bộ)"
+  },
+  "backend_lmstudio_opt": {
+    "message": "LM Studio (máy chủ cục bộ)"
+  },
+  "cancel": {
+    "message": "Hủy"
+  },
+  "check_azure": {
+    "message": "Kiểm tra kết nối Azure"
+  },
+  "check_lmstudio": {
+    "message": "Kiểm tra kết nối LM Studio"
+  },
+  "ctx_send_image": {
+    "message": "Gửi đến comic-translate-4-free",
+    "description": "Context menu item on images: send this image to the translation pipeline"
+  },
+  "debug": {
+    "message": "Gỡ lỗi"
+  },
+  "debug_hint": {
+    "message": "Hiển thị đầu ra của từng giai đoạn trong bảng bên để kiểm tra từng bước."
+  },
+  "debug_mode": {
+    "message": "Chế độ gỡ lỗi (xem từng giai đoạn)"
+  },
+  "delete": {
+    "message": "Xóa"
+  },
+  "det_threshold": {
+    "message": "Ngưỡng tin cậy phát hiện"
+  },
+  "detection_hint": {
+    "message": "Các trang nhỏ hơn kích thước ảnh tối thiểu sẽ bị bỏ qua. Cỡ chữ hiển thị được ước tính tự động từ chữ gốc trên trang (giới hạn bởi mức tối đa ở trên)."
+  },
+  "detection_rendering": {
+    "message": "Phát hiện & hiển thị"
+  },
+  "download": {
+    "message": "Tải xuống"
+  },
+  "download_all": {
+    "message": "Tải xuống tất cả mô hình"
+  },
+  "downloaded": {
+    "message": "✓ đã tải xuống ($SIZE$)",
+    "placeholders": {
+      "size": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_access": {
+    "message": "Cấp quyền truy cập"
+  },
+  "grant_access_to": {
+    "message": "Cấp quyền truy cập cho $HOST$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "grant_warning": {
+    "message": "Đã cho phép, nhưng tiện ích chưa có quyền truy cập trang này — không thể bắt đầu dịch."
+  },
+  "languages": {
+    "message": "Ngôn ngữ"
+  },
+  "lmstudio_api": {
+    "message": "API LM Studio"
+  },
+  "lmstudio_api_openai": {
+    "message": "Tương thích OpenAI (/v1/chat/completions)"
+  },
+  "lmstudio_api_v1": {
+    "message": "LM Studio REST API v1 (/api/v1/chat)"
+  },
+  "lmstudio_key": {
+    "message": "Khóa API LM Studio (tùy chọn)"
+  },
+  "lmstudio_url": {
+    "message": "URL máy chủ LM Studio"
+  },
+  "max_font_size": {
+    "message": "Cỡ chữ tối đa (px)"
+  },
+  "min_font_size": {
+    "message": "Cỡ chữ tối thiểu (px)"
+  },
+  "min_image_size": {
+    "message": "Kích thước ảnh tối thiểu (px)"
+  },
+  "model_baberu": {
+    "message": "Baberu OCR (日本語 + English + 简体中文, huấn luyện trên manga)"
+  },
+  "model_detector": {
+    "message": "Trình phát hiện văn bản (RT-DETR-v2)"
+  },
+  "model_inpaint": {
+    "message": "Trình phục hồi nền LaMa (manga)"
+  },
+  "models": {
+    "message": "Mô hình"
+  },
+  "models_hint": {
+    "message": "Mô hình được tải xuống từ Hugging Face một lần và lưu trong bộ nhớ đệm của trình duyệt (IndexedDB)."
+  },
+  "no_site": {
+    "message": "không phát hiện trang nào"
+  },
+  "not_whitelisted": {
+    "message": "chưa cho phép"
+  },
+  "options_settings": {
+    "message": "Cài đặt"
+  },
+  "options_title": {
+    "message": "Cài đặt"
+  },
+  "redownload": {
+    "message": "Tải lại"
+  },
+  "required_badge": {
+    "message": "bắt buộc"
+  },
+  "saved": {
+    "message": "Đã lưu ✓"
+  },
+  "site_this": {
+    "message": "trang này: $HOST$ — $STATUS$",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      },
+      "status": {
+        "content": "$2"
+      }
+    }
+  },
+  "site_whitelist": {
+    "message": "Quyền truy cập trang"
+  },
+  "source_lang": {
+    "message": "Ngôn ngữ nguồn"
+  },
+  "source_auto": {
+    "message": "Tự động phát hiện"
+  },
+  "target_lang": {
+    "message": "Ngôn ngữ đích"
+  },
+  "translate_page": {
+    "message": "Dịch trang này"
+  },
+  "translation_backend": {
+    "message": "Công cụ dịch"
+  },
+  "whitelist_add": {
+    "message": "Cho phép trang này"
+  },
+  "whitelist_desc": {
+    "message": "Chỉ dịch trên các trang bạn cho phép. Thêm trang từ cửa sổ popup hoặc nhập tên máy chủ tại đây."
+  },
+  "whitelist_remove": {
+    "message": "Không cho phép trang này"
+  },
+  "whitelisted": {
+    "message": "đã cho phép ✓"
+  },
+  "wl_placeholder": {
+    "message": "ví dụ: example.com"
+  },
+  "whitelist_empty": {
+    "message": "trống — tính năng dịch bị tắt ở mọi nơi cho đến khi bạn cho phép một trang"
+  },
+  "remove": {
+    "message": "Gỡ bỏ"
+  },
+  "checking": {
+    "message": "đang kiểm tra…"
+  },
+  "download_failed": {
+    "message": "✗ tải xuống thất bại: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloading": {
+    "message": "đang tải xuống… $PCT$%",
+    "placeholders": {
+      "pct": {
+        "content": "$1"
+      }
+    }
+  },
+  "bg_unreachable": {
+    "message": "không thể kết nối dịch vụ nền"
+  },
+  "bg_unreachable_hint": {
+    "message": "Thử tải lại tiện ích tại about:debugging, rồi mở lại trang này."
+  },
+  "stage_idle": {
+    "message": "chờ"
+  },
+  "stage_capture": {
+    "message": "Đang chụp trang…"
+  },
+  "stage_detect": {
+    "message": "Đang phát hiện bong bóng & chữ…"
+  },
+  "stage_blocks": {
+    "message": "Đang ghép các khối văn bản…"
+  },
+  "stage_ocr": {
+    "message": "Đang đọc chữ (OCR)…"
+  },
+  "stage_mask": {
+    "message": "Đang tạo mặt nạ…"
+  },
+  "stage_inpaint": {
+    "message": "Đang phục hồi nền…"
+  },
+  "stage_translate": {
+    "message": "Đang dịch…"
+  },
+  "stage_render": {
+    "message": "Đang hiển thị…"
+  },
+  "stage_done": {
+    "message": "Xong"
+  },
+  "stage_cancelled": {
+    "message": "Đã hủy"
+  },
+  "stage_error": {
+    "message": "Lỗi"
+  },
+  "downloading_generic": {
+    "message": "Đang tải xuống…"
+  },
+  "download_all_n": {
+    "message": "Tải xuống tất cả mô hình (còn $N$)",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "all_downloaded": {
+    "message": "Đã tải xuống tất cả mô hình ✓"
+  },
+  "wrong_file": {
+    "message": "⚠ tệp đã lưu không đúng ($FILES$) — bấm Tải xuống bên dưới để lấy tệp đúng",
+    "placeholders": {
+      "files": {
+        "content": "$1"
+      }
+    }
+  },
+  "downloaded_short": {
+    "message": "✓ đã tải xuống"
+  },
+  "not_downloaded": {
+    "message": "chưa tải xuống"
+  },
+  "support_project": {
+    "message": "❤️ Ủng hộ dự án"
+  },
+  "support_title": {
+    "message": "Ủng hộ dự án"
+  },
+  "support_hint": {
+    "message": "Tiện ích này miễn phí và mã nguồn mở. Nếu nó giúp bạn tiết kiệm thời gian, bạn có thể hỗ trợ phát triển tiếp."
+  },
+  "pagecache_title": {
+    "message": "Bộ nhớ đệm trang đã dịch"
+  },
+  "pagecache_desc": {
+    "message": "Các trang bạn mở lại trong phiên trình duyệt này sẽ tải ngay lập tức từ bộ nhớ đệm tạm thời. Bộ nhớ đệm tự động bị xóa khi đóng trình duyệt."
+  },
+  "pagecache_stats": {
+    "message": "$COUNT$ ảnh · $SIZE$",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "pagecache_clear": {
+    "message": "Xóa bộ nhớ đệm"
+  },
+  "pagecache_clearing": {
+    "message": "Đang xóa…"
+  },
+  "pagecache_cleared": {
+    "message": "Đã xóa bộ nhớ đệm ($COUNT$ ảnh, giải phóng $SIZE$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      },
+      "size": {
+        "content": "$2"
+      }
+    }
+  },
+  "allow_all_sites": {
+    "message": "Cho phép mọi trang web",
+    "description": "site access"
+  },
+  "allow_all_desc": {
+    "message": "Dịch trên mọi trang web mà không cần cho phép từng trang trước. Tùy chọn này cấp cho tiện ích quyền truy cập mọi trang web.",
+    "description": "site access"
+  },
+  "all_sites_on": {
+    "message": "đã cho phép mọi trang web ✓",
+    "description": "site access"
+  },
+  "pill_dismiss": {
+    "message": "bỏ qua",
+    "description": "Dismiss link on the error pill"
+  },
+  "pill_allow_host": {
+    "message": "Cho phép $HOST$",
+    "description": "Pill button: grant image-host access",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "pill_grant_denied": {
+    "message": "quyền truy cập bị từ chối — hãy cho phép từ cửa sổ popup",
+    "description": "Pill: image-host grant was denied"
+  },
+  "pill_err_page_changed": {
+    "message": "ảnh trang đã thay đổi trước khi dịch xong — tải lại trang để thử lại",
+    "description": "Pill error: pill_err_page_changed"
+  },
+  "pill_err_render_mode": {
+    "message": "chế độ hiển thị không mong đợi — tải lại trang để thử lại",
+    "description": "Pill error: pill_err_render_mode"
+  }
+}
