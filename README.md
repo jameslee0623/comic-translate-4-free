@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-**Language:** [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
+**Language:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md)
 
 Translate manga/comic pages in-browser. The full pipeline runs locally:
 bubble/text detection (RT-DETR-v2), OCR (Baberu for Japanese/English/Chinese),
@@ -9,7 +9,7 @@ via LaMa inpainting, translation (Google / Azure / local LLM), and wrapped
 re-rendering into the original speech bubbles.
 
 The extension UI follows your browser's language setting (English, Japanese,
-Korean, Simplified/Traditional Chinese).
+Korean, Simplified/Traditional Chinese, Hindi, Spanish, Arabic, French).
 
 This project is inspired by [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate).
 

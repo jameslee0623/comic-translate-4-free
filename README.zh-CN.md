@@ -1,12 +1,12 @@
 # comic-translate-4-free
 
-**语言：** [English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
+**语言：** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md)
 
 在浏览器内翻译漫画页面。完整流水线在本地运行：
 气泡/文字检测（RT-DETR-v2）、OCR（日语/英语/中文用 Baberu）、通过 LaMa 图像修复擦除原文、翻译
 （Google / Azure / 本地 LLM），以及将译文换行重绘回原气泡。
 
-扩展 UI 跟随浏览器的语言设置（英语、日语、韩语、中文简体/繁体）。
+扩展 UI 跟随浏览器的语言设置（英语、日语、韩语、中文简体/繁体、印地语、西班牙语、阿拉伯语、法语）。
 
 由 [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate)
 移植到 Manifest V3 + ONNX Runtime Web（WASM）。
