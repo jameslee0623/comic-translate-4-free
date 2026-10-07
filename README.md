@@ -37,7 +37,7 @@ comic-translate-4-free translates manga and comic pages automatically as you bro
 
 </details>
 
-*Original image: [Wikipe-tan manga page](https://en.wikipedia.org/wiki/Manga) via Wikimedia Commons.*
+*Original image: [Wikipedia](https://en.wikipedia.org/wiki/Manga) via Wikimedia Commons.*
 
 ---
 
@@ -92,7 +92,7 @@ After installing, open the Settings page and click **Download all models** once 
 
 ---
 
-## Apply for a Microsoft Azure account
+## 🔑 Apply for a Microsoft Azure account
 
 To use Azure Translator as the translation engine:
 
