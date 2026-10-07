@@ -4,7 +4,7 @@
 
 Read manga in your language — right in the browser.
 
-comic-translate-4-free translates manga and comic pages automatically as you browse. It reads Japanese, English, Simplified and Traditional Chinese (with auto-detect), and translates into 114 languages. Open a page, and the translated version replaces the original image in place — speech bubbles filled with your language, nothing to click.
+comic-translate-4-free translates manga and comic pages automatically as you browse. It reads Japanese, English, Simplified and Traditional Chinese (with auto-detect), and translates into 114 languages. Open a page, and the translated version replaces the original image in place — speech bubbles filled with your language.
 
 ### 📸 Before & After
 
@@ -74,11 +74,11 @@ After installing, open the Settings page and click **Download all models** once 
 
 ## 💡 How to Use
 
-1. **Allow the site first** — click the extension icon and press **Allow this site** (or enable **Allow all sites**). Translation only runs where you've granted permission.
+1. **Allow the site first** — click the extension icon and press **Allow this site** (or enable **ALLOW ALL SITES**). Translation only runs where you've granted permission.
 
    ![Allow the site from the popup](docs/images/popup.png)
 
-2. **Open a manga page** — it starts translating automatically when the page loads. A pill in the top-right shows live progress (Capturing → Detecting → OCR → …).
+2. **Reload the manga page** — it starts translating automatically when the page loads. A pill in the top-right shows live progress (Capturing → Detecting → OCR → …).
 3. **Done** — the page's picture is replaced in place with the translated version.
 
 **Tips:**
