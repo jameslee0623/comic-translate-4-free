@@ -2,9 +2,9 @@
 
 ## Short description (132 chars max)
 
-Translate manga & comic pages in your browser. AI detects bubbles, reads text, and re-renders translations in place — all on-device.
+Translate manga & comics in your browser. Reads Japanese, English, Simplified & Traditional Chinese; translates into 114 languages.
 
-(Count: 128)
+(Count: 131)
 
 ## Detailed description
 
