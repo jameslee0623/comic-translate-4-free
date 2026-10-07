@@ -220,6 +220,12 @@ $('wlAddBtn').onclick = () => {
     saveNow();
   });
 };
+// Enter in the input submits like the Add button. The .click() is dispatched
+// synchronously inside the real keydown gesture, so Firefox's transient
+// activation survives for permissions.request().
+$('wlAdd').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); $('wlAddBtn').click(); }
+});
 
 $('allowAllSites').onchange = e => {
   const on = e.target.checked;
