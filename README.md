@@ -37,7 +37,7 @@ comic-translate-4-free translates manga and comic pages automatically as you bro
 
 </details>
 
-*Original image: [Wikipe-tan manga page](https://en.wikipedia.org/wiki/Wikipe-tan) via Wikimedia Commons.*
+*Original image: [Wikipe-tan manga page](https://en.wikipedia.org/wiki/Manga) via Wikimedia Commons.*
 
 ---
 
@@ -60,29 +60,48 @@ comic-translate-4-free translates manga and comic pages automatically as you bro
 
 ## 🚀 Installation
 
-**Chrome / Edge / Brave (recommended):**
+**Chrome / Edge / Brave:**
 
 [**Install from the Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — one click, automatic updates.
-
-**Manual install:** download the zip from the [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) page, unzip it, then go to `chrome://extensions` → enable **Developer mode** → **Load unpacked** → select the folder.
 
 **Firefox:** download the Firefox zip from [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases), then go to `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → pick `manifest.json`. (Temporary add-ons unload on restart; a signed AMO listing is in progress.)
 
 After installing, open the Settings page and click **Download all models** once (~350 MB: detector, OCR, inpainter). They're cached in the browser and verified by byte size.
+
+![Downloading the models from the Settings page](docs/images/options-models.png)
 
 ---
 
 ## 💡 How to Use
 
 1. **Allow the site first** — click the extension icon and press **Allow this site** (or enable **Allow all sites**). Translation only runs where you've granted permission.
+
+   ![Allow the site from the popup](docs/images/popup.png)
+
 2. **Open a manga page** — it starts translating automatically when the page loads. A pill in the top-right shows live progress (Capturing → Detecting → OCR → …).
 3. **Done** — the page's picture is replaced in place with the translated version.
 
 **Tips:**
 - Right-click any image → **Send to comic-translate-4-free** to translate just that picture.
+
+  ![Right-click to send an image](docs/images/right-click.png)
+
 - If a site blocks downloads (HTTP 403), the extension automatically retries via a background tab.
-- Pick your translation engine in Settings: Google (free, no key), Azure Translator (needs key), or LM Studio (local server).
+- Pick your translation engine in Settings: Google (free, no key), Azure Translator (apply for keys below — 2M characters/month free), or LM Studio (local server).
 - Enable **Debug mode** in Settings to inspect every pipeline stage.
+
+---
+
+## Apply for a Microsoft Azure account
+
+To use Azure Translator as the translation engine:
+
+1. Create/sign in to a Microsoft/hotmail/Azure account
+2. Create an Azure subscription
+3. Create an Azure Translator resource
+4. Select F0 (Free) pricing tier — 2 million characters/month, does not expire
+5. Resource Management → Keys and Endpoint → copy **KEY 1** and **Location/Region**
+6. Paste them into the extension's Settings page
 
 ---
 
@@ -106,7 +125,7 @@ If this extension is useful to you, consider supporting its development:
 
 ## 📄 Third-party notices
 
-This project is inspired by [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) — the detector, OCR, and inpainting models are its ONNX exports, and the inference logic is ported from it.
+This project is inspired by [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) — the bubble/text detector and the manga-finetuned LaMa inpainter are its ONNX exports, and the inference logic is ported from it. (OCR uses [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) by genshiai-daichi.)
 
 Bundled libraries, ported code, and runtime-downloaded models are listed with their licenses in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
