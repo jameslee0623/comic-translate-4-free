@@ -15,7 +15,11 @@ This project is inspired by [ogkalu2/comic-translate](https://github.com/ogkalu2
 
 ## Download (no build needed)
 
-Grab the latest release from the
+**Chrome / Edge / Brave — install from the Chrome Web Store:**
+
+[**Install comic-translate-4-free from the Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj)
+
+Or grab the latest release from the
 [**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
 page — every release is built automatically by CI. Download the zip for your
 browser:
@@ -29,9 +33,12 @@ You never need to clone the repo or run `build.sh` yourself.
 
 ## Install
 
-Download the zip for your browser above and unzip it.
+**Chrome (recommended):** install from the
+[**Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj)
+— one click, automatic updates.
 
-**Chrome:** `chrome://extensions` → enable **Developer mode** →
+**Manual install (Chrome):** download the zip from Releases above and unzip it,
+then `chrome://extensions` → enable **Developer mode** →
 **Load unpacked** → select the unzipped folder.
 
 **Firefox:** `about:debugging#/runtime/this-firefox` → **Load Temporary

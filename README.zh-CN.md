@@ -13,7 +13,11 @@
 
 ## 下载（无需构建）
 
-从 [**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
+**Chrome / Edge / Brave —— 从 Chrome 应用商店安装：**
+
+[**从 Chrome 应用商店安装 comic-translate-4-free**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj)
+
+或从 [**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
 页面获取最新 release — 每个 release 都由 CI 自动构建。
 请下载对应您浏览器的 zip：
 
@@ -26,9 +30,12 @@
 
 ## 安装
 
-下载上方对应您浏览器的 zip 并解压。
+**Chrome（推荐）：** 从
+[**Chrome 应用商店**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj)
+一键安装，自动更新。
 
-**Chrome：** 打开 `chrome://extensions` → 启用**开发者模式** →
+**手动安装（Chrome）：** 从上方 Releases 下载 zip 并解压，
+打开 `chrome://extensions` → 启用**开发者模式** →
 **加载已解压的扩展程序** → 选择解压后的文件夹。
 
 **Firefox：** 打开 `about:debugging#/runtime/this-firefox` →

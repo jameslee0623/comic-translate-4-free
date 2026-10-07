@@ -14,6 +14,11 @@ Manifest V3 + ONNX Runtime Web（WASM）に移植したものです。
 
 ## ダウンロード（ビルド不要）
 
+**Chrome / Edge / Brave — Chromeウェブストアからインストール：**
+
+[**Chromeウェブストアから comic-translate-4-free をインストール**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj)
+
+または
 [**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
 ページから最新のリリースを取得してください — すべてのリリースはCIで自動ビルドされます。
 お使いのブラウザ用のzipをダウンロードしてください：
@@ -27,9 +32,12 @@ Manifest V3 + ONNX Runtime Web（WASM）に移植したものです。
 
 ## インストール
 
-上でダウンロードした、お使いのブラウザ用のzipを解凍してください。
+**Chrome（推奨）：**
+[**Chromeウェブストア**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj)
+からインストール — ワンクリックで自動更新されます。
 
-**Chrome:** `chrome://extensions` → **デベロッパーモード**を有効化 →
+**手動インストール（Chrome）：** 上のReleasesからzipをダウンロードして解凍し、
+`chrome://extensions` → **デベロッパーモード**を有効化 →
 **パッケージ化されていない拡張機能を読み込む** → 解凍したフォルダを選択。
 
 **Firefox:** `about:debugging#/runtime/this-firefox` → **一時的なアドオンを読み込む** →
