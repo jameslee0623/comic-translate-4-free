@@ -768,8 +768,13 @@ async function runPipeline(tabId, opts = {}) {
         const maskKey = `inpaint-mask:${runId}:${i}`;
         pxKeys.push(pxKey, maskKey);
         await pixelPut(pxKey, cropRGBA(rgba, w, x1, y1, x2, y2).data.buffer);
-        await pixelPut(maskKey, cropMask1(fullMask, w, x1, y1, x2, y2).buffer);
-        patches.push({ id: i, x: x1, y: y1, key: pxKey, maskKey, width: x2 - x1, height: y2 - y1 });
+        // Keep the mask bytes in memory too: the offscreen handler consumes
+        // (deletes) the pixel-store copy via pixelTake, but we need the mask
+        // again at compositing time for mask-aware paste. pixelPut copies,
+        // so this view stays valid.
+        const maskData = cropMask1(fullMask, w, x1, y1, x2, y2);
+        await pixelPut(maskKey, maskData.buffer);
+        patches.push({ id: i, x: x1, y: y1, key: pxKey, maskKey, maskData, width: x2 - x1, height: y2 - y1 });
       }
       const inpainted = new Uint8ClampedArray(rgba);
       let inpaintMs = 0;
@@ -783,13 +788,11 @@ async function runPipeline(tabId, opts = {}) {
           const p = patches[res.id];
           pxKeys.push(res.key);
           const buf = await pixelTake(res.key);
-          const maskBuf = await pixelTake(p.maskKey);
-          // Mask-aware paste: only copy pixels where the mask is set.
-          // LaMa can slightly alter unmasked areas; pasting the whole patch
-          // causes visible blur/color shift. Keep original pixels where mask=0.
+          // Use the in-memory mask copy (p.maskData): the pixel-store copy
+          // was consumed by the offscreen handler via pixelTake.
           pasteMaskedRGBA(inpainted, w,
             { data: new Uint8ClampedArray(buf), w: p.width, h: p.height },
-            { data: new Uint8Array(maskBuf), w: p.width, h: p.height },
+            { data: p.maskData, w: p.width, h: p.height },
             p.x, p.y);
         }
       }
