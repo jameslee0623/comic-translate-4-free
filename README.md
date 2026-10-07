@@ -4,7 +4,7 @@
 
 Read manga in your language — right in the browser.
 
-comic-translate-4-free translates manga and comic pages automatically as you browse. Open a page, and the translated version replaces the original image in place — speech bubbles filled with your language, nothing to click.
+comic-translate-4-free translates manga and comic pages automatically as you browse. It reads Japanese, English, Simplified and Traditional Chinese (with auto-detect), and translates into 114 languages. Open a page, and the translated version replaces the original image in place — speech bubbles filled with your language, nothing to click.
 
 ### 📸 Before & After
 
