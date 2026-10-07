@@ -140,7 +140,10 @@
     const rw = Math.max(8, x2 - x1), rh = Math.max(8, y2 - y1);
     const vertical = isCJK(text) && rh > rw * 1.5;
     const autoSize = estimateFontSize(block, maxSize, minSize);
-    const { size, lines, lh } = fitFont(ctx, text, rw, rh, autoSize, minSize, vertical);
+    // Start from maxSize (not autoSize) so the translation grows to fill the
+    // box when it's shorter than the original; fitFont shrinks until it fits.
+    // "Not too big nor too small" — the largest size that fits wins.
+    const { size, lines, lh } = fitFont(ctx, text, rw, rh, maxSize, minSize, vertical);
     ctx.font = `${size}px ${FONT_STACK}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
