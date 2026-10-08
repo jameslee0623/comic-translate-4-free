@@ -107,7 +107,8 @@ function uniformBackgroundFill(rgba, mask, w, h) {
       rs.push(rgba[o]); gs.push(rgba[o + 1]); bs.push(rgba[o + 2]);
     }
   }
-  if (rs.length < 10 || maskedCount === 0) return null;
+  if (rs.length < 10) return null;
+  if (maskedCount === 0) return rgba; // nothing to inpaint — skip LaMa entirely
   // Median (robust to outliers)
   const med = a => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
   const mr = med(rs), mg = med(gs), mb = med(bs);

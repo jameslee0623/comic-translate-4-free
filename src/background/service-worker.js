@@ -835,7 +835,7 @@ async function runPipeline(tabId, opts = {}) {
         };
         tWorker.postMessage({
           blocks: blocks.map(b => ({ text: b.text })),
-          settings,
+          settings: effSettings,
         });
       });
       // Main thread: mask → inpaint (linear, WASM may block but worker continues)
@@ -868,7 +868,15 @@ async function runPipeline(tabId, opts = {}) {
       const maskP = runMask();
       const inpaintP = maskP.then(runInpaint);
       const translateP = runTranslate();
-      [translateOut, inpaintOut] = await Promise.all([translateP, inpaintP]);
+      // If either branch fails, cancel the run so the other branch aborts
+      // at its next checkCancelled instead of burning CPU/network on a dead run.
+      const cancelOnFail = p => p.catch(e => {
+        const r = runs.get(runId);
+        if (r) r.cancelled = true;
+        callMl({ type: MSG.ML_CANCEL, runId }).catch(() => {});
+        throw e;
+      });
+      [translateOut, inpaintOut] = await Promise.all([cancelOnFail(translateP), cancelOnFail(inpaintP)]);
     }
     timings.translate = translateOut.translateMs;
     timings.mask = inpaintOut.maskMs;
