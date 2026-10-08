@@ -1,60 +1,60 @@
 # comic-translate-4-free
 
-**Language:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
+**زبان:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
 
-منگا اپنی زبان میں پڑھیں — براہِ راست براؤزر میں۔
+اپنی زبان میں مانگا پڑھیں — براہِ راست براؤزر میں۔
 
-comic-translate-4-free براؤزنگ کے دوران منگا اور کامک کے صفحات خودکار طور پر ترجمہ کرتا ہے۔ یہ جاپانی، انگریزی، سادہ اور روایتی چینی پڑھتا ہے (خودکار شناخت کے ساتھ)، اور 114 زبانوں میں ترجمہ کرتا ہے۔ صفحہ کھولیں، اور ترجمہ شدہ تصویر اصل تصویر کی جگہ اسی مقام پر لے لیتی ہے — اسپیچ ببل آپ کی زبان سے بھرے ہوئے۔
+comic-translate-4-free براؤزنگ کے دوران مانگا اور کامکس کے صفحات خود بخود ترجمہ کرتا ہے۔ یہ جاپانی، انگریزی، آسان اور روایتی چینی پڑھتا ہے (خودکار شناخت کے ساتھ)، اور 114 زبانوں میں ترجمہ کرتا ہے۔ کوئی صفحہ کھولیں، اور اصل تصویر کی جگہ ترجمہ شدہ نسخہ لگ جائے گا — اسپیچ ببلز آپ کی زبان سے بھر جائیں گے۔
 
 ### 📸 پہلے اور بعد میں
 
 | پہلے (جاپانی) | بعد میں (اردو) |
 | --- | --- |
-| ![Original Japanese manga page](docs/images/wikipe-tan-original.jpg) | ![اردو میں ترجمہ شدہ](docs/images/wikipe-tan-ur.jpg) |
+| ![جاپانی مانگا کا اصل صفحہ](docs/images/wikipe-tan-original.jpg) | ![after](docs/images/wikipe-tan-ur.jpg) |
 
 <details>
-<summary>مزید 14 زبانوں میں تراجم دیکھیں</summary>
+<summary>See translations in 14 more languages</summary>
 
-| ہندی | کوریائی | سادہ چینی |
+| Hindi | Korean | Simplified Chinese |
 | --- | --- | --- |
 | ![Hindi](docs/images/wikipe-tan-hi.jpg) | ![Korean](docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](docs/images/wikipe-tan-zh-CN.jpg) |
 
-| روایتی چینی | ہسپانوی | عربی |
+| Traditional Chinese | Spanish | Arabic |
 | --- | --- | --- |
 | ![Traditional Chinese](docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](docs/images/wikipe-tan-es.jpg) | ![Arabic](docs/images/wikipe-tan-ar.jpg) |
 
-| فرانسیسی | بنگالی | پرتگالی |
+| French | Bengali | Portuguese |
 | --- | --- | --- |
 | ![French](docs/images/wikipe-tan-fr.jpg) | ![Bengali](docs/images/wikipe-tan-bn.jpg) | ![Portuguese](docs/images/wikipe-tan-pt.jpg) |
 
-| روسی | ویتنامی | انڈونیشیائی |
+| Russian | Vietnamese | Indonesian |
 | --- | --- | --- |
 | ![Russian](docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](docs/images/wikipe-tan-vi.jpg) | ![Indonesian](docs/images/wikipe-tan-id.jpg) |
 
-| اردو | جرمن |
+| Urdu | German |
 | --- | --- |
 | ![Urdu](docs/images/wikipe-tan-ur.jpg) | ![German](docs/images/wikipe-tan-de.jpg) |
 
 </details>
 
-*اصل تصویر: [Wikipedia](https://en.wikipedia.org/wiki/Manga) براستہ Wikimedia Commons۔*
+*اصل تصویر: [Wikipedia](https://en.wikipedia.org/wiki/Manga) Wikimedia Commons کے ذریعے۔*
 
 ---
 
 ## ✨ خصوصیات
 
-- **خودکار ترجمہ** — منظور شدہ سائٹ پر منگا کا صفحہ کھولیں اور ترجمہ شدہ تصویر اسی جگہ نظر آئے گی، کسی بٹن دبانے کی ضرورت نہیں۔
-- **کسی بھی تصویر پر رائٹ کلک کریں** — "Send to comic-translate-4-free" منتخب کریں تاکہ کوئی مخصوص تصویر ترجمہ ہو جائے، چاہے وہ کم از کم سائز سے چھوٹی ہی کیوں نہ ہو۔
-- **114 ہدف زبانیں** بذریعہ Google Translate، Azure Translator، یا آپ کا اپنا مقامی LM Studio سرور۔
-- **ماخذ زبان کی خودکار شناخت** — جاپانی، انگریزی، سادہ/روایتی چینی، OCR شدہ متن سے خودکار طور پر پہچانی جاتی ہیں۔
-- **لمبی پٹی / ویب ٹون کی معاونت** — لمبے صفحات اوورلیپنگ حصوں میں پروسیس کیے جاتے ہیں تاکہ متن واضح رہے۔
-- **16 انٹرفیس زبانیں** — ایکسٹینشن کا انٹرفیس آپ کے براؤزر کی زبان کی ترتیب پر چلتا ہے۔
+- **خودکار ترجمہ** — کسی اجازت یافتہ سائٹ پر مانگا کا صفحہ کھولیں اور ترجمہ شدہ نسخہ بغیر کسی بٹن دبائے اس کی جگہ ظاہر ہو جائے گا۔
+- **کسی بھی تصویر پر رائٹ کلک** — کسی مخصوص تصویر کا ترجمہ کرنے کے لیے "Send to comic-translate-4-free" منتخب کریں، چاہے وہ کم از کم سائز سے چھوٹی ہو۔
+- **114 ہدف زبانیں** Google Translate، Azure Translator، یا آپ کے اپنے مقامی LM Studio سرور کے ذریعے۔
+- **ماخذ زبان کی خودکار شناخت** — OCR شدہ متن سے جاپانی، انگریزی، آسان/روایتی چینی خود بخود پہچانی جاتی ہے۔
+- **لمبی پٹی / ویب ٹون کی سہولت** — لمبے صفحات اوورلیپنگ حصوں میں پروسیس کیے جاتے ہیں تاکہ متن واضح رہے۔
+- **16 یوزر انٹرفیس زبانیں** — ایکسٹینشن کا انٹرفیس آپ کے براؤزر کی زبان کے مطابق چلتا ہے۔
 
-### 🔒 پرائیویسی
+### 🔒 رازداری
 
-- **AI آپ کی مشین پر چلتا ہے۔** ببل ڈیٹیکشن، OCR، اور ان پینٹنگ سب کچھ آپ کے براؤزر میں WebAssembly کے ذریعے مقامی طور پر ہوتا ہے۔ آپ کے صفحات کبھی آپ کے ڈیوائس سے باہر نہیں جاتے۔
-- **صرف ترجمہ شدہ متن باہر بھیجا جاتا ہے** — آپ کی منتخب کردہ ترجمانی سروس (Google / Azure / آپ کا مقامی LM Studio) کو صرف نکالی گئی سٹرنگز جاتی ہیں۔
-- **کوئی اکاؤنٹ نہیں، کوئی ٹریکنگ نہیں، کوئی ٹیلی میٹری نہیں۔** تمام ترتیبات اور کیش شدہ ماڈلز آپ کے براؤزر کے مقامی اسٹوریج میں رہتے ہیں۔
+- **AI آپ کی مشین پر چلتا ہے۔** ببل کی شناخت، OCR، اور ان پینٹنگ سب WebAssembly کے ذریعے آپ کے براؤزر میں مقامی طور پر چلتے ہیں۔ آپ کے صفحات کبھی آپ کی ڈیوائس نہیں چھوڑتے۔
+- **صرف ترجمہ شدہ متن بھیجا جاتا ہے** — صرف نکالی گئی سٹرنگز آپ کی منتخب کردہ ترجمہ سروس (Google / Azure / آپ کا مقامی LM Studio) کو بھیجی جاتی ہیں۔
+- **نہ اکاؤنٹ، نہ ٹریکنگ، نہ ٹیلی میٹری۔** تمام سیٹنگز اور کیش شدہ ماڈلز آپ کے براؤزر کی لوکل اسٹوریج میں رہتے ہیں۔
 
 ---
 
@@ -62,50 +62,50 @@ comic-translate-4-free براؤزنگ کے دوران منگا اور کامک �
 
 **Chrome / Edge / Brave:**
 
-[**Install from the Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — ایک کلک، خودکار اپڈیٹس۔
+[**Chrome Web Store سے انسٹال کریں**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — ایک کلک، خودکار اپڈیٹس۔
 
-**Firefox:** [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) سے Firefox زپ ڈاؤن لوڈ کریں، پھر `about:debugging#/runtime/this-firefox` پر جائیں → **Load Temporary Add-on** → `manifest.json` منتخب کریں۔ (عارضی ایڈ-آن ری اسٹارٹ پر اتر جاتے ہیں؛ دستخط شدہ AMO لسٹنگ پر کام جاری ہے۔)
+**Firefox:** [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) سے Firefox زپ ڈاؤن لوڈ کریں، پھر `about:debugging#/runtime/this-firefox` پر جائیں ← **Load Temporary Add-on** ← `manifest.json` منتخب کریں۔ (عارضی ایڈ آن ری اسٹارٹ پر اتر جاتے ہیں؛ AMO کی دستخط شدہ لسٹنگ جاری ہے۔)
 
-انسٹال کے بعد، Settings کا صفحہ کھولیں اور ایک بار **Download all models** دبائیں (~350 MB: ڈیٹیکٹر، OCR، ان پینٹر)۔ یہ براؤزر میں کیش ہو جاتے ہیں اور بائٹ سائز سے تصدیق کیے جاتے ہیں۔
+انسٹال کرنے کے بعد، سیٹنگز کا صفحہ کھولیں اور ایک بار **Download all models** پر کلک کریں (~350 MB: ڈیٹیکٹر، OCR، ان پینٹر)۔ یہ براؤزر میں کیش ہو جاتے ہیں اور بائٹ سائز سے تصدیق شدہ ہیں۔
 
-![Downloading the models from the Settings page](docs/images/options-models.png)
+![سیٹنگز کے صفحے سے ماڈلز ڈاؤن لوڈ کرنا](docs/images/options-models.png)
 
 ---
 
 ## 💡 استعمال کا طریقہ
 
-1. **پہلے سائٹ کی اجازت دیں** — ایکسٹینشن آئیکن پر کلک کریں اور **Allow this site** دبائیں (یا **ALLOW ALL SITES** آن کر دیں)۔ ترجمہ صرف وہاں چلتا ہے جہاں آپ نے اجازت دی ہو۔
+1. **پہلے سائٹ کو اجازت دیں** — ایکسٹینشن کے آئیکن پر کلک کریں اور **Allow this site** دبائیں (یا **ALLOW ALL SITES** فعال کریں)۔ ترجمہ صرف وہیں چلتا ہے جہاں آپ نے اجازت دی ہو۔
 
-   ![Allow the site from the popup](docs/images/popup.png)
+   ![پاپ اپ سے سائٹ کو اجازت دیں](docs/images/popup.png)
 
-2. **منگا کا صفحہ دوبارہ لوڈ کریں** — صفحہ لوڈ ہوتے ہی ترجمہ خودکار شروع ہو جاتا ہے۔ اوپر دائیں کونے میں ایک پِل لائیو پیش رفت دکھاتی ہے (Capturing → Detecting → OCR → …)۔
-3. **ہو گیا** — صفحے کی تصویر اسی جگہ ترجمہ شدہ تصویر سے بدل جاتی ہے۔
+2. **مانگا کا صفحہ ری لوڈ کریں** — صفحہ لوڈ ہوتے ہی ترجمہ خود بخود شروع ہو جاتا ہے۔ اوپر دائیں طرف ایک پل لائیو پیشرفت دکھاتی ہے (Capturing ← Detecting ← OCR ← …)۔
+3. **ہو گیا** — صفحے کی تصویر کی جگہ ترجمہ شدہ نسخہ لگ جاتا ہے۔
 
 **ٹپس:**
-- کسی بھی تصویر پر رائٹ کلک کریں → **Send to comic-translate-4-free** تاکہ صرف وہی تصویر ترجمہ ہو۔
+- کسی بھی تصویر پر رائٹ کلک کریں ← صرف اس تصویر کے ترجمے کے لیے **Send to comic-translate-4-free**۔
 
-  ![Right-click to send an image](docs/images/right-click.png)
+  ![تصویر بھیجنے کے لیے رائٹ کلک کریں](docs/images/right-click.png)
 
-- اگر کوئی سائٹ ڈاؤن لوڈ بلاک کر دے (HTTP 403)، تو ایکسٹینشن خودکار طور پر بیک گراؤنڈ ٹیب کے ذریعے دوبارہ کوشش کرتا ہے۔
-- Settings میں اپنا ترجمانی انجن منتخب کریں: Google (مفت، کوئی کی نہیں چاہیے)، Azure Translator (نیچے سے کیز حاصل کریں — 2M کریکٹرز/ماہ مفت)، یا LM Studio (مقامی سرور)۔
-- ہر پائپ لائن مرحلے کا معائنہ کرنے کے لیے Settings میں **Debug mode** آن کریں۔
+- اگر کوئی سائٹ ڈاؤن لوڈز بلاک کرے (HTTP 403)، تو ایکسٹینشن بیک گراؤنڈ ٹیب کے ذریعے خودکار طور پر دوبارہ کوشش کرتا ہے۔
+- سیٹنگز میں اپنا ترجمہ انجن منتخب کریں: Google (مفت، بغیر کی)، Azure Translator (نیچے کیز کے لیے درخواست دیں — ہر ماہ 2 ملین حروف مفت)، یا LM Studio (مقامی سرور)۔
+- ہر پائپ لائن مرحلے کا معائنہ کرنے کے لیے سیٹنگز میں **Debug mode** فعال کریں۔
 
 ---
 
 ## 🔑 Microsoft Azure اکاؤنٹ کے لیے درخواست دیں
 
-ترجمانی انجن کے طور پر Azure Translator استعمال کرنے کے لیے:
+Azure Translator کو ترجمہ انجن کے طور پر استعمال کرنے کے لیے:
 
-1. Microsoft/hotmail/Azure اکاؤنٹ بنائیں یا سائن ان کریں
+1. Microsoft/hotmail/Azure اکاؤنٹ بنائیں/سائن ان کریں
 2. Azure سبسکرپشن بنائیں
 3. Azure Translator ریسورس بنائیں
-4. F0 (Free) پرائسنگ ٹیئر منتخب کریں — 2 ملین کریکٹرز/ماہ، کبھی ختم نہیں ہوتا
-5. Resource Management → Keys and Endpoint → **KEY 1** اور **Location/Region** کاپی کریں
-6. انہیں ایکسٹینشن کے Settings صفحے میں پیسٹ کریں
+4. F0 (مفت) پرائسنگ ٹیئر منتخب کریں — 2 ملین حروف/ماہ، ختم نہیں ہوتی
+5. Resource Management ← Keys and Endpoint ← **KEY 1** اور **Location/Region** کاپی کریں
+6. انہیں ایکسٹینشن کے سیٹنگز صفحے میں پیسٹ کریں
 
 ---
 
-## ❤️ اس پراجیکٹ کی حمایت کریں
+## ❤️ اس پروجیکٹ کی حمایت کریں
 
 اگر یہ ایکسٹینشن آپ کے لیے مفید ہے، تو اس کی ڈیولپمنٹ کی حمایت پر غور کریں:
 
@@ -115,18 +115,18 @@ comic-translate-4-free براؤزنگ کے دوران منگا اور کامک �
 
 ## ⚠️ معلوم مسائل
 
-- **ابھی کوریائی OCR نہیں** — ماخذ زبانیں جاپانی، انگریزی، اور سادہ/روایتی چینی ہیں۔ (کوریائی ترجمانی ہدف کے طور پر دستیاب رہتی ہے۔)
-- خودکار ترجمہ میں **فی صفحہ ایک تصویر** (صفحے کی مرکزی تصویر)۔ دوسری تصویروں کے لیے رائٹ کلک → Send استعمال کریں۔
-- **بڑے سیشنز** — ایک سیشن میں درجنوں تصویروں کا ترجمہ براؤزر کریش کر سکتا ہے۔ ایسا ہو تو Settings میں پیج کیش صاف کر دیں۔
-- **Firefox** — ماڈلز بیک گراؤنڈ پیج میں چلتے ہیں (کوئی offscreen documents نہیں)، میموری باقی سب کے ساتھ شیئر ہوتی ہے۔ اگر "no available backend found" نظر آئے تو براؤزر ری اسٹارٹ کر دیں۔
-- Google Translate غیر سرکاری مفت اینڈ پوائنٹ استعمال کرتا ہے اور ریٹ لمٹ کا شکار ہو سکتا ہے۔
+- **ابھی کوریائی OCR نہیں** — ماخذ زبانیں جاپانی، انگریزی، اور آسان/روایتی چینی ہیں۔ (کوریائی ترجمہ کے ہدف کے طور پر دستیاب رہتی ہے۔)
+- خودکار ترجمے کے لیے **فی صفحہ ایک تصویر** (صفحے کی اصل تصویر)۔ دوسروں کو ترجمہ کرنے کے لیے رائٹ کلک ← Send استعمال کریں۔
+- **بڑے سیشنز** — ایک سیشن میں درجنوں تصاویر کا ترجمہ براؤزر کو کریش کر سکتا ہے۔ اگر ایسا ہو تو سیٹنگز میں پیج کیش صاف کریں۔
+- **Firefox** — ماڈلز بیک گراؤنڈ پیج میں چلتے ہیں (آف اسکرین ڈاکومنٹس نہیں)، باقی سب کے ساتھ میموری شیئر کرتے ہیں۔ اگر "no available backend found" نظر آئے تو براؤزر دوبارہ شروع کریں۔
+- Google Translate غیر سرکاری مفت اینڈ پوائنٹ استعمال کرتا ہے اور ریٹ لمیٹ ہو سکتا ہے۔
 
 ---
 
 ## 📄 تھرڈ پارٹی نوٹسز
 
-یہ پراجیکٹ [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) سے متاثر ہے — ببل/ٹیکسٹ ڈیٹیکٹر اور منگا-فائن ٹیونڈ LaMa ان پینٹر اس کے ONNX ایکسپورٹس ہیں، اور انفرنس لاجک اسی سے پورٹ کی گئی ہے۔ (OCR [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) استعمال کرتا ہے، از genshiai-daichi۔)
+یہ پروجیکٹ [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) سے متاثر ہے — ببل/ٹیکسٹ ڈیٹیکٹر اور مانگا پر ٹرین شدہ LaMa ان پینٹر اس کے ONNX ایکسپورٹس ہیں، اور انفرینس لاجک اسی سے پورٹ کی گئی ہے۔ (OCR [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) استعمال کرتا ہے، genshiai-daichi کی جانب سے۔)
 
-بنڈل شدہ لائبریریاں، پورٹ کیا گیا کوڈ، اور رن ٹائم پر ڈاؤن لوڈ ہونے والے ماڈلز اپنے لائسنسز کے ساتھ [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) میں درج ہیں۔
+بنڈل لائبریریاں، پورٹ شدہ کوڈ، اور رن ٹائم پر ڈاؤن لوڈ ہونے والے ماڈلز ان کے لائسنسز کے ساتھ [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) میں درج ہیں۔
 
-MIT License — دیکھیں [LICENSE](LICENSE)۔
+MIT License — [LICENSE](LICENSE) دیکھیں۔
