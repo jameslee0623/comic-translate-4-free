@@ -103,7 +103,9 @@ async function cancelRunsForTab(tabId) {
       // waiting for the stage boundary.
       try { r.abortController?.abort(); } catch {}
       // Firefox: translation runs on a Web Worker — terminate it now instead
-      // of waiting for completion or the 180s timeout.
+      // of waiting for completion or the 180s timeout. The stored killer
+      // also rejects the pending promise so `await translateP` doesn't hang.
+      try { r.killTranslateWorker?.(Object.assign(new Error('cancelled'), { cancelled: true })); } catch {}
       try { r.translateWorker?.terminate(); } catch {}
       ids.push(id);
     }
@@ -836,11 +838,18 @@ async function runPipeline(tabId, opts = {}) {
       // Hoisted so the catch block below can cancel the 180s timer on early
       // mask/inpaint failure — otherwise it fires pointlessly after terminate.
       let translateTimeout = null;
-      const killTranslateWorker = () => {
+      let translateReject = null;
+      const killTranslateWorker = (err) => {
         if (translateTimeout) { clearTimeout(translateTimeout); translateTimeout = null; }
         try { tWorker.terminate(); } catch { /* already terminated */ }
+        // If killed externally (cancel), the promise would otherwise hang
+        // forever — no onmessage/onerror fires on a terminated worker.
+        if (err && translateReject) { const rej = translateReject; translateReject = null; rej(err); }
       };
+      // cancelRunsForTab uses this to abort the in-flight worker immediately.
+      runs.get(runId).killTranslateWorker = killTranslateWorker;
       const translateP = new Promise((resolve, reject) => {
+        translateReject = reject;
         translateTimeout = setTimeout(() => {
           translateTimeout = null;
           tWorker.terminate();
