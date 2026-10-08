@@ -90,6 +90,45 @@ function releaseRun(runId) {
   if (runId && !cancelledRuns.has(runId)) cancelledRuns.delete(runId);
 }
 
+// Fast-path inpaint for uniform backgrounds: if the unmasked pixels have low
+// variance, fill masked pixels with the median background color instead of
+// running LaMa. Returns Uint8ClampedArray RGBA, or null if background is not
+// uniform (caller falls back to LaMa).
+function uniformBackgroundFill(rgba, mask, w, h) {
+  // Sample unmasked pixels (stride to keep it fast)
+  const rs = [], gs = [], bs = [];
+  const stride = Math.max(1, Math.floor(Math.sqrt((w * h) / 2000)));
+  let maskedCount = 0;
+  for (let y = 0; y < h; y += stride) {
+    for (let x = 0; x < w; x += stride) {
+      const i = y * w + x;
+      if (mask[i]) { maskedCount++; continue; }
+      const o = i * 4;
+      rs.push(rgba[o]); gs.push(rgba[o + 1]); bs.push(rgba[o + 2]);
+    }
+  }
+  if (rs.length < 10 || maskedCount === 0) return null;
+  // Median (robust to outliers)
+  const med = a => { const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
+  const mr = med(rs), mg = med(gs), mb = med(bs);
+  // Std dev; uniform if low
+  let vr = 0, vg = 0, vb = 0;
+  for (let i = 0; i < rs.length; i++) {
+    vr += (rs[i] - mr) ** 2; vg += (gs[i] - mg) ** 2; vb += (bs[i] - mb) ** 2;
+  }
+  const sr = Math.sqrt(vr / rs.length), sg = Math.sqrt(vg / rs.length), sb = Math.sqrt(vb / rs.length);
+  if (sr > 12 || sg > 12 || sb > 12) return null; // not uniform
+  // Fill masked pixels with median background color
+  const out = new Uint8ClampedArray(rgba);
+  for (let i = 0; i < w * h; i++) {
+    if (mask[i]) {
+      const o = i * 4;
+      out[o] = mr; out[o + 1] = mg; out[o + 2] = mb; out[o + 3] = 255;
+    }
+  }
+  return out;
+}
+
 const handlers = {
   [MSG.ML_PING]() {
     return { ok: true, loaded: { detector: detector.loaded, baberu: baberu.loaded, inpaint: inpainter.loaded } };
@@ -238,10 +277,22 @@ const handlers = {
         throwIfCancelled(runId);
         const rgbaRaw = await pixelTake(p.key);
         const maskRaw = await pixelTake(p.maskKey);
-        const out = await inpainter.inpaintPatch(
-          new Uint8ClampedArray(rgbaRaw), new Uint8Array(maskRaw), p.width, p.height,
-          () => cancelledRuns.has(runId),
-          (done, total) => reportInpaint((pi + done / total) / patches.length));
+        const rgba = new Uint8ClampedArray(rgbaRaw);
+        const mask = new Uint8Array(maskRaw);
+        // Fast path: if the unmasked background is uniform, fill masked pixels
+        // with the background color instead of running LaMa. Faster and
+        // cleaner for white/paper backgrounds (common in manga bubbles).
+        // Falls back to LaMa for textured/variegated backgrounds.
+        const bgFill = uniformBackgroundFill(rgba, mask, p.width, p.height);
+        let out;
+        if (bgFill) {
+          out = bgFill;
+        } else {
+          out = await inpainter.inpaintPatch(
+            rgba, mask, p.width, p.height,
+            () => cancelledRuns.has(runId),
+            (done, total) => reportInpaint((pi + done / total) / patches.length));
+        }
         const resKey = p.key + ':out';
         await pixelPut(resKey, out.buffer);
         results.push({ id: p.id, key: resKey, width: p.width, height: p.height });
