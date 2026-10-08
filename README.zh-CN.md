@@ -1,240 +1,132 @@
 # comic-translate-4-free
 
-**语言：** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
+**Language:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
 
-在浏览器内翻译漫画页面。完整流水线在本地运行：
-气泡/文字检测（RT-DETR-v2）、OCR（日语/英语/中文用 Baberu）、通过 LaMa 图像修复擦除原文、翻译
-（Google / Azure / 本地 LLM），以及将译文换行重绘回原气泡。
+直接在浏览器里，用你的语言看漫画。
 
-扩展 UI 跟随浏览器的语言设置（英语、日语、韩语、中文简体/繁体、印地语、西班牙语、阿拉伯语、法语、孟加拉语、葡萄牙语、俄语、越南语、印尼语、乌尔都语、德语）。
+comic-translate-4-free 会在你浏览时自动翻译漫画和条漫页面。它支持日语、英语、简体和繁体中文（自动识别原文语言），可翻译成 114 种语言。打开页面后，译文版本会原位替换原图——对话气泡里直接填上你的语言。
 
-由 [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate)
-移植到 Manifest V3 + ONNX Runtime Web（WASM）。
+### 📸 之前 / 之后
 
-## 下载（无需构建）
+| 之前（日语） | 之后（简体中文） |
+| --- | --- |
+| ![原始日语漫画页面](docs/images/wikipe-tan-original.jpg) | ![已翻译为简体中文](docs/images/wikipe-tan-zh-CN.jpg) |
 
-**Chrome / Edge / Brave —— 从 Chrome 应用商店安装：**
+<details>
+<summary>查看另外 14 种语言的翻译</summary>
 
-[**从 Chrome 应用商店安装 comic-translate-4-free**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj)
+| 印地语 | 韩语 | 简体中文 |
+| --- | --- | --- |
+| ![印地语](docs/images/wikipe-tan-hi.jpg) | ![韩语](docs/images/wikipe-tan-ko.jpg) | ![简体中文](docs/images/wikipe-tan-zh-CN.jpg) |
 
-或从 [**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
-页面获取最新 release — 每个 release 都由 CI 自动构建。
-请下载对应您浏览器的 zip：
+| 繁體中文 | 西班牙语 | 阿拉伯语 |
+| --- | --- | --- |
+| ![繁體中文](docs/images/wikipe-tan-zh-TW.jpg) | ![西班牙语](docs/images/wikipe-tan-es.jpg) | ![阿拉伯语](docs/images/wikipe-tan-ar.jpg) |
 
-- `comic-translate-4-free-v<version>-<build>-chrome.zip` → Chrome / Edge / Brave
-- `comic-translate-4-free-v<version>-<build>-firefox.zip` → Firefox
+| 法语 | 孟加拉语 | 葡萄牙语 |
+| --- | --- | --- |
+| ![法语](docs/images/wikipe-tan-fr.jpg) | ![孟加拉语](docs/images/wikipe-tan-bn.jpg) | ![葡萄牙语](docs/images/wikipe-tan-pt.jpg) |
 
-（另有合并版 `comic-translate-4-free-v<version>-<build>.zip`，
-同时包含 `chrome/` 和 `firefox/`，如需两者可一并下载。）
-您无需克隆仓库或自行运行 `build.sh`。
+| 俄语 | 越南语 | 印尼语 |
+| --- | --- | --- |
+| ![俄语](docs/images/wikipe-tan-ru.jpg) | ![越南语](docs/images/wikipe-tan-vi.jpg) | ![印尼语](docs/images/wikipe-tan-id.jpg) |
 
-## 安装
+| 乌尔都语 | 德语 |
+| --- | --- |
+| ![乌尔都语](docs/images/wikipe-tan-ur.jpg) | ![德语](docs/images/wikipe-tan-de.jpg) |
 
-**Chrome（推荐）：** 从
-[**Chrome 应用商店**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj)
-一键安装，自动更新。
+</details>
 
-**手动安装（Chrome）：** 从上方 Releases 下载 zip 并解压，
-打开 `chrome://extensions` → 启用**开发者模式** →
-**加载已解压的扩展程序** → 选择解压后的文件夹。
+*原始图片：[维基百科](https://en.wikipedia.org/wiki/Manga)，来自 Wikimedia Commons。*
 
-**Firefox：** 打开 `about:debugging#/runtime/this-firefox` →
-**临时载入附加组件** → 打开解压后的文件夹并选择 `manifest.json`。
-（临时附加组件在 Firefox 重启前有效。如需永久安装，
-须使用 addons.mozilla.org 签名的构建 —— 标准版 Firefox 的签名构建正在准备中。）
+---
 
-然后在设置页中下载一次模型 — 点击 **Download all models**
-按钮即可获取全部（检测器、OCR 模型、修复器，共约 350MB）。
-它们缓存在浏览器（IndexedDB）中，不会重复下载。
-每个文件的字节大小在下载后都会校验；损坏的文件会标 ⚠
-并可重新下载。
+## ✨ 功能
 
-![在设置页下载模型](docs/images/options-models.png)
+- **自动翻译** — 在已授权的网站上打开漫画页面，译文版本会自动原位显示，无需点击按钮。
+- **右键翻译任意图片** — 选择 "Send to comic-translate-4-free"，翻译指定的某张图片，哪怕它小于最小尺寸也不受影响。
+- **114 种目标语言**，通过 Google 翻译、Azure 翻译或你自己的本地 LM Studio 服务器。
+- **原文语言自动识别** — 从 OCR 识别的文字中自动判断日语、英语、简体/繁体中文。
+- **长条漫 / webtoon 支持** — 高而长的页面分段重叠处理，文字始终清晰。
+- **16 种界面语言** — 扩展界面跟随你的浏览器语言设置。
 
-## 使用
+### 🔒 隐私
 
-1. **先允许该网站** — 翻译只在您明确允许的网站上运行。
-   点击扩展图标并按 **Allow this site**
-   （或在设置中添加主机名，或开启 **Allow all sites** 以跳过此步骤）。这是硬性门槛：
-   流水线不会在其他任何网站上运行。
+- **AI 在你的机器上运行。** 气泡检测、OCR 和图像修复都在你的浏览器里通过 WebAssembly 本地执行。页面内容从不离开你的设备。
+- **只有译文文本会被发出去** — 只有提取出的字符串会发送到你选择的翻译服务（Google / Azure / 本地 LM Studio）。
+- **无账号、无追踪、无遥测。** 所有设置和缓存的模型都保存在浏览器本地存储中。
 
-   ![扩展弹窗](docs/images/popup.png)
-2. 在已允许的网站上打开漫画页面 — 页面加载完成后即自动开始翻译，
-   无需点击按钮（可在设置中通过 "Auto-translate on page load" 开关）。
-   每个网站首次使用时，Chrome 会请求一次性权限，
-   以便扩展以完整分辨率下载页面图片。
-3. 页面右上角的状态 pill 显示实时进度
-   （Capturing → Detecting → OCR → …）。
-   完成后，页面自身的图片会被就地替换为翻译版本 —
-   原文被修复擦除，译文重绘回气泡中。
+---
 
-若想翻译的不是页面主图而是某一特定图片，右键点击该图片并选择
-**Send to comic-translate-4-free**。该图片会被直接送入流水线 —
-   即使小于最小图片尺寸也会处理 — 并就地替换。
-   该菜单项仅在您已允许的网站上出现。
+## 🚀 安装
 
-若图片服务器拒绝下载（HTTP 403，例如 Cloudflare 机器人防护），扩展会
-自动在后台标签页中打开该图片 — 在那里它是同源的，可直接读取无需下载 —
-翻译后关闭标签页，并在原页面就地替换图片。
+**Chrome / Edge / Brave：**
 
-![右键菜单](docs/images/right-click.png)
+[**从 Chrome 应用商店安装**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — 一键安装，自动更新。
 
-流水线输入为页面中最大的图片，受最小图片尺寸设置限制
-（默认 500px）：更小的图片会给出明确错误并跳过。
-扩展直接读取页面自身的图片 — 绝不会对网页截图。
+**Firefox：** 从 [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) 下载 Firefox 压缩包，然后前往 `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → 选择 `manifest.json`。（临时加载的扩展在重启后会卸载；正在推进 AMO 签名上架。）
 
-**页面缓存：** 在同一浏览器会话中再次访问的页面会从临时磁盘缓存即时加载
-（在一次会话中翻译 10~40 张图片可能导致浏览器崩溃，并丢失缓存中的所有图片。
-请记得手动清除缓存）。关闭浏览器时缓存会自动清除，隐身窗口中不会使用缓存。
+安装后打开设置页，点击一次 **Download all models**（约 350 MB：检测器、OCR、修复器）。模型会缓存到浏览器中并按字节大小校验。
 
-**设置**（点击图标 → 设置）：网站访问、页面加载时自动翻译、
-源语言（含**自动检测** — 从 OCR 文本识别日语/英语/简体/繁体中文）/目标语言、
-翻译引擎（Google 免费 / Azure Translator / LM Studio）、
-Azure 与 LM Studio 的连接测试按钮、检测阈值、
-最小图片尺寸（默认 500px — 更小的捕获会被跳过）、
-字体大小、调试模式，以及已翻译页面缓存的管理。
+![从设置页下载模型](docs/images/options-models.png)
 
-![Settings page](docs/images/options.png)
+---
 
-## 支持本项目
+## 💡 使用方法
+
+1. **先给网站授权** — 点击扩展图标，按 **Allow this site**（或启用 **ALLOW ALL SITES**）。翻译只在你授权过的网站上运行。
+
+   ![在弹出窗口中给网站授权](docs/images/popup.png)
+
+2. **刷新漫画页面** — 页面加载时会自动开始翻译。右上角的小 pill 会实时显示进度（Capturing → Detecting → OCR → …）。
+3. **完成** — 页面的图片会被原位替换为译文版本。
+
+**小技巧：**
+- 右键点击任意图片 → **Send to comic-translate-4-free**，只翻译那张图片。
+
+  ![右键发送图片](docs/images/right-click.png)
+
+- 如果某个网站禁止下载（HTTP 403），扩展会自动改用后台标签页重试。
+- 在设置中选择翻译引擎：Google（免费，无需密钥）、Azure 翻译（见下方申请方式——每月 200 万字符免费）、或 LM Studio（本地服务器）。
+- 在设置中启用 **Debug mode**，可查看流水线每一阶段的输出。
+
+---
+
+## 🔑 申请 Microsoft Azure 账号
+
+要把 Azure 翻译作为翻译引擎：
+
+1. 创建/登录 Microsoft / Hotmail / Azure 账号
+2. 创建一个 Azure 订阅
+3. 创建一个 Azure 翻译资源
+4. 选择 F0（免费）定价层 — 每月 200 万字符，永久免费
+5. 资源管理 → 密钥和终结点 → 复制 **KEY 1** 和 **Location/Region**
+6. 把它们粘贴到扩展的设置页中
+
+---
+
+## ❤️ 支持这个项目
 
 如果这个扩展对你有帮助，欢迎支持它的开发：
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S5X627XJQW)
 
-### 申请 Microsoft Azure 账户
+---
 
-1. 创建/登录 Microsoft/hotmail/Azure 账户
-2. 创建 Azure 订阅
-3. 创建 Azure Translator 资源
-4. 选择 F0（Free）定价层
-5. 资源管理 → 密钥和终结点 → 复制 **KEY 1** 和 **位置/区域**
+## ⚠️ 已知问题
 
-Microsoft 目前表示，Translator 的 F0 免费 tier 为每月 200 万字符，且不会过期。
+- **暂不支持韩语 OCR** — 源语言为日语、英语和简体/繁体中文。（韩语仍可作为翻译目标语言。）
+- **自动翻译每页只处理一张图片**（页面的主图）。用右键 → Send 翻译其他图片。
+- **长时间会话** — 一次会话翻译几十张图片可能导致浏览器崩溃。如遇此情况，请在设置中清除页面缓存。
+- **Firefox** — 模型运行在后台页面（没有 offscreen 页面），与其它组件共享内存。如果看到 "no available backend found"，请重启浏览器。
+- Google 翻译使用非官方免费接口，可能会被限流。
 
-### LM Studio
+---
 
-运行启用了本地服务器的 LM Studio（默认
-`http://127.0.0.1:1234`）。在设置中将翻译引擎选为
-**LM Studio (local server)**，设置服务器 URL 与 API 风格 —
-**LM Studio REST API v1**（向 `/api/v1/chat` 发送请求）或
-**OpenAI-compatible**（向 `/v1/chat/completions` 发送请求） —
-然后按 **Check LM Studio connection** 验证连接。
-已加载的模型会自动检测并记住，无需填写模型名称。
+## 📄 第三方声明
 
-## 从源码构建
+本项目的灵感来自 [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) — 气泡/文字检测器和漫画微调的 LaMa 修复器是它的 ONNX 导出模型，推理逻辑也移植自它。（OCR 使用 genshiai-daichi 的 [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr)。）
 
-无需打包器、无需 npm install — 源码本身就是扩展。
-依赖：`bash`、`python3`、`rsync`、`zip` 和 `node`
-（仅用于语法检查）。
+捆绑的库、移植的代码以及运行时下载的模型都列在 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 中，并附有各自的许可证。
 
-```bash
-git clone https://github.com/jameslee0623/comic-translate-4-free.git
-cd comic-translate-4-free
-./build.sh
-```
-
-这会在 `dist/` 生成三个 zip（合并版另有一份方便取用的拷贝）：
-
-- `comic-translate-4-free-v<version>-<build>.zip` — 合并版，
-  同时包含 `chrome/` 和 `firefox/`，
-  按上文“安装”加载即可（Chrome 以解压方式，
-  Firefox 以临时附加组件方式）
-- `comic-translate-4-free-v<version>-<build>-chrome.zip` — 仅 Chrome 构建，
-  商店提交布局
-- `comic-translate-4-free-v<version>-<build>-firefox.zip` — 仅 Firefox 构建，
-  商店提交布局
-
-`<build>` 戳来自 `src/shared/version.js` 中的 `BUILD` 常量
-（显示在弹出窗口和设置页页脚，并用作页面缓存的键）。
-构建前 bump 它，可在文件名和 UI 页脚中获得唯一戳记 —
-否则您的构建与同戳记的 release 构建无法区分。
-
-扩展每个页面只发送一次批量请求：
-
-```
-POST {server}/chat/completions
-{
-  "messages": [
-    { "role": "user",
-      "content": "Translate the following 9 text(s) from Japanese to Chinese (Traditional):\n[\"…\",\"…\"]" }
-  ],
-  "temperature": 0,
-  "texts": ["…", "…"],
-  "target": "zh-TW",
-  "source": "ja"
-}
-```
-
-模型应回复译文字符串的 JSON 数组 —
-与输入文本数量相同、顺序一致。
-较长回复中裸露的 `[...]` 也会被接受；
-最后的兜底是每行一条译文。
-
-## 调试模式
-
-在设置中启用**调试模式**后，每个流水线阶段的输出都会显示在
-侧边检查面板中：捕获的图像、检测框、文本块、
-OCR 裁剪 + 识别结果、修复遮罩、修复后的页面、译文。
-
-## 架构
-
-```
-popup / options (src/ui)
-      │ chrome.runtime messages
-      ▼
-background — 编排、捕获、文本块、遮罩、翻译 API、
-             调试输出
-  ├─ Chrome: service worker + offscreen document (src/offscreen)
-  │  承载全部 onnxruntime-web 会话
-  │  （下载在其中执行，使 197MB 的抓取在 SW 休眠期间也能继续）
-  └─ Firefox: background page (src/background/background.html)
-     在进程内承载相同会话（Firefox 没有 offscreen document）
-└── content script (src/content) — 浮层画布 + 文字渲染器 + 调试面板
-```
-
-模型（Hugging Face，按需下载）：
-- `ogkalu/comic-text-and-bubble-detector` → `detector-v4-s_int8.onnx`
-- `genshiai-daichi/baberu-ocr` → `vision_int4.onnx`、`decoder_prefill_int8.onnx`、
-  `decoder_step_int8.onnx`（日语、英语、简体/繁体中文）
-- `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
-
-流水线阶段：capture → detect → blocks → OCR → mask → inpaint →
-translate → render。检测在 640×640 下运行；捕获按面积缩放（6.5MP 预算），
-长条图保持全分辨率，纵横比超过 4:1 的页面以重叠的 2:1 分段处理。
-
-**Chrome 与 Firefox 流水线：** 两个构建版本都在 OCR 之后并行执行翻译与
-mask/inpaint。Chrome 通过 Promise.all 并行 —— ML 会话运行在 offscreen
-文档的独立线程中，因此各阶段真正重叠执行。Firefox 在 Web Worker（独立线程）
-中运行翻译，mask → inpaint 在主线程运行 —— 即使 WASM inpaint 占用主线程，
-Worker 的网络 I/O 也不会被阻塞。（Firefox 之前采用线性的 mask → inpaint →
-translate 顺序；单线程的后台页面无法在不卡死的情况下运行并行分支。）
-
-## 已知限制
-
-- 还没有找到好的韩语 OCR — 源语言限于日语、英语、简体/繁体中文。
-- 自动翻译每页只处理一张图片（页面的主图）。
-  要翻译页面上的其他图片，请右键点击它并选择
-  **Send to comic-translate-4-free**。
-- 某些图片服务器会阻止自动下载（HTTP 403，例如 Cloudflare 机器人防护），
-  即使页面本身能正常显示图片。右键的 **Send to comic-translate-4-free**
-  可通过后台标签页绕过此限制；自动翻译在此类网站上可能会报 403 错误。
-  这种阻止可能是间歇性的。
-- Firefox：AI 模型在浏览器的后台页面内运行（Firefox 没有离屏文档），
-  与其他所有内容共享内存。在非常大的页面或长时间使用后，引擎可能内存不足
-  并报告 "no available backend found"。重启浏览器可释放内存；Chrome 不受影响，
-  因为它在独立进程中运行模型。
-- Chrome：在一个会话中翻译数十张图片可能导致浏览器崩溃
-  （在缓存约 35 张图片时观察到）。
-- 页面缓存是会话级的：浏览器启动时会被清空，因此重启后（包括崩溃后），
-  重新发送的图片会走完整流程，不会命中缓存。
-- Google 翻译引擎使用非官方 `translate.googleapis.com` 端点，
-  可能被限流。
-- 竖排文字针对高 CJK 文本块渲染；气泡外的拟声词等
-  使用独立文本框。
-
-## 第三方声明
-
-捆绑的库、移植的代码、运行时下载的模型及其许可证，
-见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
-
+MIT 许可证 — 详见 [LICENSE](LICENSE)。

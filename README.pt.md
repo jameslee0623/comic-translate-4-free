@@ -1,259 +1,132 @@
 # comic-translate-4-free
 
-**Language:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [Português](README.pt.md)
+**Language:** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
 
-Traduza páginas de mangá/quadrinhos no navegador. Todo o pipeline roda localmente:
-detecção de balões/texto (RT-DETR-v2), OCR (Baberu para japonês/inglês/chinês),
-remoção de texto
-via inpainting LaMa, tradução (Google / Azure / LLM local) e re-renderização
-com quebra de linha dentro dos balões de fala originais.
+Leia mangás no seu idioma — direto no navegador.
 
-A interface da extensão segue o idioma do seu navegador (inglês, japonês,
-coreano, chinês simplificado/tradicional, hindi, espanhol, árabe, francês,
-português).
+O comic-translate-4-free traduz páginas de mangás e quadrinhos automaticamente enquanto você navega. Ele lê japonês, inglês, chinês simplificado e tradicional (com detecção automática) e traduz para 114 idiomas. Abra uma página e a versão traduzida substitui a imagem original no lugar — balões de fala preenchidos com o seu idioma.
 
-Este projeto foi inspirado por [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate).
+### 📸 Antes e depois
 
-## Download (sem precisar compilar)
+| Antes (japonês) | Depois (português) |
+| --- | --- |
+| ![Página de mangá original em japonês](docs/images/wikipe-tan-original.jpg) | ![Traduzida para o português](docs/images/wikipe-tan-pt.jpg) |
 
-**Chrome / Edge / Brave — instale pela Chrome Web Store:**
+<details>
+<summary>Ver traduções em mais 14 idiomas</summary>
 
-[**Instalar comic-translate-4-free pela Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj)
+| hindi | coreano | chinês simplificado |
+| --- | --- | --- |
+| ![Hindi](docs/images/wikipe-tan-hi.jpg) | ![Korean](docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](docs/images/wikipe-tan-zh-CN.jpg) |
 
-Ou baixe a versão mais recente na página
-[**Releases**](https://github.com/jameslee0623/comic-translate-4-free/releases)
-— cada release é compilada automaticamente pelo CI. Baixe o zip do seu
-navegador:
+| chinês tradicional | espanhol | árabe |
+| --- | --- | --- |
+| ![Traditional Chinese](docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](docs/images/wikipe-tan-es.jpg) | ![Arabic](docs/images/wikipe-tan-ar.jpg) |
 
-- `comic-translate-4-free-v<version>-<build>-chrome.zip` → Chrome / Edge / Brave
-- `comic-translate-4-free-v<version>-<build>-firefox.zip` → Firefox
+| francês | bengali | português |
+| --- | --- | --- |
+| ![French](docs/images/wikipe-tan-fr.jpg) | ![Bengali](docs/images/wikipe-tan-bn.jpg) | ![Portuguese](docs/images/wikipe-tan-pt.jpg) |
 
-(Também há um `comic-translate-4-free-v<version>-<build>.zip` combinado,
-com `chrome/` e `firefox/` lado a lado, caso queira os dois de uma vez.)
-Você nunca precisa clonar o repositório nem rodar o `build.sh`.
+| russo | vietnamita | indonésio |
+| --- | --- | --- |
+| ![Russian](docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](docs/images/wikipe-tan-vi.jpg) | ![Indonesian](docs/images/wikipe-tan-id.jpg) |
 
-## Instalação
+| urdu | alemão |
+| --- | --- |
+| ![Urdu](docs/images/wikipe-tan-ur.jpg) | ![German](docs/images/wikipe-tan-de.jpg) |
 
-**Chrome (recomendado):** instale pela
-[**Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj)
-— um clique, com atualizações automáticas.
+</details>
 
-**Instalação manual (Chrome):** baixe o zip da página Releases acima e descompacte,
-depois acesse `chrome://extensions` → ative o **Modo do desenvolvedor** →
-**Carregar sem compactação** → selecione a pasta descompactada.
+*Imagem original: [Wikipedia](https://en.wikipedia.org/wiki/Manga) via Wikimedia Commons.*
 
-**Firefox:** acesse `about:debugging#/runtime/this-firefox` → **Carregar
-complemento temporário** → abra a pasta descompactada e escolha o `manifest.json`.
-(Complementos temporários funcionam até o Firefox ser reiniciado. Para uma instalação
-permanente, a build precisa ser assinada em addons.mozilla.org. Estamos trabalhando
-em uma extensão assinada para o Firefox padrão.)
+---
 
-Depois baixe os modelos uma vez pela página de Configurações — um botão
-**Baixar todos os modelos** baixa tudo (detector, modelos de OCR,
-inpainter, ~350 MB no total). Eles ficam em cache no navegador (IndexedDB) e nunca
-são baixados de novo. O tamanho em bytes de cada arquivo é verificado após o download; um
-arquivo truncado ou errado é sinalizado com ⚠ e pode ser baixado novamente.
+## ✨ Recursos
 
-![Baixando os modelos pela página de Configurações](docs/images/options-models.png)
+- **Tradução automática** — abra uma página de mangá em um site permitido e a versão traduzida aparece no lugar, sem precisar clicar em botão.
+- **Clique com o botão direito em qualquer imagem** — escolha "Send to comic-translate-4-free" para traduzir uma imagem específica, mesmo menor que o tamanho mínimo.
+- **114 idiomas de destino** via Google Tradutor, Azure Translator ou seu próprio servidor LM Studio local.
+- **Detecção automática do idioma de origem** — japonês, inglês, chinês simplificado/tradicional identificados automaticamente a partir do texto reconhecido pelo OCR.
+- **Suporte a páginas longas / webtoon** — páginas altas são processadas em segmentos sobrepostos para manter o texto nítido.
+- **16 idiomas na interface** — a interface da extensão acompanha o idioma do seu navegador.
 
-## Uso
+### 🔒 Privacidade
 
-1. **Permita o site primeiro** — a tradução só funciona em sites que você
-   permitir explicitamente. Clique no ícone da extensão e pressione **Permitir
-   este site** (ou adicione hostnames nas Configurações, ou ative **PERMITIR
-   TODOS OS SITES** para pular esta etapa em todos os lugares). Esta é uma
-   trava rígida: o pipeline se recusa a rodar em qualquer outro lugar.
+- **A IA roda na sua máquina.** Detecção de balões, OCR e inpainting executam localmente no seu navegador via WebAssembly. Suas páginas nunca saem do seu dispositivo.
+- **Só o texto traduzido é enviado** — apenas as strings extraídas vão para o serviço de tradução que você escolher (Google / Azure / seu LM Studio local).
+- **Sem conta, sem rastreamento, sem telemetria.** Todas as configurações e modelos baixados ficam no armazenamento local do seu navegador.
 
-   ![O popup da extensão](docs/images/popup.png)
+---
 
-2. Abra uma página de mangá em um site permitido — ela começa a ser traduzida
-   automaticamente assim que termina de carregar, sem precisar clicar em nada
-   (pode ser desligado nas Configurações em "Traduzir automaticamente ao carregar
-   a página"). No primeiro uso em cada site, o Chrome pede uma permissão única
-   para que a extensão possa baixar a imagem da página em resolução máxima.
-3. Uma pílula de status no canto superior direito da página mostra o progresso
-   ao vivo (Capturando → Detectando → OCR → …). Ao terminar, a imagem da página
-   é substituída no lugar pela versão traduzida — texto original removido com
-   inpainting, tradução renderizada de volta nos balões.
+## 🚀 Instalação
 
-Para traduzir uma imagem específica em vez da imagem principal da página,
-clique com o botão direito nela e escolha **Send to comic-translate-4-free**.
-Isso envia exatamente aquela imagem pelo pipeline — mesmo quando ela for menor
-que o tamanho mínimo de imagem — e ainda a substitui no lugar. O item de menu
-só aparece em sites que você permitiu.
+**Chrome / Edge / Brave:**
 
-Se o servidor da imagem recusar o download (HTTP 403, ex. proteção antibot
-Cloudflare), a extensão abre automaticamente a imagem em uma aba em segundo
-plano — lá ela é same-origin, então a imagem é lida diretamente sem download —
-traduz, fecha a aba e substitui a imagem na sua página no lugar.
+[**Instalar da Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — um clique, atualizações automáticas.
 
-   ![O menu de botão direito](docs/images/right-click.png)
+**Firefox:** baixe o zip do Firefox em [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases), depois vá para `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → escolha `manifest.json`. (Complementos temporários são descarregados ao reiniciar; uma listagem assinada na AMO está em andamento.)
 
-A entrada do pipeline é a maior imagem da página, limitada pela configuração de
-tamanho mínimo de imagem (padrão 500px): imagens menores são ignoradas com um
-erro claro. A extensão lê a imagem da própria página diretamente — ela nunca
-tira screenshot da página.
+Após instalar, abra a página de Configurações e clique em **Download all models** uma vez (~350 MB: detector, OCR, inpainter). Eles ficam em cache no navegador e são verificados pelo tamanho em bytes.
 
-**Cache de páginas:** páginas que você revisita na mesma sessão do navegador
-carregam instantaneamente de um cache temporário em disco (traduzir 10~40 imagens
-em uma sessão pode travar o navegador e fazer perder todas as imagens do cache.
-Lembre-se de limpar o cache manualmente). O cache é apagado automaticamente
-quando o navegador fecha e nunca é usado em janelas anônimas.
+![Baixando os modelos na página de Configurações](docs/images/options-models.png)
 
-**Configurações** (clique no ícone → Configurações): acesso a sites, tradução
-automática ao carregar a página, idioma de origem (incluindo **Detecção
-automática**, que identifica japonês / inglês / chinês simplificado /
-tradicional a partir do texto do OCR) e idioma de destino, mecanismo de tradução
-(Google grátis / Azure Translator / LM Studio), botões de teste de conexão para
-Azure e LM Studio, limite de detecção, tamanho mínimo de imagem (padrão 500px —
-capturas menores são ignoradas), tamanhos de fonte, modo de depuração e os
-controles do cache de páginas traduzidas.
+---
 
-![Página de configurações](docs/images/options.png)
+## 💡 Como usar
 
-## Apoie este projeto
+1. **Permita o site primeiro** — clique no ícone da extensão e pressione **Allow this site** (ou ative **ALLOW ALL SITES**). A tradução só roda onde você concedeu permissão.
 
-Se esta extensão for útil para você, considere apoiar seu desenvolvimento:
+   ![Permitindo o site pelo popup](docs/images/popup.png)
+
+2. **Recarregue a página do mangá** — ela começa a traduzir automaticamente ao carregar. Uma pílula no canto superior direito mostra o progresso ao vivo (Capturando → Detectando → OCR → …).
+3. **Pronto** — a imagem da página é substituída no lugar pela versão traduzida.
+
+**Dicas:**
+- Clique com o botão direito em qualquer imagem → **Send to comic-translate-4-free** para traduzir só aquela imagem.
+
+  ![Clique com o botão direito para enviar uma imagem](docs/images/right-click.png)
+
+- Se um site bloquear downloads (HTTP 403), a extensão tenta de novo automaticamente via uma aba em segundo plano.
+- Escolha seu mecanismo de tradução nas Configurações: Google (grátis, sem chave), Azure Translator (peça as chaves abaixo — 2 milhões de caracteres/mês grátis) ou LM Studio (servidor local).
+- Ative **Debug mode** nas Configurações para inspecionar cada etapa do pipeline.
+
+---
+
+## 🔑 Como criar uma conta Microsoft Azure
+
+Para usar o Azure Translator como mecanismo de tradução:
+
+1. Crie uma conta Microsoft/hotmail/Azure ou entre nela
+2. Crie uma assinatura Azure
+3. Crie um recurso do Azure Translator
+4. Selecione o plano F0 (Gratuito) — 2 milhões de caracteres/mês, não expira
+5. Gerenciamento de recursos → Chaves e Ponto de Extremidade → copie **KEY 1** e **Location/Region**
+6. Cole-os na página de Configurações da extensão
+
+---
+
+## ❤️ Apoie este projeto
+
+Se esta extensão for útil para você, considere apoiar o desenvolvimento dela:
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/S5X627XJQW)
 
-### Solicitar uma conta Microsoft Azure
+---
 
-1. Crie/entre em uma conta Microsoft/hotmail/Azure
-2. Crie uma assinatura do Azure
-3. Crie um recurso do Azure Translator
-4. Selecione o plano de preços F0 (gratuito)
-5. Gerenciamento de recursos → Chaves e Ponto de Extremidade → copie a **KEY 1** e o **Local/Região**
+## ⚠️ Problemas conhecidos
 
-A Microsoft informa atualmente que o nível gratuito F0 do Translator é de 2 milhões de caracteres/mês e não expira.
+- **Sem OCR de coreano ainda** — os idiomas de origem são japonês, inglês e chinês simplificado/tradicional. (O coreano continua disponível como idioma de destino.)
+- **Uma imagem por página** na tradução automática (a imagem principal da página). Use o botão direito → Enviar para traduzir as outras.
+- **Sessões grandes** — traduzir dezenas de imagens em uma sessão pode travar o navegador. Limpe o cache de páginas nas Configurações se isso acontecer.
+- **Firefox** — os modelos rodam na página de segundo plano (sem offscreen documents), dividindo memória com todo o resto. Reinicie o navegador se vir "no available backend found".
+- O Google Tradutor usa o endpoint gratuito não oficial e pode sofrer limitação de taxa.
 
-### LM Studio
+---
 
-Rode o LM Studio com o servidor local ativado (padrão
-`http://127.0.0.1:1234`). Selecione **LM Studio (servidor local)** como
-mecanismo de tradução nas Configurações, defina a URL do servidor e o tipo de
-API — **API REST v1 do LM Studio** (posta em `/api/v1/chat`) ou
-**Compatível com OpenAI** (posta em `/v1/chat/completions`) — e pressione
-**Testar conexão do LM Studio** para verificar. O modelo carregado é detectado
-automaticamente e lembrado, então não há campo de nome de modelo para preencher.
+## 📄 Avisos de terceiros
 
-## Compilar do código-fonte
+Este projeto foi inspirado em [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) — o detector de balões/texto e o inpainter LaMa ajustado para mangás são suas exportações ONNX, e a lógica de inferência foi portada dele. (O OCR usa [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) de genshiai-daichi.)
 
-Sem bundler, sem npm install — o código-fonte é a extensão. Requisitos:
-`bash`, `python3`, `rsync`, `zip` e `node` (usado apenas para verificação de sintaxe).
+As bibliotecas incluídas, o código portado e os modelos baixados em tempo de execução estão listados com suas licenças em [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
-```bash
-git clone https://github.com/jameslee0623/comic-translate-4-free.git
-cd comic-translate-4-free
-./build.sh
-```
-
-Isso gera três zips em `dist/` (mais uma cópia do zip combinado por
-conveniência):
-
-- `comic-translate-4-free-v<version>-<build>.zip` — combinado, `chrome/` e
-  `firefox/` lado a lado, pronto para carregar sem compactação (Chrome) ou como
-  complemento temporário (Firefox) conforme "Instalação" acima
-- `comic-translate-4-free-v<version>-<build>-chrome.zip` — só a build do Chrome,
-  no layout de submissão para a loja
-- `comic-translate-4-free-v<version>-<build>-firefox.zip` — só a build do Firefox,
-  no layout de submissão para a loja
-
-O carimbo `<build>` vem da constante `BUILD` em `src/shared/version.js`
-(exibida nos rodapés do popup e da página de configurações, embutida na chave
-do cache de páginas). Incremente-o antes de compilar se quiser um carimbo único
-no nome do arquivo e no rodapé da interface — caso contrário sua build será
-indistinguível da release oficial com o mesmo carimbo.
-
-Por página a extensão envia uma única requisição em lote:
-
-```
-POST {server}/chat/completions
-{
-  "messages": [
-    { "role": "user",
-      "content": "Translate the following 9 text(s) from Japanese to Chinese (Traditional):\n[\"…\",\"…\"]" }
-  ],
-  "temperature": 0,
-  "texts": ["…", "…"],
-  "target": "zh-TW",
-  "source": "ja"
-}
-```
-
-Espera-se que o modelo responda com um array JSON de strings traduzidas —
-uma por texto de entrada, na mesma ordem. Um `[...]` puro dentro de uma resposta
-mais longa é aceito; uma tradução por linha é o fallback de último recurso.
-
-## Modo de depuração
-
-Ative o **Modo de depuração** nas Configurações e a saída de cada etapa do
-pipeline aparece em um inspetor em painel lateral: imagem capturada, caixas de
-detecção, blocos de texto, recortes de OCR + leituras, máscara de inpainting,
-página com inpainting e traduções.
-
-## Arquitetura
-
-```
-popup / configurações (src/ui)
-      │ mensagens chrome.runtime
-      ▼
-background — orquestração, captura, blocos, máscara, APIs de tradução,
-             emissão de debug
-  ├─ Chrome: service worker + documento offscreen (src/offscreen) hospedando
-  │  TODAS as sessões onnxruntime-web (os downloads rodam lá para que um fetch
-  │  de 197 MB sobreviva ao desligamento do SW)
-  └─ Firefox: página de background (src/background/background.html) hospedando as
-     mesmas sessões in-process (o Firefox não tem documentos offscreen)
-└── content script (src/content) — canvas de overlay + renderizador de texto + painel de debug
-```
-
-Modelos (Hugging Face, baixados sob demanda):
-- `ogkalu/comic-text-and-bubble-detector` → `detector-v4-s_int8.onnx`
-- `genshiai-daichi/baberu-ocr` → `vision_int4.onnx`, `decoder_prefill_int8.onnx`,
-  `decoder_step_int8.onnx` (japonês, inglês, chinês simplificado/tradicional)
-- `ogkalu/lama-manga-onnx-dynamic` → `lama-manga-dynamic.onnx`
-
-Etapas do pipeline: captura → detecção → blocos → OCR → máscara → inpainting →
-tradução → renderização. A detecção roda em 640×640; a captura é escalada por área
-(orçamento de 6,5 MP) para que tiras longas mantenham resolução máxima, e páginas
-com proporção mais extrema que 4:1 são processadas em segmentos 2:1 sobrepostos.
-
-**Pipeline Chrome vs Firefox:** ambas as builds rodam a tradução em paralelo com
-máscara/inpainting após o OCR. O Chrome usa Promise.all — as sessões de ML ficam
-no documento offscreen em sua própria thread, então as etapas realmente se
-sobrepõem. O Firefox roda a tradução em um Web Worker (sua própria thread) enquanto
-máscara → inpainting roda na thread principal — o I/O de rede do worker não é
-bloqueado quando o inpainting WASM ocupa a thread principal.
-
-## Limitações conhecidas
-
-- Ainda não encontramos um bom OCR para coreano — os idiomas de origem se limitam a
-  japonês, inglês e chinês simplificado/tradicional.
-- A tradução automática processa uma única imagem por página (a imagem principal
-  da página). Para traduzir qualquer outra imagem da página, clique com o botão
-  direito nela e escolha **Send to comic-translate-4-free**.
-- Alguns hosts de imagem bloqueiam downloads automatizados (HTTP 403, ex. proteção
-  antibot Cloudflare) mesmo que a própria página carregue a imagem normalmente. O
-  **Send to comic-translate-4-free** do botão direito contorna isso via uma aba em
-  segundo plano; a tradução automática nesses sites pode falhar com erro 403.
-  Esse bloqueio pode ser intermitente.
-- Firefox: os modelos de IA rodam dentro da página de background do navegador (o
-  Firefox não tem documentos offscreen), compartilhando memória com todo o resto. Em
-  páginas muito grandes ou sessões longas, o mecanismo pode ficar sem memória e
-  reportar "no available backend found". Reiniciar o navegador libera memória; o
-  Chrome não é afetado, pois roda os modelos em um processo separado.
-- Chrome: traduzir dezenas de imagens em uma sessão pode travar o navegador
-  (observado por volta de 35 imagens em cache).
-- O cache de páginas tem escopo de sessão: ele é apagado quando o navegador inicia,
-  então após reiniciar (inclusive após um travamento) imagens reenviadas rodam o
-  pipeline completo de novo em vez de acertar o cache.
-- O mecanismo de tradução Google usa o endpoint não-oficial `translate.googleapis.com`
-  e pode sofrer rate-limit.
-- Texto vertical é renderizado para blocos CJK altos; SFX / texto fora dos balões
-  usa sua própria caixa de texto.
-
-## Avisos de terceiros
-
-Bibliotecas incluídas, código portado e modelos baixados em runtime estão listados
-com suas licenças em [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Licença MIT — veja [LICENSE](LICENSE).
