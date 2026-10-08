@@ -20,7 +20,7 @@ async function googleFree(texts, src, dst, signal) {
     for (;;) {
       const i = next++;
       if (i >= texts.length) return;
-      out[i] = await googleOne(texts[i], src, dst);
+      out[i] = await googleOne(texts[i], src, dst, signal);
       await sleep(120); // per-lane pacing, as before
     }
   }
@@ -30,7 +30,7 @@ async function googleFree(texts, src, dst, signal) {
   return out;
 }
 
-async function googleOne(t, src, dst) {
+async function googleOne(t, src, dst, signal) {
   const url = 'https://translate.googleapis.com/translate_a/single?client=gtx' +
     `&sl=${encodeURIComponent(src)}&tl=${encodeURIComponent(dst)}&dt=t&q=${encodeURIComponent(t)}`;
   // The gtx endpoint is unofficial and rate-limits aggressively (HTTP 500 /
@@ -42,6 +42,9 @@ async function googleOne(t, src, dst) {
     try {
       resp = await fetch(url, signal ? { signal } : undefined);
     } catch (e) {
+      // Cancelled: don't burn the retry backoff on an aborted request —
+      // surface the quiet 'cancelled' shape the pipeline expects.
+      if (signal && signal.aborted) throw Object.assign(new Error('cancelled'), { cancelled: true });
       lastErr = e;
       resp = null;
     }
@@ -212,7 +215,7 @@ async function lmStudio(texts, settings, signal) {
   const ep = lmStudioEndpoints(settings);
   const headers = { 'Content-Type': 'application/json' };
   if ((settings.lmStudioKey || '').trim()) headers['Authorization'] = 'Bearer ' + settings.lmStudioKey.trim();
-  if (ep.flavor === 'lmstudio-v1') return lmStudioV1(texts, settings, ep, headers);
+  if (ep.flavor === 'lmstudio-v1') return lmStudioV1(texts, settings, ep, headers, signal);
   const body = {
     messages: [{ role: 'user', content: lmStudioPrompt(texts, settings) }],
     temperature: 0,
