@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-**語言：** [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
+語言： [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md)
 
 直接在瀏覽器裡，用你的語言看漫畫。
 
@@ -43,30 +43,30 @@ comic-translate-4-free 會在你瀏覽時自動翻譯漫畫頁面。它可以讀
 
 ## ✨ 功能
 
-- **自動翻譯** —— 在已授權的網站上開啟漫畫頁面，翻譯版本自動原位出現，無需按任何按鈕。
-- **右鍵翻譯任意圖片** —— 選擇 "Send to comic-translate-4-free" 即可翻譯指定的圖片，即使小於最小尺寸也行。
-- **114 種目標語言** —— 透過 Google Translate、Azure Translator，或你自己的本機 LM Studio 伺服器。
-- **來源語言自動識別** —— 從 OCR 識別的文字中自動判斷日語、英語或簡體／繁體中文。
-- **支援長條／條漫** —— 又高又長的頁面會按重疊分段處理，文字保持清晰。
-- **16 種介面語言** —— 擴充功能介面會跟隨瀏覽器的語言設定。
+- 自動翻譯 —— 在已授權的網站上開啟漫畫頁面，翻譯版本自動原位出現，無需按任何按鈕。
+- 右鍵翻譯任意圖片 —— 選擇 "Send to comic-translate-4-free" 即可翻譯指定的圖片，即使小於最小尺寸也行。
+- 114 種目標語言 —— 透過 Google Translate、Azure Translator，或你自己的本機 LM Studio 伺服器。
+- 來源語言自動識別 —— 從 OCR 識別的文字中自動判斷日語、英語或簡體／繁體中文。
+- 支援長條／條漫 —— 又高又長的頁面會按重疊分段處理，文字保持清晰。
+- 16 種介面語言 —— 擴充功能介面會跟隨瀏覽器的語言設定。
 
 ### 🔒 隱私
 
-- **AI 在你的裝置上執行。**氣泡偵測、OCR 和圖像修補全部透過 WebAssembly 在瀏覽器本機執行。你的頁面從不離開你的裝置。
-- **只向外傳送待翻譯的文字** —— 只有提取出的字串會傳給你所選的翻譯服務（Google / Azure / 本機 LM Studio）。
-- **無帳號、無追蹤、無遙測。**所有設定與快取的模型都保存在瀏覽器的本機儲存空間。
+- AI 在你的裝置上執行。氣泡偵測、OCR 和圖像修補全部透過 WebAssembly 在瀏覽器本機執行。你的頁面從不離開你的裝置。
+- 只向外傳送待翻譯的文字 —— 只有提取出的字串會傳給你所選的翻譯服務（Google / Azure / 本機 LM Studio）。
+- 無帳號、無追蹤、無遙測。所有設定與快取的模型都保存在瀏覽器的本機儲存空間。
 
 ---
 
 ## 🚀 安裝
 
-**Chrome / Edge / Brave：**
+Chrome / Edge / Brave：
 
-[**從 Chrome 應用程式商店安裝**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) —— 一鍵安裝，自動更新。
+[從 Chrome 應用程式商店安裝](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) —— 一鍵安裝，自動更新。
 
-**Firefox：**從 [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) 下載 Firefox 版 zip 檔，然後開啟 `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → 選擇 `manifest.json`。（暫時性附加元件在重新啟動後會被卸載；正式的 AMO 上架正在進行中。）
+Firefox：從 [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) 下載 Firefox 版 zip 檔，然後開啟 `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → 選擇 `manifest.json`。（暫時性附加元件在重新啟動後會被卸載；正式的 AMO 上架正在進行中。）
 
-安裝完成後，開啟設定頁面，點擊一次 **Download all models**（約 350 MB：偵測器、OCR、修補器）。模型會快取在瀏覽器中，並依位元組大小驗證。
+安裝完成後，開啟設定頁面，點擊一次 Download all models（約 350 MB：偵測器、OCR、修補器）。模型會快取在瀏覽器中，並依位元組大小驗證。
 
 ![在設定頁面下載模型](docs/images/options-models.png)
 
@@ -74,21 +74,21 @@ comic-translate-4-free 會在你瀏覽時自動翻譯漫畫頁面。它可以讀
 
 ## 💡 使用方式
 
-1. **先授權網站** —— 點擊擴充功能圖示，按 **Allow this site**（或啟用 **ALLOW ALL SITES**）。翻譯只在你授權過的網站上執行。
+1. 先授權網站 —— 點擊擴充功能圖示，按 Allow this site（或啟用 ALLOW ALL SITES）。翻譯只在你授權過的網站上執行。
 
    ![在彈出視窗中授權網站](docs/images/popup.png)
 
-2. **重新載入漫畫頁面** —— 頁面載入時會自動開始翻譯。右上角的膠囊會顯示即時進度（Capturing → Detecting → OCR → …）。
-3. **完成** —— 頁面的圖片會被原位取代為翻譯後的版本。
+2. 重新載入漫畫頁面 —— 頁面載入時會自動開始翻譯。右上角的膠囊會顯示即時進度（Capturing → Detecting → OCR → …）。
+3. 完成 —— 頁面的圖片會被原位取代為翻譯後的版本。
 
-**小提示：**
-- 在任意圖片上按右鍵 → **Send to comic-translate-4-free**，只翻譯那一張圖。
+小提示：
+- 在任意圖片上按右鍵 → Send to comic-translate-4-free，只翻譯那一張圖。
 
   ![按右鍵傳送圖片](docs/images/right-click.png)
 
 - 如果網站封鎖下載（HTTP 403），擴充功能會自動透過背景分頁重試。
 - 在設定中選擇翻譯引擎：Google（免費，不需金鑰）、Azure Translator（依下方指引申請金鑰 —— 每月 200 萬字元免費），或 LM Studio（本機伺服器）。
-- 在設定中開啟 **Debug mode**，可檢視管線的每個階段。
+- 在設定中開啟 Debug mode，可檢視管線的每個階段。
 
 ---
 
@@ -100,7 +100,7 @@ comic-translate-4-free 會在你瀏覽時自動翻譯漫畫頁面。它可以讀
 2. 建立 Azure 訂閱
 3. 建立 Azure Translator 資源
 4. 選擇 F0（免費）定價層 —— 每月 200 萬字元，永久有效
-5. 資源管理 → 金鑰和端點 → 複製 **KEY 1** 和 **Location/Region**
+5. 資源管理 → 金鑰和端點 → 複製 KEY 1 和 Location/Region
 6. 貼到擴充功能的設定頁面
 
 ---
@@ -115,10 +115,10 @@ comic-translate-4-free 會在你瀏覽時自動翻譯漫畫頁面。它可以讀
 
 ## ⚠️ 已知問題
 
-- **暫不支援韓語 OCR** —— 來源語言為日語、英語和簡體／繁體中文。（韓語仍可作為翻譯目標語言。）
-- **自動翻譯每次只處理一張圖片**（頁面的主圖）。右鍵 → 傳送可翻譯其他圖片。
-- **大量翻譯** —— 一次翻譯幾十張圖片可能導致瀏覽器當機。若發生此情形，請在設定中清除頁面快取。
-- **Firefox** —— 模型在背景頁面中執行（沒有 offscreen 文件），與其他內容共用記憶體。如果看到 "no available backend found"，請重新啟動瀏覽器。
+- 暫不支援韓語 OCR —— 來源語言為日語、英語和簡體／繁體中文。（韓語仍可作為翻譯目標語言。）
+- 自動翻譯每次只處理一張圖片（頁面的主圖）。右鍵 → 傳送可翻譯其他圖片。
+- 大量翻譯 —— 一次翻譯幾十張圖片可能導致瀏覽器當機。若發生此情形，請在設定中清除頁面快取。
+- Firefox —— 模型在背景頁面中執行（沒有 offscreen 文件），與其他內容共用記憶體。如果看到 "no available backend found"，請重新啟動瀏覽器。
 - Google 翻譯使用非官方免費端點，可能會被限流。
 
 ---
