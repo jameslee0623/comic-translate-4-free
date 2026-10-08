@@ -66,7 +66,7 @@ comic-translate-4-free übersetzt Manga- und Comicseiten beim Surfen automatisch
 
 **Firefox:** Laden Sie die Firefox-ZIP-Datei unter [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) herunter, gehen Sie dann zu `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → wählen Sie `manifest.json`. (Temporäre Add-ons werden beim Neustart entladen; ein signiertes AMO-Listing ist in Arbeit.)
 
-Öffnen Sie nach der Installation die Einstellungsseite und klicken Sie einmal auf **Download all models** (~350 MB: Detektor, OCR, Inpainter). Sie werden im Browser zwischengespeichert und anhand der Byte-Größe verifiziert.
+Öffnen Sie nach der Installation die Einstellungsseite und klicken Sie einmal auf **Alle Modelle herunterladen** (~350 MB: Detektor, OCR, Inpainter). Sie werden im Browser zwischengespeichert und anhand der Byte-Größe verifiziert.
 
 ![Die Modelle von der Einstellungsseite herunterladen](docs/images/options-models.png)
 
@@ -74,7 +74,7 @@ comic-translate-4-free übersetzt Manga- und Comicseiten beim Surfen automatisch
 
 ## 💡 Verwendung
 
-1. **Zuerst die Website freigeben** — klicken Sie auf das Erweiterungssymbol und drücken Sie **Allow this site** (oder aktivieren Sie **ALLOW ALL SITES**). Die Übersetzung läuft nur dort, wo Sie die Berechtigung erteilt haben.
+1. **Zuerst die Website freigeben** — klicken Sie auf das Erweiterungssymbol und drücken Sie **Diese Website zulassen** (oder aktivieren Sie **Alle Websites zulassen**). Die Übersetzung läuft nur dort, wo Sie die Berechtigung erteilt haben.
 
    ![Die Website über das Popup freigeben](docs/images/popup.png)
 
@@ -82,13 +82,13 @@ comic-translate-4-free übersetzt Manga- und Comicseiten beim Surfen automatisch
 3. **Fertig** — das Bild der Seite wird direkt durch die übersetzte Version ersetzt.
 
 **Tipps:**
-- Rechtsklick auf ein beliebiges Bild → **Send to comic-translate-4-free**, um nur dieses Bild zu übersetzen.
+- Rechtsklick auf ein beliebiges Bild → **An comic-translate-4-free senden**, um nur dieses Bild zu übersetzen.
 
   ![Rechtsklick, um ein Bild zu senden](docs/images/right-click.png)
 
 - Blockiert eine Website Downloads (HTTP 403), versucht es die Erweiterung automatisch über einen Hintergrund-Tab erneut.
 - Wählen Sie Ihre Übersetzungs-Engine in den Einstellungen: Google (kostenlos, kein Schlüssel), Azure Translator (Schlüssel unten beantragen — 2 Mio. Zeichen/Monat kostenlos) oder LM Studio (lokaler Server).
-- Aktivieren Sie den **Debug mode** in den Einstellungen, um jede Pipeline-Stufe zu prüfen.
+- Aktivieren Sie den **Debug-Modus** in den Einstellungen, um jede Pipeline-Stufe zu prüfen.
 
 ---
 

@@ -66,7 +66,7 @@ comic-translate-4-free menerjemahkan halaman manga dan komik secara otomatis saa
 
 **Firefox:** unduh zip Firefox dari [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases), lalu buka `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → pilih `manifest.json`. (Add-on sementara akan dilepas saat restart; listing AMO yang ditandatangani sedang dalam proses.)
 
-Setelah menginstal, buka halaman Settings dan klik **Download all models** sekali (~350 MB: detektor, OCR, inpainter). Semuanya di-cache di browser dan diverifikasi berdasarkan ukuran byte.
+Setelah menginstal, buka halaman Settings dan klik **Unduh semua model** sekali (~350 MB: detektor, OCR, inpainter). Semuanya di-cache di browser dan diverifikasi berdasarkan ukuran byte.
 
 ![Downloading the models from the Settings page](docs/images/options-models.png)
 
@@ -74,7 +74,7 @@ Setelah menginstal, buka halaman Settings dan klik **Download all models** sekal
 
 ## 💡 Cara Menggunakan
 
-1. **Izinkan situsnya terlebih dahulu** — klik ikon ekstensi dan tekan **Allow this site** (atau aktifkan **ALLOW ALL SITES**). Terjemahan hanya berjalan di tempat Anda memberikan izin.
+1. **Izinkan situsnya terlebih dahulu** — klik ikon ekstensi dan tekan **Izinkan situs ini** (atau aktifkan **Izinkan semua situs**). Terjemahan hanya berjalan di tempat Anda memberikan izin.
 
    ![Allow the site from the popup](docs/images/popup.png)
 
@@ -82,13 +82,13 @@ Setelah menginstal, buka halaman Settings dan klik **Download all models** sekal
 3. **Selesai** — gambar halaman digantikan di tempatnya dengan versi terjemahan.
 
 **Tips:**
-- Klik kanan pada gambar apa pun → **Send to comic-translate-4-free** untuk menerjemahkan hanya gambar tersebut.
+- Klik kanan pada gambar apa pun → **Kirim ke comic-translate-4-free** untuk menerjemahkan hanya gambar tersebut.
 
   ![Right-click to send an image](docs/images/right-click.png)
 
 - Jika situs memblokir unduhan (HTTP 403), ekstensi otomatis mencoba ulang melalui tab latar belakang.
 - Pilih mesin terjemahan di Settings: Google (gratis, tanpa key), Azure Translator (ajukan key di bawah — 2 juta karakter/bulan gratis), atau LM Studio (server lokal).
-- Aktifkan **Debug mode** di Settings untuk memeriksa setiap tahap pipeline.
+- Aktifkan **Mode debug** di Settings untuk memeriksa setiap tahap pipeline.
 
 ---
 

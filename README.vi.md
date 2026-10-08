@@ -66,7 +66,7 @@ comic-translate-4-free dịch các trang manga và truyện tranh tự động k
 
 **Firefox:** tải tệp zip Firefox từ [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases), sau đó vào `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → chọn `manifest.json`. (Tiện ích tạm thời sẽ bị gỡ khi khởi động lại; danh sách AMO đã ký đang được tiến hành.)
 
-Sau khi cài đặt, mở trang Cài đặt và bấm **Download all models** một lần (~350 MB: bộ nhận diện, OCR, bộ inpainting). Chúng được lưu trong bộ nhớ đệm của trình duyệt và kiểm chứng theo kích thước byte.
+Sau khi cài đặt, mở trang Cài đặt và bấm **Tải xuống tất cả mô hình** một lần (~350 MB: bộ nhận diện, OCR, bộ inpainting). Chúng được lưu trong bộ nhớ đệm của trình duyệt và kiểm chứng theo kích thước byte.
 
 ![Tải các mô hình từ trang Cài đặt](docs/images/options-models.png)
 
@@ -74,7 +74,7 @@ Sau khi cài đặt, mở trang Cài đặt và bấm **Download all models** m�
 
 ## 💡 Cách sử dụng
 
-1. **Cấp quyền cho trang web trước** — nhấp vào biểu tượng tiện ích và bấm **Allow this site** (hoặc bật **ALLOW ALL SITES**). Tiện ích chỉ dịch trên các trang bạn đã cấp quyền.
+1. **Cấp quyền cho trang web trước** — nhấp vào biểu tượng tiện ích và bấm **Cho phép trang này** (hoặc bật **Cho phép mọi trang web**). Tiện ích chỉ dịch trên các trang bạn đã cấp quyền.
 
    ![Cấp quyền cho trang web từ cửa sổ bật lên](docs/images/popup.png)
 
@@ -82,13 +82,13 @@ Sau khi cài đặt, mở trang Cài đặt và bấm **Download all models** m�
 3. **Xong** — ảnh trên trang được thay thế ngay tại chỗ bằng bản dịch.
 
 **Mẹo:**
-- Nhấp chuột phải vào bất kỳ ảnh nào → **Send to comic-translate-4-free** để chỉ dịch ảnh đó.
+- Nhấp chuột phải vào bất kỳ ảnh nào → **Gửi đến comic-translate-4-free** để chỉ dịch ảnh đó.
 
   ![Nhấp chuột phải để gửi một ảnh](docs/images/right-click.png)
 
 - Nếu trang web chặn tải xuống (HTTP 403), tiện ích sẽ tự động thử lại qua một tab nền.
 - Chọn công cụ dịch trong Cài đặt: Google (miễn phí, không cần key), Azure Translator (đăng ký key bên dưới — miễn phí 2 triệu ký tự/tháng), hoặc LM Studio (máy chủ cục bộ).
-- Bật **Debug mode** trong Cài đặt để kiểm tra từng giai đoạn của quy trình.
+- Bật **Chế độ gỡ lỗi** trong Cài đặt để kiểm tra từng giai đoạn của quy trình.
 
 ---
 

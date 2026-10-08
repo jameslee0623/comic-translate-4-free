@@ -66,7 +66,7 @@ comic-translate-4-free는 웹 서핑 중 만화와 코믹 페이지를 자동으
 
 **Firefox:** [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases)에서 Firefox용 zip을 다운로드한 뒤, `about:debugging#/runtime/this-firefox`로 이동해 **Load Temporary Add-on** → `manifest.json`을 선택하세요. (임시 부가 기능은 브라우저를 다시 시작하면 사라집니다. 서명된 AMO 등록을 준비 중입니다.)
 
-설치 후 설정 페이지를 열고 **Download all models**를 한 번 클릭하세요(약 350MB: 감지 모델, OCR, 인페인팅 모델). 모델은 브라우저에 캐시되며 바이트 크기로 검증됩니다.
+설치 후 설정 페이지를 열고 **모든 모델 다운로드**를 한 번 클릭하세요(약 350MB: 감지 모델, OCR, 인페인팅 모델). 모델은 브라우저에 캐시되며 바이트 크기로 검증됩니다.
 
 ![설정 페이지에서 모델 다운로드](docs/images/options-models.png)
 
@@ -74,7 +74,7 @@ comic-translate-4-free는 웹 서핑 중 만화와 코믹 페이지를 자동으
 
 ## 💡 사용 방법
 
-1. **먼저 사이트를 허용하세요** — 확장 프로그램 아이콘을 클릭하고 **Allow this site**를 누르세요(**ALLOW ALL SITES** 활성화도 가능). 허가한 사이트에서만 번역이 실행됩니다.
+1. **먼저 사이트를 허용하세요** — 확장 프로그램 아이콘을 클릭하고 **이 사이트 허용**를 누르세요(**모든 사이트 허용** 활성화도 가능). 허가한 사이트에서만 번역이 실행됩니다.
 
    ![팝업에서 사이트 허용](docs/images/popup.png)
 
@@ -82,13 +82,13 @@ comic-translate-4-free는 웹 서핑 중 만화와 코믹 페이지를 자동으
 3. **완료** — 페이지의 이미지가 그 자리에서 번역된 버전으로 교체됩니다.
 
 **팁:**
-- 아무 이미지나 우클릭 → **Send to comic-translate-4-free**를 선택하면 해당 이미지만 번역할 수 있습니다.
+- 아무 이미지나 우클릭 → **comic-translate-4-free로 보내기**를 선택하면 해당 이미지만 번역할 수 있습니다.
 
   ![이미지 우클릭으로 전송](docs/images/right-click.png)
 
 - 사이트에서 다운로드를 차단하는 경우(HTTP 403), 확장 프로그램이 백그라운드 탭을 통해 자동으로 다시 시도합니다.
 - 설정에서 번역 엔진을 선택할 수 있습니다: Google(무료, 키 불필요), Azure Translator(아래에서 키 신청 — 월 200만 자 무료), LM Studio(로컬 서버).
-- 설정에서 **Debug mode**를 켜면 파이프라인의 모든 단계를 확인할 수 있습니다.
+- 설정에서 **디버그 모드**를 켜면 파이프라인의 모든 단계를 확인할 수 있습니다.
 
 ---
 

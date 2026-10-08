@@ -66,7 +66,7 @@ comic-translate-4-free traduce páginas de manga y cómics automáticamente mien
 
 **Firefox:** descarga el zip de Firefox desde [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) y luego ve a `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → elige `manifest.json`. (Los complementos temporales se descargan al reiniciar; la publicación firmada en AMO está en curso.)
 
-Después de instalar, abre la página de ajustes y haz clic en **Download all models** una vez (~350 MB: detector, OCR, inpainter). Quedan en caché en el navegador y se verifican por tamaño en bytes.
+Después de instalar, abre la página de ajustes y haz clic en **Descargar todos los modelos** una vez (~350 MB: detector, OCR, inpainter). Quedan en caché en el navegador y se verifican por tamaño en bytes.
 
 ![Descargando los modelos desde la página de ajustes](docs/images/options-models.png)
 
@@ -74,7 +74,7 @@ Después de instalar, abre la página de ajustes y haz clic en **Download all mo
 
 ## 💡 Cómo usarla
 
-1. **Permite el sitio primero** — haz clic en el icono de la extensión y pulsa **Allow this site** (o activa **ALLOW ALL SITES**). La traducción solo se ejecuta donde hayas otorgado permiso.
+1. **Permite el sitio primero** — haz clic en el icono de la extensión y pulsa **Permitir este sitio** (o activa **Permitir todos los sitios**). La traducción solo se ejecuta donde hayas otorgado permiso.
 
    ![Permitir el sitio desde la ventana emergente](docs/images/popup.png)
 
@@ -82,13 +82,13 @@ Después de instalar, abre la página de ajustes y haz clic en **Download all mo
 3. **Listo** — la imagen de la página se reemplaza en su lugar con la versión traducida.
 
 **Consejos:**
-- Clic derecho en cualquier imagen → **Send to comic-translate-4-free** para traducir solo esa imagen.
+- Clic derecho en cualquier imagen → **Enviar a comic-translate-4-free** para traducir solo esa imagen.
 
   ![Clic derecho para enviar una imagen](docs/images/right-click.png)
 
 - Si un sitio bloquea las descargas (HTTP 403), la extensión reintenta automáticamente a través de una pestaña en segundo plano.
 - Elige tu motor de traducción en los ajustes: Google (gratis, sin clave), Azure Translator (solicita las claves abajo — 2 millones de caracteres/mes gratis) o LM Studio (servidor local).
-- Activa el **Debug mode** en los ajustes para inspeccionar cada etapa del proceso.
+- Activa el **Modo de depuración** en los ajustes para inspeccionar cada etapa del proceso.
 
 ---
 

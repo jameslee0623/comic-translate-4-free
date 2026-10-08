@@ -66,7 +66,7 @@ comic-translate-4-free traduit automatiquement les pages de mangas et de bandes 
 
 **Firefox :** téléchargez le zip Firefox depuis [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases), puis rendez-vous sur `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → choisissez `manifest.json`. (Les extensions temporaires sont déchargées au redémarrage ; un module signé sur AMO est en cours de validation.)
 
-Après l'installation, ouvrez la page des réglages et cliquez une fois sur **Download all models** (~350 Mo : détecteur, OCR, inpainter). Ils sont mis en cache dans le navigateur et vérifiés par taille d'octets.
+Après l'installation, ouvrez la page des réglages et cliquez une fois sur **Télécharger tous les modèles** (~350 Mo : détecteur, OCR, inpainter). Ils sont mis en cache dans le navigateur et vérifiés par taille d'octets.
 
 ![Téléchargement des modèles depuis la page des réglages](docs/images/options-models.png)
 
@@ -74,7 +74,7 @@ Après l'installation, ouvrez la page des réglages et cliquez une fois sur **Do
 
 ## 💡 Mode d'emploi
 
-1. **Autorisez d'abord le site** — cliquez sur l'icône de l'extension et appuyez sur **Allow this site** (ou activez **ALLOW ALL SITES**). La traduction ne s'exécute que là où vous avez accordé l'autorisation.
+1. **Autorisez d'abord le site** — cliquez sur l'icône de l'extension et appuyez sur **Autoriser ce site** (ou activez **Autoriser tous les sites**). La traduction ne s'exécute que là où vous avez accordé l'autorisation.
 
    ![Autoriser le site depuis la fenêtre popup](docs/images/popup.png)
 
@@ -82,13 +82,13 @@ Après l'installation, ouvrez la page des réglages et cliquez une fois sur **Do
 3. **C'est fait** — l'image de la page est remplacée en place par la version traduite.
 
 **Astuces :**
-- Clic droit sur n'importe quelle image → **Send to comic-translate-4-free** pour ne traduire que cette image.
+- Clic droit sur n'importe quelle image → **Envoyer vers comic-translate-4-free** pour ne traduire que cette image.
 
   ![Clic droit pour envoyer une image](docs/images/right-click.png)
 
 - Si un site bloque les téléchargements (HTTP 403), l'extension réessaie automatiquement via un onglet d'arrière-plan.
 - Choisissez votre moteur de traduction dans les réglages : Google (gratuit, sans clé), Azure Translator (demandez vos clés ci-dessous — 2 millions de caractères/mois gratuits) ou LM Studio (serveur local).
-- Activez **Debug mode** dans les réglages pour inspecter chaque étape du pipeline.
+- Activez **Mode débogage** dans les réglages pour inspecter chaque étape du pipeline.
 
 ---
 

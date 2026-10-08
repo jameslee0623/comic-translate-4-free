@@ -44,7 +44,7 @@ comic-translate-4-free 会在你浏览时自动翻译漫画页面。它可以读
 ## ✨ 功能
 
 - 自动翻译 —— 在已授权的网站上打开漫画页面，翻译版本自动原位出现，无需点击按钮。
-- 右键翻译任意图片 —— 选择 "Send to comic-translate-4-free" 即可翻译指定的图片，即使小于最小尺寸也行。
+- 右键翻译任意图片 —— 选择 "发送到 comic-translate-4-free" 即可翻译指定的图片，即使小于最小尺寸也行。
 - 114 种目标语言 —— 通过 Google Translate、Azure Translator，或你自己的本地 LM Studio 服务器。
 - 源语言自动识别 —— 从 OCR 识别的文字中自动判断日语、英语或简体/繁体中文。
 - 支持长条/条漫 —— 高而长的页面按重叠分段处理，文字保持清晰。
@@ -66,7 +66,7 @@ Chrome / Edge / Brave：
 
 Firefox：从 [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) 下载 Firefox 版 zip 包，然后打开 `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → 选择 `manifest.json`。（临时附加组件在重启后会被卸载；正式的 AMO 上架正在进行中。）
 
-安装完成后，打开设置页面，点击一次 Download all models（约 350 MB：检测器、OCR、修复器）。模型会缓存在浏览器中，并按字节大小校验。
+安装完成后，打开设置页面，点击一次 下载所有模型（约 350 MB：检测器、OCR、修复器）。模型会缓存在浏览器中，并按字节大小校验。
 
 ![在设置页面下载模型](docs/images/options-models.png)
 
@@ -74,7 +74,7 @@ Firefox：从 [Releases](https://github.com/jameslee0623/comic-translate-4-free/
 
 ## 💡 使用方法
 
-1. 先授权站点 —— 点击扩展图标，按 Allow this site（或启用 ALLOW ALL SITES）。翻译只在你授权过的站点上运行。
+1. 先授权站点 —— 点击扩展图标，按 允许此网站（或启用 允许所有网站）。翻译只在你授权过的站点上运行。
 
    ![在弹窗中授权站点](docs/images/popup.png)
 
@@ -82,13 +82,13 @@ Firefox：从 [Releases](https://github.com/jameslee0623/comic-translate-4-free/
 3. 完成 —— 页面的图片会被原位替换为翻译后的版本。
 
 小贴士：
-- 右键点击任意图片 → Send to comic-translate-4-free，只翻译那一张图。
+- 右键点击任意图片 → 发送到 comic-translate-4-free，只翻译那一张图。
 
   ![右键发送图片](docs/images/right-click.png)
 
 - 如果站点禁止下载（HTTP 403），扩展会自动通过后台标签页重试。
 - 在设置中选择翻译引擎：Google（免费，无需密钥）、Azure Translator（按下方指引申请密钥 —— 每月 200 万字符免费），或 LM Studio（本地服务器）。
-- 在设置中开启 Debug mode，可查看流水线的每个阶段。
+- 在设置中开启 调试模式（阶段检查器），可查看流水线的每个阶段。
 
 ---
 
