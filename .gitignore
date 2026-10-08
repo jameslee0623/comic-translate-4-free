@@ -5,3 +5,4 @@ dist/
 # dependencies / OS
 node_modules/
 .DS_Store
+hidden-audit/pipeline-review-2026-10-08.md
