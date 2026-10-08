@@ -235,8 +235,13 @@ async function refreshSettings() {
   try {
     const has = await chrome.permissions.contains({ origins: ['<all_urls>'] });
     if (settings && !!settings.allowAllSites !== has) {
-      settings.allowAllSites = has;
-      await chrome.storage.local.set({ settings });
+      // Re-read before writing: the object captured above can go stale
+      // during the permissions.contains await (e.g. the first-run consume
+      // clearing firstRun in the meantime). Merge only the reconciled flag
+      // into fresh state so a stale write can't resurrect firstRun or
+      // clobber a concurrent change.
+      const { settings: fresh } = await chrome.storage.local.get('settings');
+      await chrome.storage.local.set({ settings: { ...(fresh || {}), allowAllSites: has } });
     }
   } catch { /* permissions API unavailable — leave storage alone */ }
   if (settings) {
