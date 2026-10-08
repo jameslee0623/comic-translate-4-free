@@ -275,9 +275,13 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   const grantable = !serverRefused && !!imgHost && !staleOriginal;
   // For auto-translate 403s (not manual sends — those trigger the automatic
   // background-tab fallback), lead with the bypass: right-click the picture
-  // and use "Send to comic-translate-4-free".
+  // and use "Send to comic-translate-4-free". Localized via i18n (the menu
+  // label itself is localized), with a blank line after the tip.
   const bypassTip = (serverRefused && !opts.srcUrl)
-    ? `Tip: right-click the picture and choose "Send to comic-translate-4-free" to bypass this block. `
+    ? (chrome.i18n.getMessage('err_bypass_tip',
+        [chrome.i18n.getMessage('ctx_send_image') || 'Send to comic-translate-4-free'])
+        || 'Tip: right-click the picture and choose "Send to comic-translate-4-free" to bypass this block.')
+      + '\n\n'
     : '';
   const err = new Error(
     bypassTip +

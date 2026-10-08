@@ -307,7 +307,7 @@
     pill.id = 'ct-pill';
     pill.style.cssText = 'position:fixed;right:16px;top:16px;z-index:2147483647;background:#1c1c22;color:#eee;' +
       'font:13px/1.4 sans-serif;padding:10px 14px;border-radius:10px;border:1px solid #444;' +
-      'box-shadow:0 4px 16px rgba(0,0,0,.5);display:none;max-width:340px;';
+      'box-shadow:0 4px 16px rgba(0,0,0,.5);display:none;max-width:340px;white-space:pre-wrap;';
     document.documentElement.appendChild(pill);
     return pill;
   }

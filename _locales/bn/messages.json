@@ -66,6 +66,16 @@
     "message": "Send to comic-translate-4-free",
     "description": "Context menu item on images: send this image to the translation pipeline"
   },
+  "err_bypass_tip": {
+    "message": "পরামর্শ: এই বাধা এড়াতে ছবিতে ডান-ক্লিক করুন এবং \"$1\" নির্বাচন করুন।",
+    "description": "Tip shown before a 403 download error: right-click the image to bypass the block. $1 = localized \"Send to comic-translate-4-free\" menu label.",
+    "placeholders": {
+      "menu_label": {
+        "content": "$1",
+        "example": "Send to comic-translate-4-free"
+      }
+    }
+  },
   "debug": {
     "message": "ডিবাগ"
   },

@@ -87,6 +87,16 @@
     "description": "Context menu item on images: send this image to the translation pipeline",
     "message": "Отправить в comic-translate-4-free"
   },
+  "err_bypass_tip": {
+    "message": "Совет: щёлкните правой кнопкой по картинке и выберите «$1», чтобы обойти эту блокировку.",
+    "description": "Tip shown before a 403 download error: right-click the image to bypass the block. $1 = localized \"Send to comic-translate-4-free\" menu label.",
+    "placeholders": {
+      "menu_label": {
+        "content": "$1",
+        "example": "Send to comic-translate-4-free"
+      }
+    }
+  },
   "debug": {
     "message": "Отладка"
   },
