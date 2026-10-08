@@ -303,7 +303,7 @@ export function buildBlockMaskData(pageRgba, pageW, pageH, pageGray, blk, defaul
     cropMask = sel.data;
   }
 
-  const k = defaultPadding, iters = 3;
+  const k = Math.min(defaultPadding, 3), iters = 2;
   let dilated;
   if (isBubble) {
     const inset = Math.max(1, k);
