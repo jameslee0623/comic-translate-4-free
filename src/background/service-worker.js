@@ -92,11 +92,21 @@ async function callMlChecked(runId, msg) {
 }
 
 // Cancel every in-flight run for a tab, now. Marks them (stage boundaries
-// abort) and tells the ML host to stop burning CPU on them too.
+// abort), aborts in-flight translation fetches, and tells the ML host to
+// stop burning CPU on them too.
 async function cancelRunsForTab(tabId) {
   const ids = [];
   for (const [id, r] of runs) {
-    if (r.tabId === tabId) { r.cancelled = true; ids.push(id); }
+    if (r.tabId === tabId) {
+      r.cancelled = true;
+      // Abort in-flight translation network requests immediately instead of
+      // waiting for the stage boundary.
+      try { r.abortController?.abort(); } catch {}
+      // Firefox: translation runs on a Web Worker — terminate it now instead
+      // of waiting for completion or the 180s timeout.
+      try { r.translateWorker?.terminate(); } catch {}
+      ids.push(id);
+    }
   }
   for (const id of ids) {
     try { await callMl({ type: MSG.ML_CANCEL, runId: id }); } catch { /* host may be down */ }
@@ -517,7 +527,10 @@ async function renderFromPageCache(tabId, runId, entry, settings, timings, srcUr
 async function runPipeline(tabId, opts = {}) {
   const manualSrc = opts.srcUrl || null;
   const runId = 'run-' + Date.now().toString(36) + '-' + (runSeq++) + '-' + Math.random().toString(36).slice(2, 8);
-  runs.set(runId, { cancelled: false, tabId });
+  // AbortController for in-flight translation fetches — aborted on cancel so
+  // a 50-block translate doesn't keep burning quota after the user cancelled.
+  const abortController = new AbortController();
+  runs.set(runId, { cancelled: false, tabId, abortController });
   const settings = await getSettings();
   const timings = {};
   const pipelineT0 = performance.now(); // overall wall-clock for this run
@@ -730,7 +743,7 @@ async function runPipeline(tabId, opts = {}) {
     const runTranslate = async () => {
       parProgress('translate', 0);
       const t0t = performance.now();
-      const translated = await translateBlocks(blocks, effSettings);
+      const translated = await translateBlocks(blocks, effSettings, null, abortController.signal);
       checkCancelled(runId);
       blocks.forEach((b, i) => { b.translation = translated[i]; });
       const translateMs = Math.round(performance.now() - t0t);
@@ -817,20 +830,29 @@ async function runPipeline(tabId, opts = {}) {
       const t0t = performance.now();
       const workerUrl = chrome.runtime.getURL('src/background/translate-worker.js');
       const tWorker = new Worker(workerUrl, { type: 'module' });
+      // Track for cancellation: cancelRunsForTab terminates this immediately
+      // instead of waiting for the 180s timeout or natural completion.
+      runs.get(runId).translateWorker = tWorker;
+      // Hoisted so the catch block below can cancel the 180s timer on early
+      // mask/inpaint failure — otherwise it fires pointlessly after terminate.
+      let translateTimeout = null;
+      const killTranslateWorker = () => {
+        if (translateTimeout) { clearTimeout(translateTimeout); translateTimeout = null; }
+        try { tWorker.terminate(); } catch { /* already terminated */ }
+      };
       const translateP = new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
+        translateTimeout = setTimeout(() => {
+          translateTimeout = null;
           tWorker.terminate();
           reject(new Error('translate worker timeout'));
         }, 180000);
         tWorker.onmessage = (e) => {
-          clearTimeout(timeout);
-          tWorker.terminate();
+          killTranslateWorker();
           if (e.data.ok) resolve(e.data.translated);
           else reject(new Error(e.data.error));
         };
         tWorker.onerror = (err) => {
-          clearTimeout(timeout);
-          tWorker.terminate();
+          killTranslateWorker();
           reject(err instanceof Error ? err : new Error(String(err)));
         };
         tWorker.postMessage({
@@ -850,7 +872,7 @@ async function runPipeline(tabId, opts = {}) {
         // Collect translation from worker
         translated = await translateP;
       } catch (e) {
-        try { tWorker.terminate(); } catch { /* already terminated */ }
+        killTranslateWorker();
         throw e;
       }
       try { tWorker.terminate(); } catch { /* already terminated by onmessage */ }

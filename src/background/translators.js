@@ -9,7 +9,7 @@ function langName(code) {
   return hit ? hit[1] : code;
 }
 
-async function googleFree(texts, src, dst) {
+async function googleFree(texts, src, dst, signal) {
   // The gtx endpoint is unofficial and rate-limits aggressively (HTTP 500 /
   // 429 in bursts). Requests run with a small worker pool (3 lanes) instead
   // of one-at-a-time; each lane keeps the original ~120ms pacing between its
@@ -40,7 +40,7 @@ async function googleOne(t, src, dst) {
   let resp = null, lastErr = null;
   for (let attempt = 0; attempt <= delays.length; attempt++) {
     try {
-      resp = await fetch(url);
+      resp = await fetch(url, signal ? { signal } : undefined);
     } catch (e) {
       lastErr = e;
       resp = null;
@@ -76,7 +76,7 @@ function azureLang(code) {
   return m[code] || code;
 }
 
-async function azure(texts, settings) {
+async function azure(texts, settings, signal) {
   const key = (settings.azureKey || '').trim();
   const region = (settings.azureRegion || '').trim();
   if (!key) throw new Error('azure translator: API key not set — add it in Settings');
@@ -112,6 +112,7 @@ async function azure(texts, settings) {
           'X-ClientTraceId': crypto.randomUUID(),
         },
         body: JSON.stringify(batch.map(t => ({ text: t }))),
+        ...(signal ? { signal } : {}),
       });
     } catch (e) {
       throw new Error('azure translator: network error — ' + String(e).slice(0, 120));
@@ -207,7 +208,7 @@ function lmStudioPrompt(texts, settings) {
     '\n' + JSON.stringify(texts);
 }
 
-async function lmStudio(texts, settings) {
+async function lmStudio(texts, settings, signal) {
   const ep = lmStudioEndpoints(settings);
   const headers = { 'Content-Type': 'application/json' };
   if ((settings.lmStudioKey || '').trim()) headers['Authorization'] = 'Bearer ' + settings.lmStudioKey.trim();
@@ -225,6 +226,7 @@ async function lmStudio(texts, settings) {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
+      ...(signal ? { signal } : {}),
     });
   } catch (e) {
     throw new Error('LM Studio: cannot reach ' + ep.chat + ' (' + ep.label + ') — is the server running? (' + String(e).slice(0, 100) + ')');
@@ -243,7 +245,7 @@ async function lmStudio(texts, settings) {
 // temperature}. The model id is the remembered one when we have it; learned
 // once when we don't; re-learned once if the remembered one fails (the user
 // may have swapped models in LM Studio since).
-async function lmStudioV1(texts, settings, ep, headers) {
+async function lmStudioV1(texts, settings, ep, headers, signal) {
   const input = lmStudioPrompt(texts, settings);
   const post = async (modelId) => {
     try {
@@ -251,6 +253,7 @@ async function lmStudioV1(texts, settings, ep, headers) {
         method: 'POST',
         headers,
         body: JSON.stringify({ model: modelId, input, temperature: 0 }),
+        ...(signal ? { signal } : {}),
       });
     } catch (e) {
       throw new Error('LM Studio: cannot reach ' + ep.chat + ' — is the server running? (' + String(e).slice(0, 100) + ')');
@@ -515,14 +518,13 @@ export async function checkAzure(settings) {
     return { ok: false, error: 'network error — ' + String(e).slice(0, 120) };
   }
 }
-async function localLlm(texts, settings) {
-  // WebLLM runtime removed from the bundle (was 6.6 MB; unreachable — the UI
-  // maps a stored 'local-llm' backend to Google). Kept as a clear error in
-  // case a stale setting ever routes here.
-  throw new Error('local LLM backend was removed from this build; using Google Translate instead.');
+async function localLlm(texts, settings, signal) {
+  // WebLLM runtime removed from the bundle (was 6.6 MB). A stale stored
+  // 'local-llm' pref falls back to Google instead of hard-failing.
+  return googleFree(texts, settings.sourceLang, settings.targetLang, signal);
 }
 
-export async function translateBlocks(blocks, settings, onProgress) {
+export async function translateBlocks(blocks, settings, onProgress, signal) {
   const idx = [], texts = [];
   blocks.forEach((b, i) => {
     if (b.text && b.text.trim()) { idx.push(i); texts.push(b.text); }
@@ -531,10 +533,10 @@ export async function translateBlocks(blocks, settings, onProgress) {
   if (!texts.length) return translated;
   const backend = settings.translationBackend || 'google';
   let results;
-  if (backend === 'azure') results = await azure(texts, settings);
-  else if (backend === 'lmstudio') results = await lmStudio(texts, settings);
-  else if (backend === 'local-llm') results = await localLlm(texts, settings);
-  else results = await googleFree(texts, settings.sourceLang, settings.targetLang);
+  if (backend === 'azure') results = await azure(texts, settings, signal);
+  else if (backend === 'lmstudio') results = await lmStudio(texts, settings, signal);
+  else if (backend === 'local-llm') results = await localLlm(texts, settings, signal);
+  else results = await googleFree(texts, settings.sourceLang, settings.targetLang, signal);
   results.forEach((t, k) => { translated[idx[k]] = t; });
   onProgress && onProgress();
   return translated;

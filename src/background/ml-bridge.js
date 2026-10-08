@@ -24,18 +24,41 @@ export async function mlHostAlive() {
   } catch { return false; }
 }
 
+// Serializes offscreen-document creation: two concurrent callMl()s can both
+// see !alive and both call createDocument; the second throws "Only one
+// offscreen document". The loser waits for (or reaps) the winner's document.
+let creatingPromise = null;
 export async function ensureMlHost() {
   if (await mlHostAlive()) return;
   if (directHandlers()) return; // Firefox: the host is this page; handlers are ready.
   if (typeof chrome.offscreen === 'undefined') {
     throw new Error('this browser does not support offscreen documents — ML cannot run');
   }
-  await chrome.offscreen.createDocument({
-    url: 'src/offscreen/offscreen.html',
-    reasons: ['WORKERS'],
-    justification: 'Host ONNX Runtime Web (WASM) sessions for manga translation models',
-  });
-  if (!await mlHostAlive()) throw new Error('ML host failed to start');
+  // Two concurrent callMl()s can both see !alive and both call createDocument;
+  // the second throws "Only one offscreen document". Serialize creation so the
+  // loser waits for (or reaps the benefit of) the winner's document.
+  if (!creatingPromise) {
+    creatingPromise = (async () => {
+      try {
+        await chrome.offscreen.createDocument({
+          url: 'src/offscreen/offscreen.html',
+          reasons: ['WORKERS'],
+          justification: 'Host ONNX Runtime Web (WASM) sessions for manga translation models',
+        });
+      } catch (e) {
+        // "Only one offscreen document" / "already exists" means someone else
+        // won the race — treat as success and verify below.
+        if (!/already|only one/i.test(String((e && e.message) || e))) throw e;
+      }
+      // Poll for readiness: creation resolves before the document's scripts run.
+      for (let i = 0; i < 10; i++) {
+        if (await mlHostAlive()) return;
+        await new Promise(r => setTimeout(r, 200));
+      }
+      throw new Error('ML host failed to start');
+    })().finally(() => { creatingPromise = null; });
+  }
+  await creatingPromise;
 }
 
 // ORT's wasm backend aborts with "Aborted(InternalError: out of memory)"

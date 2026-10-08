@@ -50,7 +50,10 @@ export class Detector {
 
   // Drop the loaded session so the next inference re-reads the model file
   // from IndexedDB (needed after a re-download; otherwise the old bytes stay live).
-  reset() { this.session = null; }
+  // Best-effort WASM free: this vendored ort has no public InferenceSession
+  // dispose, so nulling is all we can do — the old session's WASM buffers
+  // persist until the host page reloads. Avoid reset() churn.
+  reset() { try { this.session?.dispose?.(); } catch {} this.session = null; }
 
   // rgba: Uint8ClampedArray, w/h: image dims. Returns [{xyxy:[x1,y1,x2,y2], label, score}]
   async detect(rgba, w, h, threshold = 0.3) {

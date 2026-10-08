@@ -175,7 +175,12 @@ export class BaberuOCR {
 
   get loaded() { return !!this.vis; }
 
-  reset() { this.vis = null; this.pre = null; this.stp = null; }
+  // Best-effort WASM free (see detector.js) — no public session dispose in
+  // this vendored ort; buffers persist until host reload. Avoid reset() churn.
+  reset() {
+    for (const s of [this.vis, this.pre, this.stp]) { try { s?.dispose?.(); } catch {} }
+    this.vis = null; this.pre = null; this.stp = null;
+  }
 
   // One graph at a time: the caller fetches each buffer, we build its session,
   // and the buffer is releasable before the next fetch. Holding all three
@@ -253,22 +258,36 @@ export class BaberuOCR {
       // Extremely defensive: feed positionally if no name matched.
       visIn[this.vis.inputNames[0]] = tPixel;
     }
-    const visOut = await this.vis.run(visIn);
     // Tensors hold WASM-heap buffers — every undisposed run leaks, and this
     // loop does up to 256 runs per crop. That leak was the 10~40-image
     // browser crash: dispose every input/output once its data is copied out.
-    tPixel.dispose();
-    const visEmbeds = visOut[this.vis.outputNames[0]];
-    for (const n of Object.keys(visOut)) if (n !== this.vis.outputNames[0]) visOut[n].dispose();
+    // try/finally: a throwing run() must not leak the inputs.
+    let visEmbeds;
+    try {
+      const visOut = await this.vis.run(visIn);
+      try {
+        visEmbeds = visOut[this.vis.outputNames[0]];
+        for (const n of Object.keys(visOut)) if (n !== this.vis.outputNames[0]) visOut[n].dispose();
+      } catch (e) {
+        for (const n of Object.keys(visOut)) try { visOut[n].dispose(); } catch {}
+        throw e;
+      }
+    } finally {
+      tPixel.dispose();
+    }
 
     const tBos = i64(BOS);
     const preIn = this._feed(this.pre, {
       vision_embeds: visEmbeds,
       input_ids: tBos,
     });
-    const preOut = await this.pre.run(preIn);
-    tBos.dispose();
-    visEmbeds.dispose(); // consumed by the prefill run above
+    let preOut;
+    try {
+      preOut = await this.pre.run(preIn);
+    } finally {
+      tBos.dispose();
+      visEmbeds.dispose(); // consumed by the prefill run above
+    }
     const preNames = this.pre.outputNames;
     const preLogits = preOut[preNames[0]];
     // prefill logits are [1, 257, vocab] (256 vision + 1 BOS): take the last row.
@@ -327,9 +346,17 @@ export class BaberuOCR {
         feed[pastNames[i]] = present[i];
       }
       const prevPresent = present;
-      const out = await this.stp.run(feed);
-      tId.dispose();
-      tPos.dispose();
+      let out;
+      try {
+        out = await this.stp.run(feed);
+      } catch (e) {
+        // run() threw: prevPresent was never consumed — free it to avoid leak.
+        for (const t of prevPresent) try { t.dispose(); } catch {}
+        throw e;
+      } finally {
+        tId.dispose();
+        tPos.dispose();
+      }
       for (const t of prevPresent) t.dispose(); // consumed by the run above
       const names = this.stp.outputNames;
       const flat = out[names[0]];

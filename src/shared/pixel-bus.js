@@ -11,7 +11,9 @@ import { openDb, idbGet, idbPut, idbDel } from './contracts.js';
 
 let dbPromise = null;
 function db() {
-  if (!dbPromise) dbPromise = openDb();
+  // Reset on reject: a failed openDb (e.g. onblocked during a version upgrade)
+  // must not poison every later call until the extension reloads.
+  if (!dbPromise) dbPromise = openDb().catch(e => { dbPromise = null; throw e; });
   return dbPromise;
 }
 

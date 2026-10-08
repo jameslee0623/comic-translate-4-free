@@ -60,7 +60,9 @@ export class Inpainter {
 
   // Drop the loaded session so the next inference re-reads the model file
   // from IndexedDB (needed after a re-download; otherwise old bytes stay live).
-  reset() { this.session = null; }
+  // Best-effort WASM free (see detector.js) — no public session dispose in
+  // this vendored ort; buffers persist until host reload. Avoid reset() churn.
+  reset() { try { this.session?.dispose?.(); } catch {} this.session = null; }
 
   // rgba: Uint8ClampedArray RGBA, mask01: Uint8Array 0/1 (same w/h).
   // Returns RGBA Uint8ClampedArray of the inpainted patch. Oversized patches
@@ -83,13 +85,21 @@ export class Inpainter {
 
     const tImg = new ort.Tensor('float32', imgNCHW, [1, 3, mh, mw]);
     const tMask = new ort.Tensor('float32', maskNCHW, [1, 1, mh, mw]);
-    const out = await this.session.run({ image: tImg, mask: tMask });
     // Tensors hold WASM-heap buffers — dispose every run's inputs/outputs or
     // the leak accumulates per tile until the browser crashes (see detector.js).
-    tImg.dispose();
-    tMask.dispose();
-    const d = out.inpainted.data.slice();
-    out.inpainted.dispose();
+    // try/finally: a throwing run() must not leak the inputs.
+    let d;
+    try {
+      const out = await this.session.run({ image: tImg, mask: tMask });
+      try {
+        d = out.inpainted.data.slice();
+      } finally {
+        out.inpainted.dispose();
+      }
+    } finally {
+      tImg.dispose();
+      tMask.dispose();
+    }
     const res = new Uint8ClampedArray(w * h * 4);
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {

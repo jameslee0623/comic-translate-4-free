@@ -295,13 +295,14 @@ export function buildBlockMaskData(pageRgba, pageW, pageH, pageGray, blk, defaul
   cropMask = from01(morphClose(to01(cropMask), cw, ch));
 
   const isBubble = blk.text_class === 'text_bubble' && blk.bubble_xyxy && blk.bubble_xyxy.length >= 4;
-  if (isBubble) {
-    const [tx1, ty1, tx2, ty2] = blk.xyxy.map(v => Math.round(v));
-    const textBounds = [tx1 - cx1, ty1 - cy1, tx2 - cx1, ty2 - cy1];
-    const searchPadding = Math.max(16, Math.min(defaultPadding + 23, 32));
-    const sel = selectTextLikeComponents({ data: cropMask, w: cw, h: ch }, textBounds, searchPadding);
-    cropMask = sel.data;
-  }
+  const [tx1, ty1, tx2, ty2] = blk.xyxy.map(v => Math.round(v));
+  const textBounds = [tx1 - cx1, ty1 - cy1, tx2 - cx1, ty2 - cy1];
+  const searchPadding = Math.max(16, Math.min(defaultPadding + 23, 32));
+  // Filter to text-like components for BOTH bubble and free text. Free text
+  // on textured/photo backgrounds otherwise masks huge non-text areas,
+  // producing giant LaMa patches (slow, blurry, OOM-prone).
+  const sel = selectTextLikeComponents({ data: cropMask, w: cw, h: ch }, textBounds, searchPadding);
+  cropMask = sel.data;
 
   const k = Math.min(defaultPadding, 3), iters = 2;
   let dilated;
@@ -310,7 +311,6 @@ export function buildBlockMaskData(pageRgba, pageW, pageH, pageGray, blk, defaul
     dilated = clipMaskComponentsToBubble(cropMask, cw, ch, [cx1, cy1, cx2, cy2],
       blk.bubble_xyxy, inset, pageGray, pageW, pageH, blk.xyxy, k, iters);
     // final envelope: detector envelope + 2px, plus 5x5x1 halo of admitted components
-    const [tx1, ty1, tx2, ty2] = blk.xyxy.map(v => Math.round(v));
     const fp = 2;
     const ex1 = Math.max(0, tx1 - cx1 - fp), ey1 = Math.max(0, ty1 - cy1 - fp);
     const ex2 = Math.min(cw, tx2 - cx1 + fp), ey2 = Math.min(ch, ty2 - cy1 + fp);
