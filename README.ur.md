@@ -37,7 +37,7 @@ comic-translate-4-free براؤزنگ کے دوران مانگا اور کامک
 
 </details>
 
-*اصل تصویر: [Wikipedia](https://en.wikipedia.org/wiki/Manga) Wikimedia Commons کے ذریعے۔*
+*Kasuga کی بنائی ہوئی اصل Wikipe-tan تصویر، [Wikipedia کے Manga مضمون](https://en.wikipedia.org/wiki/Manga) سے، Wikimedia Commons کے ذریعے — [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) کے تحت لائسنس یافتہ۔ ترجمہ شدہ اسکرین شاٹس اصل کے ترمیم شدہ مشتق کام ہیں۔*
 
 ---
 

@@ -37,7 +37,7 @@ comic-translate-4-free übersetzt Manga- und Comicseiten beim Surfen automatisch
 
 </details>
 
-*Originalbild: [Wikipedia](https://en.wikipedia.org/wiki/Manga) via Wikimedia Commons.*
+*Original-Wikipe-tan-Illustration von Kasuga, aus [Wikipedias Manga-Artikel](https://en.wikipedia.org/wiki/Manga) via Wikimedia Commons — lizenziert unter [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Die übersetzten Screenshots sind bearbeitete abgeleitete Werke des Originals.*
 
 ---
 

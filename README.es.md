@@ -37,7 +37,7 @@ comic-translate-4-free traduce páginas de manga y cómics automáticamente mien
 
 </details>
 
-*Imagen original: [Wikipedia](https://en.wikipedia.org/wiki/Manga) vía Wikimedia Commons.*
+*Ilustración original de Wikipe-tan por Kasuga, del [artículo Manga de Wikipedia](https://en.wikipedia.org/wiki/Manga) vía Wikimedia Commons — con licencia [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Las capturas traducidas son obras derivadas modificadas del original.*
 
 ---
 

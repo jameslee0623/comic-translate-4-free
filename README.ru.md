@@ -37,7 +37,7 @@ comic-translate-4-free автоматически переводит стран�
 
 </details>
 
-*Исходное изображение: [Википедия](https://en.wikipedia.org/wiki/Manga) через Wikimedia Commons.*
+*Оригинальная иллюстрация Wikipe-tan художника Kasuga, из [статьи «Манга» в Википедии](https://en.wikipedia.org/wiki/Manga) через Wikimedia Commons — лицензия [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Переведённые скриншоты являются изменёнными производными произведениями оригинала.*
 
 ---
 

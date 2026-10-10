@@ -37,7 +37,7 @@ comic-translate-4-free 会在你浏览时自动翻译漫画页面。它可以读
 
 </details>
 
-*原图来源：[Wikipedia](https://en.wikipedia.org/wiki/Manga)（Wikimedia Commons）。*
+*Wikipe-tan 原画由 Kasuga 创作，取自[维基百科 Manga 条目](https://en.wikipedia.org/wiki/Manga)，经 Wikimedia Commons 发布 — 采用 [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) 许可。翻译后的截图为原图的修改衍生作品。*
 
 ---
 

@@ -37,7 +37,7 @@ comic-translate-4-free는 웹 서핑 중 만화와 코믹 페이지를 자동으
 
 </details>
 
-*원본 이미지: [Wikipedia](https://en.wikipedia.org/wiki/Manga), Wikimedia Commons 제공.*
+*Kasuga가 그린 원본 Wikipe-tan 일러스트([Wikipedia의 Manga 문서](https://en.wikipedia.org/wiki/Manga), Wikimedia Commons 경유) — [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) 라이선스. 번역된 스크린샷은 원본을 수정한 2차적 저작물입니다.*
 
 ---
 

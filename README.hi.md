@@ -37,7 +37,7 @@ comic-translate-4-free आपके ब्राउज़ करते समय
 
 </details>
 
-*मूल छवि: [Wikipedia](https://en.wikipedia.org/wiki/Manga), Wikimedia Commons से।*
+*Kasuga द्वारा बनाई गई मूल Wikipe-tan चित्रकारी, [Wikipedia के Manga लेख](https://en.wikipedia.org/wiki/Manga) से, Wikimedia Commons के माध्यम से — [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) के तहत लाइसेंस प्राप्त। अनूदित स्क्रीनशॉट मूल के संशोधित व्युत्पन्न कार्य हैं।*
 
 ---
 

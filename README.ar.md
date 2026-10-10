@@ -37,7 +37,7 @@ comic-translate-4-free يترجم صفحات المانغا والقصص الم�
 
 </details>
 
-*الصورة الأصلية: [Wikipedia](https://en.wikipedia.org/wiki/Manga) عبر Wikimedia Commons.*
+*رسم Wikipe-tan الأصلي بريشة Kasuga، من [مقالة المانغا في Wikipedia](https://en.wikipedia.org/wiki/Manga) عبر Wikimedia Commons — مرخّص بموجب [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). لقطات الشاشة المترجمة هي أعمال مشتقة معدّلة من الأصل.*
 
 ---
 

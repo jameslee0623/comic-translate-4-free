@@ -37,7 +37,7 @@ comic-translate-4-free dịch các trang manga và truyện tranh tự động k
 
 </details>
 
-*Ảnh gốc: [Wikipedia](https://en.wikipedia.org/wiki/Manga) qua Wikimedia Commons.*
+*Minh họa Wikipe-tan gốc của Kasuga, từ [bài viết Manga trên Wikipedia](https://en.wikipedia.org/wiki/Manga) qua Wikimedia Commons — được cấp phép theo [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Các ảnh chụp màn hình đã dịch là tác phẩm phái sinh đã chỉnh sửa từ bản gốc.*
 
 ---
 

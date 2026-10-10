@@ -37,7 +37,7 @@ comic-translate-4-free আপনি ব্রাউজ করার সময়
 
 </details>
 
-*মূল ছবি: [Wikipedia](https://en.wikipedia.org/wiki/Manga), Wikimedia Commons-এর সৌজন্যে।*
+*Kasuga-এর আঁকা মূল Wikipe-tan চিত্র, [Wikipedia-এর Manga নিবন্ধ](https://en.wikipedia.org/wiki/Manga) থেকে, Wikimedia Commons-এর মাধ্যমে — [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) লাইসেন্সের অধীনে। অনূদিত স্ক্রিনশটগুলি মূলটির পরিবর্তিত ডেরিভেটিভ।*
 
 ---
 

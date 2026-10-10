@@ -37,7 +37,7 @@ comic-translate-4-free menerjemahkan halaman manga dan komik secara otomatis saa
 
 </details>
 
-*Gambar asli: [Wikipedia](https://en.wikipedia.org/wiki/Manga) via Wikimedia Commons.*
+*Ilustrasi Wikipe-tan asli oleh Kasuga, dari [artikel Manga Wikipedia](https://en.wikipedia.org/wiki/Manga) via Wikimedia Commons — berlisensi [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/). Tangkapan layar yang diterjemahkan adalah karya turunan yang dimodifikasi dari aslinya.*
 
 ---
 

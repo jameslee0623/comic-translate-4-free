@@ -37,7 +37,7 @@ comic-translate-4-free は、閲覧中のマンガやコミックのページを
 
 </details>
 
-*元の画像：[Wikipedia](https://en.wikipedia.org/wiki/Manga)（Wikimedia Commons より）。*
+*Kasuga氏による Wikipe-tan の原画（[Wikipedia の Manga の記事](https://en.wikipedia.org/wiki/Manga)より、Wikimedia Commons 経由）— [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) の下でライセンスされています。翻訳後のスクリーンショットは、原画を改変した二次的著作物です。*
 
 ---
 
