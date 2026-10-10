@@ -1,7 +1,7 @@
 // Translated-page image cache: session-scoped, IndexedDB-backed.
 //
 // A cache entry IS the render payload the service worker sends to the page —
-// the inpainted base image (PNG data URL) + the translated text blocks. On a
+// the inpainted base image (WebP data URL) + the translated text blocks. On a
 // hit the entry is re-sent as ct/render, and the content script re-composites
 // the text with the CURRENT font settings (it reads them from storage on every
 // render). So a font-size tweak re-renders from cache instead of invalidating

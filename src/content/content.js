@@ -271,10 +271,10 @@
     cx.drawImage(im, 0, 0);
     // NOTE: raw pixel buffers CANNOT travel via extension messaging — Chrome
     // silently turns ArrayBuffers into {} in both directions (verified). So
-    // the pixels go as a PNG data URL string, the same trick the render path
+    // the pixels go as a WebP data URL string, the same trick the render path
     // uses for the translated image. Throws (tainted canvas) when the image
     // host sends no CORS headers — the pipeline then tries a direct fetch.
-    return { dataUrl: c.toDataURL('image/png'), w: c.width, h: c.height };
+    return { dataUrl: c.toDataURL('image/webp', 0.95), w: c.width, h: c.height };
   }
 
   function replaceMainImage(dataUrl) {
@@ -673,7 +673,7 @@
           const work = document.createElement('canvas');
           work.width = width; work.height = height;
           const wctx = work.getContext('2d');
-          // The inpainted page arrives as a PNG data URL (raw pixel buffers do
+          // The inpainted page arrives as a WebP data URL (raw pixel buffers do
           // not survive extension messaging from the service worker).
           const baseImg = new Image();
           await new Promise((res, rej) => {
@@ -700,7 +700,7 @@
             // No overlay mask — the translation lives in the page itself.
             // The manual-send path names the exact <img> (msg.srcUrl); the
             // auto path replaces the detected main image.
-            const dataUrl = work.toDataURL('image/png');
+            const dataUrl = work.toDataURL('image/webp', 0.95);
             replaced = msg.srcUrl ? replaceImageBySrc(msg.srcUrl, dataUrl)
                                   : replaceMainImage(dataUrl);
             if (replaced) {

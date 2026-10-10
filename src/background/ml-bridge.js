@@ -129,9 +129,16 @@ export function makeCanvas(w, h) {
   return new OffscreenCanvas(w, h);
 }
 
-export function canvasToBlob(canvas, type = 'image/png') {
-  if (typeof canvas.convertToBlob === 'function') return canvas.convertToBlob({ type });
+export function canvasToBlob(canvas, type = 'image/png', quality) {
+  if (typeof canvas.convertToBlob === 'function') {
+    return canvas.convertToBlob(quality === undefined ? { type } : { type, quality });
+  }
   return new Promise((resolve, reject) => {
-    canvas.toBlob(b => (b ? resolve(b) : reject(new Error('canvas.toBlob failed'))), type);
+    canvas.toBlob(b => (b ? resolve(b) : reject(new Error('canvas.toBlob failed'))), type, quality);
   });
 }
+// WebP for cache/transport: browsers' canvas API only produces lossy WebP
+// (no lossless mode), but at 0.95 it's visually indistinguishable from PNG
+// on manga art, ~60% smaller, and faster to encode than PNG's deflate.
+export const WEBP_TYPE = 'image/webp';
+export const WEBP_QUALITY = 0.95;

@@ -14,7 +14,7 @@ import { generateMask } from '../offscreen/ml/mask.js';
 import { mergePaddedBoxes } from '../offscreen/ml/inpaint.js';
 import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL } from './translators.js';
 import { detectPageLang } from '../shared/lang-detect.js';
-import { mlHostAlive, ensureMlHost, callMl, makeCanvas, canvasToBlob, directHandlers } from './ml-bridge.js';
+import { mlHostAlive, ensureMlHost, callMl, makeCanvas, canvasToBlob, directHandlers, WEBP_TYPE, WEBP_QUALITY } from './ml-bridge.js';
 import {
   initPageCache, buildCacheKey, pageCacheGet, pageCachePut,
   pageCacheStats, clearPageCache,
@@ -423,14 +423,14 @@ async function rgbaToDataURL(rgba, w, h, maxDim = 420) {
   src.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgba), w, h), 0, 0);
   const c = makeCanvas(dw, dh);
   c.getContext('2d').drawImage(src, 0, 0, dw, dh);
-  const blob = await canvasToBlob(c, 'image/png');
+  const blob = await canvasToBlob(c, WEBP_TYPE, WEBP_QUALITY);
   const buf = await blob.arrayBuffer();
   let bin = '';
   const bytes = new Uint8Array(buf);
   for (let i = 0; i < bytes.length; i += 8192) {
     bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
   }
-  return 'data:image/png;base64,' + btoa(bin);
+  return 'data:image/webp;base64,' + btoa(bin);
 }
 
 function maskToRGBA(mask, w, h) {
@@ -925,7 +925,7 @@ async function runPipeline(tabId, opts = {}) {
 
     // ---- 8. render: translated text composited onto the image.
     // mode 'replace' swaps the page's original <img>; 'overlay' shows it in the overlay.
-    // NOTE: the finished picture travels as a PNG data URL — raw pixel buffers
+    // NOTE: the finished picture travels as a WebP data URL — raw pixel buffers
     // don't survive chrome.tabs messaging from the service worker either.
     checkCancelled(runId);
     setProgress(runId, 'render', 0.96);
