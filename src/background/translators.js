@@ -3,6 +3,20 @@
 import { LANGS, TARGET_LANGS } from '../shared/settings.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// Abort-aware sleep: rejects immediately on cancel instead of waiting out
+// the full backoff delay.
+function sleepAbortable(ms, signal) {
+  if (!signal) return sleep(ms);
+  if (signal.aborted) throw Object.assign(new Error('cancelled'), { cancelled: true });
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(t);
+      reject(Object.assign(new Error('cancelled'), { cancelled: true }));
+    };
+    const t = setTimeout(() => { signal.removeEventListener('abort', onAbort); resolve(); }, ms);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
 
 function langName(code) {
   const hit = LANGS.find(([c]) => c === code) || TARGET_LANGS.find(([c]) => c === code);
@@ -52,7 +66,7 @@ async function googleOne(t, src, dst, signal) {
     const retryable = !resp || resp.status === 429 || resp.status >= 500;
     if (!retryable || attempt === delays.length) break;
     const wait = delays[attempt] + Math.random() * 800;
-    await sleep(wait);
+    await sleepAbortable(wait, signal);
     resp = null;
   }
   if (!resp) throw new Error('google translate: network error — ' + String(lastErr).slice(0, 120));
@@ -104,25 +118,38 @@ async function azure(texts, settings, signal) {
 
   async function azureBatch(batch, key, region, to) {
     const url = `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=${encodeURIComponent(to)}`;
-    let resp;
-    try {
-      resp = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Ocp-Apim-Subscription-Key': key,
-          'Ocp-Apim-Subscription-Region': region,
-          'Content-type': 'application/json',
-          'X-ClientTraceId': crypto.randomUUID(),
-        },
-        body: JSON.stringify(batch.map(t => ({ text: t }))),
-        ...(signal ? { signal } : {}),
-      });
-    } catch (e) {
-      throw new Error('azure translator: network error — ' + String(e).slice(0, 120));
+    // Like the Google path: one throttled batch (429/5xx) must not kill the
+    // whole page. Retry with exponential backoff + jitter.
+    const delays = [1500, 4000, 10000];
+    let resp = null, lastErr = null;
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      try {
+        resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Ocp-Apim-Subscription-Key': key,
+            'Ocp-Apim-Subscription-Region': region,
+            'Content-type': 'application/json',
+            'X-ClientTraceId': crypto.randomUUID(),
+          },
+          body: JSON.stringify(batch.map(t => ({ text: t }))),
+          ...(signal ? { signal } : {}),
+        });
+      } catch (e) {
+        if (signal && signal.aborted) throw Object.assign(new Error('cancelled'), { cancelled: true });
+        lastErr = e;
+        resp = null;
+      }
+      if (resp && resp.ok) break;
+      const retryable = !resp || resp.status === 429 || resp.status >= 500;
+      if (!retryable || attempt === delays.length) break;
+      await sleepAbortable(delays[attempt] + Math.random() * 800, signal);
+      resp = null;
     }
+    if (!resp) throw new Error('azure translator: network error — ' + String(lastErr).slice(0, 120));
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');
-      throw new Error(`azure translator: HTTP ${resp.status} ${body.slice(0, 160)}`);
+      throw new Error(`azure translator: HTTP ${resp.status} after retries ${body.slice(0, 160)}`);
     }
     const data = await resp.json();
     const r = [];

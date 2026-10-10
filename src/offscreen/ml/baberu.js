@@ -249,7 +249,7 @@ export class BaberuOCR {
   // text, how many character tokens were emitted (1 char per token, so == text
   // length for valid ids), and whether the loop ended on EOS or the
   // MAX_NEW_TOKENS safety cap.
-  async _decode(rgba, w, h) {
+  async _decode(rgba, w, h, shouldAbort = null) {
     const chw = preprocessCrop(rgba, w, h);
     const i64 = (v) => new ort.Tensor('int64', BigInt64Array.from([BigInt(v)]), [1, 1]);
     const tPixel = new ort.Tensor('float32', chw, [1, 3, BABERU_IMG, BABERU_IMG]);
@@ -304,6 +304,10 @@ export class BaberuOCR {
     let stopped = 'limit';
 
     for (let step = 0; step < MAX_NEW_TOKENS; step++) {
+      // Bail every few steps when the run was cancelled — the 256-step loop
+      // is seconds of WASM per crop that would otherwise burn after a page
+      // change.
+      if (shouldAbort && (step & 7) === 0 && shouldAbort()) throw new Error('cancelled');
       // repetition_penalty 1.2 over previously emitted ids (incl. BOS).
       const seen = new Set(seq);
       for (const tid of seen) {
@@ -378,8 +382,8 @@ export class BaberuOCR {
     return { text, nTok: toks.length, stopped };
   }
 
-  async ocrSingle(rgba, w, h) {
-    return (await this._decode(rgba, w, h)).text;
+  async ocrSingle(rgba, w, h, shouldAbort = null) {
+    return (await this._decode(rgba, w, h, shouldAbort)).text;
   }
 
   // NOTE (2026-09-30): batched multi-crop decode was prototyped here and
@@ -395,7 +399,7 @@ export class BaberuOCR {
   // single-crop decode (the fallback), and `stopped` is 'eos' | 'limit'.
   async ocrChunked(rgba, w, h, opts = {}) {
     const { lang = 'ja', axis = null, shouldAbort = null, depth = 0 } = opts;
-    const first = await this._decode(rgba, w, h);
+    const first = await this._decode(rgba, w, h, shouldAbort);
     // this late is the symptom, not a natural sentence end. Length is the
     // trigger, not the stop reason (MAX_NEW_TOKENS is only a safety cap that a
     // real bubble never reaches).

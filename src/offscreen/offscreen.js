@@ -202,7 +202,9 @@ const handlers = {
     const buf = new Uint8ClampedArray(raw);
     let boxes;
     try {
-      boxes = await detector.detect(buf, width, height, threshold);
+      boxes = await detector.detect(buf, width, height, threshold, {
+        shouldAbort: () => cancelledRuns.has(runId),
+      });
     } finally {
       releaseRun(runId);
     }

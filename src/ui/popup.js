@@ -207,8 +207,18 @@ function keepUserValue(id) {
   const el = $(id);
   return (!initDone && initDirty.has(id)) || (el && document.activeElement === el);
 }
+// The background thread can be unresponsive while a pipeline runs — on
+// Firefox, WASM inpaint blocks the background page's main thread, so a
+// sendMessage may not resolve for tens of seconds. Time out fast so the
+// popup stays usable; the 3s interval retries.
+function bgMessage(msg, timeoutMs = 2500) {
+  return Promise.race([
+    chrome.runtime.sendMessage(msg).catch(() => null),
+    new Promise(r => setTimeout(() => r(null), timeoutMs)),
+  ]);
+}
 async function refreshStatus() {
-  const st = await chrome.runtime.sendMessage({ type: 'ct/get-status' }).catch(() => null);
+  const st = await bgMessage({ type: 'ct/get-status' });
   if (st && st.ok) {
     const s = st.status;
     lastStatus = s;
@@ -266,8 +276,9 @@ async function refreshSettings() {
 // in-progress selection (the open language list collapses), so settings
 // controls update only here, at init, and on real storage changes.
 async function refresh() {
-  await refreshStatus();
-  await refreshSettings();
+  // Status and settings load in parallel: a hung status (blocked background)
+  // must not delay the settings UI.
+  await Promise.all([refreshStatus(), refreshSettings()]);
 }
 
 // The picture often lives on a CDN host different from the page host; without
@@ -439,9 +450,10 @@ $('translateBtn').onclick = async () => {
   try {
     // Best-effort one-time permission so the worker can download the page's
     // picture at full resolution (covers the picture's host too).
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const host = tab && hostOf(tab.url);
-    if (host) await requestSiteAccessNow(host);
+    // Uses the host cached at popup-open: no awaits before
+    // permissions.request(), so Firefox's transient activation survives and
+    // the prompt actually fires.
+    if (currentHost) await requestSiteAccessNow(currentHost);
   } catch { /* optional; the pipeline reports what it can't read */ }
   const r = await chrome.runtime.sendMessage({ type: 'ct/translate-page' }).catch(e => ({ ok: false, error: String(e) }));
   if (!r.ok) $('error').textContent = r.error;
@@ -464,7 +476,7 @@ function fmtBytes(n) {
 async function refreshCacheStats() {
   let st = { count: 0, bytes: 0 };
   try {
-    const r = await chrome.runtime.sendMessage({ type: 'ct/page-cache-stats' });
+    const r = await bgMessage({ type: 'ct/page-cache-stats' });
     if (r && r.ok) st = r;
   } catch { /* background unreachable — show zeros */ }
   $('cacheInfo').textContent =

@@ -213,7 +213,10 @@ $('wlAddBtn').onclick = () => {
   let req;
   try { req = chrome.permissions.request({ origins }); }
   catch { req = Promise.resolve(false); }
-  Promise.resolve(req).catch(() => false).then(() => {
+  Promise.resolve(req).catch(() => false).then(granted => {
+    // Only add the site if the permission was actually granted — otherwise
+    // it shows as "allowed" but translation can never start there.
+    if (!granted) { $('wlAdd').value = ''; renderSiteList(); return; }
     allowedSites.push(h);
     $('wlAdd').value = '';
     renderSiteList();

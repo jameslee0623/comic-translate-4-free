@@ -78,26 +78,31 @@
     return out.filter(l => l.length);
   }
 
-  // Largest font size (initSize -> minSize, 0.75 steps) whose wrapped text fits.
+  // Largest font size in [minSize, initSize] whose wrapped text fits.
+  // Binary search (~7 iterations) replaces the old 0.75px linear scan (~40
+  // iterations, each doing a full wrap + measure pass). "Fits" is monotonic
+  // in size, so the search converges to the largest fitting size.
   function fitFont(ctx, text, rw, rh, initSize, minSize, vertical) {
-    let best = null;
-    for (let size = initSize; size >= minSize - 1e-6; size -= 0.75) {
+    const fits = (size) => {
       ctx.font = `${size}px ${FONT_STACK}`;
       const lh = size * 1.18;
-      let ok, lines;
       if (vertical) {
         // charsPerCol must be >= 1: rh < lh (tiny box) would give 0 and hang
         // wrapVertical forever on `i += 0`.
         const cols = wrapVertical(text, Math.max(1, Math.floor(rh / lh)));
-        const colW = size * 1.05;
-        ok = cols.length * colW <= rw;
-        lines = cols;
-      } else {
-        lines = wrapGreedy(ctx, text, rw);
-        const maxW = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
-        ok = lines.length * lh <= rh && maxW <= rw;
+        return { ok: cols.length * (size * 1.05) <= rw, lines: cols, lh };
       }
-      if (ok) { best = { size, lines, lh }; break; }
+      const lines = wrapGreedy(ctx, text, rw);
+      const maxW = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0);
+      return { ok: lines.length * lh <= rh && maxW <= rw, lines, lh };
+    };
+    let best = null;
+    let lo = minSize, hi = initSize;
+    for (let i = 0; i < 16 && hi - lo > 0.5; i++) {
+      const mid = (lo + hi) / 2;
+      const r = fits(mid);
+      if (r.ok) { best = { size: mid, lines: r.lines, lh: r.lh }; lo = mid; }
+      else hi = mid;
     }
     if (!best) {
       const size = minSize;

@@ -56,7 +56,8 @@ export class Detector {
   reset() { try { this.session?.dispose?.(); } catch {} this.session = null; }
 
   // rgba: Uint8ClampedArray, w/h: image dims. Returns [{xyxy:[x1,y1,x2,y2], label, score}]
-  async detect(rgba, w, h, threshold = 0.3) {
+  async detect(rgba, w, h, threshold = 0.3, opts = {}) {
+    const { shouldAbort = null } = opts;
     if (Math.max(w, h) / Math.min(w, h) <= STRIP_ASPECT) {
       return this.detectSingle(rgba, w, h, threshold);
     }
@@ -67,6 +68,9 @@ export class Detector {
     const count = Math.max(1, Math.ceil((longSide - SEG_OVERLAP) / step));
     const all = [];
     for (let i = 0; i < count; i++) {
+      // A long strip is many seconds of WASM; bail between segments when
+      // the run was cancelled (page changed) instead of burning CPU.
+      if (shouldAbort && shouldAbort()) throw new Error('cancelled');
       const o = count === 1 ? 0 : Math.round(i * (longSide - segLen) / (count - 1));
       const n = Math.min(segLen, longSide - o);
       const seg = vertical ? cropRGBA(rgba, w, 0, o, w, n) : cropRGBA(rgba, w, o, 0, n, h);
@@ -84,8 +88,64 @@ export class Detector {
       if (kept.some(k => boxIoU(k.xyxy, b.xyxy) >= 0.5)) continue;
       kept.push(b);
     }
-    kept.sort((a, b) => b.score - a.score);
-    return kept;
+    // Merge bubbles split across segment seams. A bubble larger than the
+    // overlap straddling a seam is detected as two partial boxes (one per
+    // segment) with ~0 IoU, so the dedup above keeps both — each half would
+    // be OCR'd and translated separately. Merge boxes whose edges abut at
+    // a seam line with strong overlap on the perpendicular axis.
+    const seams = [];
+    for (let i = 0; i < count - 1; i++) {
+      const o = Math.round(i * (longSide - segLen) / (count - 1));
+      seams.push(o + Math.min(segLen, longSide - o));
+    }
+    const merged = [];
+    const consumed = new Set();
+    for (let i = 0; i < kept.length; i++) {
+      if (consumed.has(i)) continue;
+      let cur = kept[i];
+      for (let j = i + 1; j < kept.length; j++) {
+        if (consumed.has(j)) continue;
+        if (this.seamAdjacent(cur, kept[j], seams, vertical)) {
+          const [ax1, ay1, ax2, ay2] = cur.xyxy;
+          const [bx1, by1, bx2, by2] = kept[j].xyxy;
+          cur = {
+            xyxy: [Math.min(ax1, bx1), Math.min(ay1, by1), Math.max(ax2, bx2), Math.max(ay2, by2)],
+            label: cur.label,
+            score: Math.max(cur.score, kept[j].score),
+          };
+          consumed.add(j);
+        }
+      }
+      merged.push(cur);
+    }
+    merged.sort((a, b) => b.score - a.score);
+    return merged;
+  }
+
+  // Two boxes from a seam-split bubble? Their edges abut at the same seam
+  // line (within tolerance) on opposite sides, with >50% overlap on the
+  // perpendicular axis.
+  seamAdjacent(a, b, seams, vertical, tol = 24) {
+    const [ax1, ay1, ax2, ay2] = a.xyxy;
+    const [bx1, by1, bx2, by2] = b.xyxy;
+    for (const s of seams) {
+      let touches = false, overlap = 0, minSpan = 1;
+      if (vertical) {
+        // Horizontal seam at y=s: A above / B below, or vice versa.
+        touches = (Math.abs(ay2 - s) < tol && Math.abs(by1 - s) < tol) ||
+                  (Math.abs(by2 - s) < tol && Math.abs(ay1 - s) < tol);
+        overlap = Math.max(0, Math.min(ax2, bx2) - Math.max(ax1, bx1));
+        minSpan = Math.min(ax2 - ax1, bx2 - bx1);
+      } else {
+        // Vertical seam at x=s: A left / B right, or vice versa.
+        touches = (Math.abs(ax2 - s) < tol && Math.abs(bx1 - s) < tol) ||
+                  (Math.abs(bx2 - s) < tol && Math.abs(ax1 - s) < tol);
+        overlap = Math.max(0, Math.min(ay2, by2) - Math.max(ay1, by1));
+        minSpan = Math.min(ay2 - ay1, by2 - by1);
+      }
+      if (touches && overlap > minSpan * 0.5) return true;
+    }
+    return false;
   }
 
   async detectSingle(rgba, w, h, threshold = 0.3) {

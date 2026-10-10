@@ -91,22 +91,27 @@ async function callMlChecked(runId, msg) {
   }
 }
 
-// Cancel every in-flight run for a tab, now. Marks them (stage boundaries
-// abort), aborts in-flight translation fetches, and tells the ML host to
-// stop burning CPU on them too.
+// Shared abort sequence for a single run: mark cancelled, abort in-flight
+// translation network requests, and kill the Firefox translate worker.
+// cancelRunsForTab (tab-scoped, below) and the CANCEL_RUN handler (popup
+// Cancel button) both use this so cancellation is complete on every path.
+function abortRunResources(id, r) {
+  r.cancelled = true;
+  // Abort in-flight translation network requests immediately instead of
+  // waiting for the stage boundary.
+  try { r.abortController?.abort(); } catch {}
+  // Firefox: translation runs on a Web Worker — terminate it now instead
+  // of waiting for completion or the 180s timeout. The stored killer
+  // also rejects the pending promise so `await translateP` doesn't hang.
+  try { r.killTranslateWorker?.(Object.assign(new Error('cancelled'), { cancelled: true })); } catch {}
+  try { r.translateWorker?.terminate(); } catch {}
+}
+
 async function cancelRunsForTab(tabId) {
   const ids = [];
   for (const [id, r] of runs) {
     if (r.tabId === tabId) {
-      r.cancelled = true;
-      // Abort in-flight translation network requests immediately instead of
-      // waiting for the stage boundary.
-      try { r.abortController?.abort(); } catch {}
-      // Firefox: translation runs on a Web Worker — terminate it now instead
-      // of waiting for completion or the 180s timeout. The stored killer
-      // also rejects the pending promise so `await translateP` doesn't hang.
-      try { r.killTranslateWorker?.(Object.assign(new Error('cancelled'), { cancelled: true })); } catch {}
-      try { r.translateWorker?.terminate(); } catch {}
+      abortRunResources(id, r);
       ids.push(id);
     }
   }
@@ -1245,7 +1250,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
         case MSG.CANCEL_RUN: {
-          for (const [, r] of runs) r.cancelled = true;
+          for (const [id, r] of runs) abortRunResources(id, r);
           for (const [id] of runs) {
             try { await callMl({ type: MSG.ML_CANCEL, runId: id }); } catch { /* host may be down */ }
           }
