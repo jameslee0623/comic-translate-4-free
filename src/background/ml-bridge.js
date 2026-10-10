@@ -79,10 +79,12 @@ function mlHostError(type, raw) {
     const group = ML_GROUP_FOR_TYPE[type] || 'translation engine';
     // Firefox runs the sessions in-process in the background page; Chrome
     // gives them a dedicated offscreen process, so Firefox hits this sooner.
+    // Note: the ML host already tried freeing unused models and retrying —
+    // if this still fires, the browser is genuinely out of memory.
     const where = directHandlers()
-      ? ' On Firefox the translation models share the background page\u2019s memory (Chrome runs them in a separate process), so large pages hit this limit sooner.'
+      ? ' On Firefox the translation models share the background page\u2019s memory (Chrome runs them in a separate process), so this limit is hit sooner.'
       : '';
-    return new Error(`Out of memory while running the ${group} — the image is too large for the available memory. Restart the browser to free memory and try a smaller image.${where}`);
+    return new Error(`Out of memory while running the ${group} — the browser could not free enough memory even after unloading unused models. Restart the browser and try again.${where}`);
   }
   return new Error('ML host error: ' + m.slice(0, 160));
 }

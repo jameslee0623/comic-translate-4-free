@@ -26,6 +26,10 @@ function resetGroup(group) {
   if (group === 'inpaint' || group === '*') inpainter.reset();
 }
 
+// WASM OOM signatures from ORT/Emscripten. Matches ml-bridge.js's OOM_RE.
+const OOM_RE = /out of memory|no available backend|aborted\s*\(/i;
+const isOom = e => OOM_RE.test(String((e && e.message) || e || ''));
+
 let db = null;
 async function getDb() {
   if (!db) db = await openDb();
@@ -193,18 +197,30 @@ const handlers = {
 
   async [MSG.ML_DETECT]({ key, width, height, threshold, runId }) {
     throwIfCancelled(runId);
-    await ensureModel('detector');
-    throwIfCancelled(runId);
     const t0 = performance.now();
     // Pixel bytes arrive via the IDB pixel bus (see pixel-bus.js) — they do
     // not survive chrome.runtime messaging from the service worker.
     const raw = await pixelTake(key);
     const buf = new Uint8ClampedArray(raw);
     let boxes;
-    try {
-      boxes = await detector.detect(buf, width, height, threshold, {
+    const runDetect = async () => {
+      await ensureModel('detector');
+      throwIfCancelled(runId);
+      return detector.detect(buf, width, height, threshold, {
         shouldAbort: () => cancelledRuns.has(runId),
       });
+    };
+    try {
+      boxes = await runDetect();
+    } catch (e) {
+      // OOM recovery: on Firefox all models share one WASM heap. If a previous
+      // run left Baberu/LaMa loaded (~330MB), the detector can OOM even on a
+      // small image — during model load or inference. Drop the heavy models
+      // we don't need for detection and retry once; they reload on demand.
+      if (!isOom(e)) throw e;
+      resetGroup('ocr-baberu');
+      resetGroup('inpaint');
+      boxes = await runDetect();
     } finally {
       releaseRun(runId);
     }
@@ -249,10 +265,23 @@ const handlers = {
         }
         // Baberu v1.1 reads up to ~256 chars; the chunked path is a rare
         // fallback for over-long crops, re-OCR'd in overlapping pieces.
-        const r = await baberu.ocrChunked(u8, c.width, c.height, {
-          lang: sourceLang || 'ja',
-          shouldAbort: () => cancelledRuns.has(runId),
-        });
+        let r;
+        try {
+          r = await baberu.ocrChunked(u8, c.width, c.height, {
+            lang: sourceLang || 'ja',
+            shouldAbort: () => cancelledRuns.has(runId),
+          });
+        } catch (e) {
+          // OOM recovery: drop the inpainter (206MB, not needed for OCR)
+          // and retry this crop once.
+          if (!isOom(e) || c._oomRetried) throw e;
+          resetGroup('inpaint');
+          c._oomRetried = true;
+          r = await baberu.ocrChunked(u8, c.width, c.height, {
+            lang: sourceLang || 'ja',
+            shouldAbort: () => cancelledRuns.has(runId),
+          });
+        }
         results.push({ id: c.id, text: r.text, chars: r.text.length, chunks: r.chunks, hitCeiling: r.hitCeiling, stopped: r.stopped });
       }
     } finally {
@@ -291,10 +320,23 @@ const handlers = {
         if (bgFill) {
           out = bgFill;
         } else {
-          out = await inpainter.inpaintPatch(
-            rgba, mask, p.width, p.height,
-            () => cancelledRuns.has(runId),
-            (done, total) => reportInpaint((pi + done / total) / patches.length));
+          try {
+            out = await inpainter.inpaintPatch(
+              rgba, mask, p.width, p.height,
+              () => cancelledRuns.has(runId),
+              (done, total) => reportInpaint((pi + done / total) / patches.length));
+          } catch (e) {
+            // OOM recovery: drop detector + OCR (not needed for inpaint)
+            // and retry this patch once.
+            if (!isOom(e) || p._oomRetried) throw e;
+            resetGroup('detector');
+            resetGroup('ocr-baberu');
+            p._oomRetried = true;
+            out = await inpainter.inpaintPatch(
+              rgba, mask, p.width, p.height,
+              () => cancelledRuns.has(runId),
+              (done, total) => reportInpaint((pi + done / total) / patches.length));
+          }
         }
         const resKey = p.key + ':out';
         await pixelPut(resKey, out.buffer);
