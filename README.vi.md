@@ -64,7 +64,9 @@ comic-translate-4-free dịch các trang manga và truyện tranh tự động k
 
 [**Cài đặt từ Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — một cú nhấp chuột, tự động cập nhật.
 
-**Firefox:** tải tệp zip Firefox từ [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases), sau đó vào `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → chọn `manifest.json`. (Tiện ích tạm thời sẽ bị gỡ khi khởi động lại; danh sách AMO đã ký đang được tiến hành.)
+**Firefox:**
+
+[**Cài đặt từ Firefox Add-ons**](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — một cú nhấp chuột, tự động cập nhật.
 
 Sau khi cài đặt, mở trang Cài đặt và bấm **Tải xuống tất cả mô hình** một lần (~350 MB: bộ nhận diện, OCR, bộ inpainting). Chúng được lưu trong bộ nhớ đệm của trình duyệt và kiểm chứng theo kích thước byte.
 

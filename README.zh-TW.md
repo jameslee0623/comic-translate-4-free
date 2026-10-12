@@ -64,7 +64,9 @@ Chrome / Edge / Brave：
 
 [從 Chrome 應用程式商店安裝](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) —— 一鍵安裝，自動更新。
 
-Firefox：從 [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) 下載 Firefox 版 zip 檔，然後開啟 `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → 選擇 `manifest.json`。（暫時性附加元件在重新啟動後會被卸載；正式的 AMO 上架正在進行中。）
+**Firefox:**
+
+[**從 Firefox 附加元件安裝**](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — 一鍵安裝，自動更新。
 
 安裝完成後，開啟設定頁面，點擊一次 下載所有模型（約 350 MB：偵測器、OCR、修補器）。模型會快取在瀏覽器中，並依位元組大小驗證。
 

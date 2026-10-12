@@ -64,7 +64,9 @@ comic-translate-4-free আপনি ব্রাউজ করার সময়
 
 [**Chrome Web Store থেকে ইনস্টল করুন**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — এক ক্লিকে, স্বয়ংক্রিয় আপডেটসহ।
 
-**Firefox:** ফায়ারফক্স জিপটি [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) থেকে ডাউনলোড করুন, তারপর `about:debugging#/runtime/this-firefox` পেজে গিয়ে **Load Temporary Add-on** চাপুন → `manifest.json` নির্বাচন করুন। (Temporary add-on রিস্টার্টে আনলোড হয়ে যায়; স্বাক্ষরিত AMO তালিকা প্রক্রিয়াধীন।)
+**Firefox:**
+
+[**Firefox Add-ons থেকে ইনস্টল করুন**](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — এক ক্লিকে, স্বয়ংক্রিয় আপডেট।
 
 ইনস্টলের পর Settings পেজ খুলে **সব মডেল ডাউনলোড করুন**-এ একবার ক্লিক করুন (~350 MB: ডিটেক্টর, OCR, ইনপেইন্টার)। এগুলো ব্রাউজারে ক্যাশ হয় এবং বাইট সাইজ দিয়ে যাচাই করা হয়।
 

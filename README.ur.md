@@ -64,7 +64,9 @@ comic-translate-4-free براؤزنگ کے دوران مانگا اور کامک
 
 [**Chrome Web Store سے انسٹال کریں**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — ایک کلک، خودکار اپڈیٹس۔
 
-**Firefox:** [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) سے Firefox زپ ڈاؤن لوڈ کریں، پھر `about:debugging#/runtime/this-firefox` پر جائیں ← **Load Temporary Add-on** ← `manifest.json` منتخب کریں۔ (عارضی ایڈ آن ری اسٹارٹ پر اتر جاتے ہیں؛ AMO کی دستخط شدہ لسٹنگ جاری ہے۔)
+**Firefox:**
+
+[**Firefox Add-ons سے انسٹال کریں**](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — ایک کلک، خودکار اپڈیٹس۔
 
 انسٹال کرنے کے بعد، سیٹنگز کا صفحہ کھولیں اور ایک بار **تمام ماڈل ڈاؤن لوڈ کریں** پر کلک کریں (~350 MB: ڈیٹیکٹر، OCR، ان پینٹر)۔ یہ براؤزر میں کیش ہو جاتے ہیں اور بائٹ سائز سے تصدیق شدہ ہیں۔
 

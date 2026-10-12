@@ -64,7 +64,9 @@ comic-translate-4-free يترجم صفحات المانغا والقصص الم�
 
 [**ثبّت من Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — بضغطة واحدة، مع تحديثات تلقائية.
 
-**Firefox:** حمّل ملف Firefox المضغوط من [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases)، ثم انتقل إلى `about:debugging#/runtime/this-firefox` ← **Load Temporary Add-on** ← اختر `manifest.json`. (الإضافات المؤقتة تُزال عند إعادة التشغيل؛ القائمة الموقّعة على AMO قيد الإعداد.)
+**Firefox:**
+
+[**ثبّت من إضافات Firefox**](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — نقرة واحدة، تحديثات تلقائية.
 
 بعد التثبيت، افتح صفحة الإعدادات واضغط **تنزيل كل النماذج** مرة واحدة (~350 ميجابايت: الكاشف، وOCR، وأداة إعادة الرسم الداخلي). تُحفظ في المتصفح ويُتحقق منها بحجم البايت.
 

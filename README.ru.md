@@ -64,7 +64,9 @@ comic-translate-4-free автоматически переводит стран�
 
 [**Установить из Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — один клик, автоматические обновления.
 
-**Firefox:** скачайте zip для Firefox из [Релизов](https://github.com/jameslee0623/comic-translate-4-free/releases), затем перейдите на `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → выберите `manifest.json`. (Временные дополнения выгружаются при перезапуске; подписанный листинг на AMO в процессе подготовки.)
+**Firefox:**
+
+[**Установить из Firefox Add-ons**](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — в один клик, автоматические обновления.
 
 После установки откройте страницу настроек и один раз нажмите **Скачать все модели** (~350 МБ: детектор, OCR, inpainter). Они кэшируются в браузере и проверяются по размеру в байтах.
 

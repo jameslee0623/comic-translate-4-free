@@ -64,7 +64,9 @@ comic-translate-4-free は、閲覧中のマンガやコミックのページを
 
 [**Chrome ウェブストアからインストール**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — ワンクリックでインストール、自動更新されます。
 
-**Firefox:** [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) から Firefox 用 zip をダウンロードし、`about:debugging#/runtime/this-firefox` を開いて **Load Temporary Add-on** → `manifest.json` を選択します。（一時的なアドオンは再起動すると無効になります。署名済みの AMO 公開を準備中です。）
+**Firefox:**
+
+[**Firefox Add-ons からインストール**](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — ワンクリックで、自動更新。
 
 インストール後、設定ページを開き **すべてのモデルをダウンロード** を一度クリックしてください（検出器・OCR・インペインターで約 350MB）。モデルはブラウザにキャッシュされ、バイトサイズで検証されます。
 

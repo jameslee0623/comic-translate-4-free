@@ -64,7 +64,9 @@ O comic-translate-4-free traduz páginas de mangás e quadrinhos automaticamente
 
 [**Instalar da Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — um clique, atualizações automáticas.
 
-**Firefox:** baixe o zip do Firefox em [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases), depois vá para `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → escolha `manifest.json`. (Complementos temporários são descarregados ao reiniciar; uma listagem assinada na AMO está em andamento.)
+**Firefox:**
+
+[**Instalar do Firefox Add-ons**](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — um clique, atualizações automáticas.
 
 Após instalar, abra a página de Configurações e clique em **Download all models** uma vez (~350 MB: detector, OCR, inpainter). Eles ficam em cache no navegador e são verificados pelo tamanho em bytes.
 

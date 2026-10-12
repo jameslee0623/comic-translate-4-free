@@ -64,7 +64,9 @@ comic-translate-4-free menerjemahkan halaman manga dan komik secara otomatis saa
 
 [**Instal dari Chrome Web Store**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — sekali klik, pembaruan otomatis.
 
-**Firefox:** unduh zip Firefox dari [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases), lalu buka `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → pilih `manifest.json`. (Add-on sementara akan dilepas saat restart; listing AMO yang ditandatangani sedang dalam proses.)
+**Firefox:**
+
+[**Pasang dari Firefox Add-ons**](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — satu klik, pembaruan otomatis.
 
 Setelah menginstal, buka halaman Settings dan klik **Unduh semua model** sekali (~350 MB: detektor, OCR, inpainter). Semuanya di-cache di browser dan diverifikasi berdasarkan ukuran byte.
 

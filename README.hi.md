@@ -64,7 +64,9 @@ comic-translate-4-free आपके ब्राउज़ करते समय
 
 [**Chrome Web Store से इंस्टॉल करें**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — एक क्लिक में, ऑटोमैटिक अपडेट के साथ।
 
-**Firefox:** Firefox ज़िप [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases) से डाउनलोड करें, फिर `about:debugging#/runtime/this-firefox` पर जाएं → **Load Temporary Add-on** → `manifest.json` चुनें। (Temporary add-on रीस्टार्ट पर अनलोड हो जाते हैं; साइन किया हुआ AMO लिस्टिंग प्रगति पर है।)
+**Firefox:**
+
+[**Firefox Add-ons से इंस्टॉल करें**](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — एक क्लिक, स्वचालित अपडेट।
 
 इंस्टॉल के बाद Settings पेज खोलें और **सभी मॉडल डाउनलोड करें** पर एक बार क्लिक करें (~350 MB: डिटेक्टर, OCR, इनपेंटर)। ये ब्राउज़र में कैश हो जाते हैं और बाइट साइज़ से सत्यापित होते हैं।
 

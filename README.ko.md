@@ -64,7 +64,9 @@ comic-translate-4-free는 웹 서핑 중 만화와 코믹 페이지를 자동으
 
 [**Chrome 웹 스토어에서 설치**](https://chromewebstore.google.com/detail/pndooikgcenncdohfggodonniihplppj) — 한 번의 클릭으로 설치되며 자동 업데이트됩니다.
 
-**Firefox:** [Releases](https://github.com/jameslee0623/comic-translate-4-free/releases)에서 Firefox용 zip을 다운로드한 뒤, `about:debugging#/runtime/this-firefox`로 이동해 **Load Temporary Add-on** → `manifest.json`을 선택하세요. (임시 부가 기능은 브라우저를 다시 시작하면 사라집니다. 서명된 AMO 등록을 준비 중입니다.)
+**Firefox:**
+
+[**Firefox 부가 기능에서 설치**](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — 한 번의 클릭으로, 자동 업데이트.
 
 설치 후 설정 페이지를 열고 **모든 모델 다운로드**를 한 번 클릭하세요(약 350MB: 감지 모델, OCR, 인페인팅 모델). 모델은 브라우저에 캐시되며 바이트 크기로 검증됩니다.
 
