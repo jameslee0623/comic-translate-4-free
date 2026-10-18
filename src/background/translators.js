@@ -1,6 +1,6 @@
 // Translation backends. translateBlocks(blocks, settings) -> aligned [string].
 // Empty source texts map to empty translations. Throws with a human message.
-import { LANGS, TARGET_LANGS } from '../shared/settings.js';
+import { LANGS, TARGET_LANGS, updateSettingsField } from '../shared/settings.js';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Abort-aware sleep: rejects immediately on cancel instead of waiting out
@@ -65,22 +65,32 @@ export async function ensureLmStudioHostAccess(url) {
     throw err;
   }
 }
-async function lmStudioFetch(url, opts, signal, label) {
-  const timeoutMs = 10 * 60 * 1000;
-  const backoffs = [2000, 6000];
+// deadlineMs caps the TOTAL wall time across attempts + backoffs (default
+// 170s — under the 180s Firefox worker timeout and Chrome's translate
+// deadline, so a hung server can't hold the worker past its kill). Callers
+// thread their own deadline: the SW passes 170s on both browser paths.
+async function lmStudioFetch(url, opts, signal, label, deadlineMs = 170000) {
+  const deadline = Date.now() + deadlineMs;
+  const backoffs = [1000, 2000, 4000];
   let lastErr = null;
+  const timedOut = () => new Error('LM Studio: translate timed out');
   for (let attempt = 0; attempt <= backoffs.length; attempt++) {
+    let remaining = deadline - Date.now();
+    if (remaining <= 0) throw timedOut();
     if (attempt > 0) {
-      await sleepAbortable(backoffs[attempt - 1], signal);
+      await sleepAbortable(Math.min(backoffs[attempt - 1], remaining), signal);
+      remaining = deadline - Date.now();
+      if (remaining <= 0) throw timedOut();
     }
-    // Combine the caller's cancel signal with the timeout.
+    // Combine the caller's cancel signal with the per-attempt timeout
+    // (capped by the remaining deadline).
     const ctrl = new AbortController();
     const onAbort = () => ctrl.abort();
     if (signal) {
       if (signal.aborted) throw Object.assign(new Error('cancelled'), { cancelled: true });
       signal.addEventListener('abort', onAbort, { once: true });
     }
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const timer = setTimeout(() => ctrl.abort(), Math.min(60000, remaining));
     try {
       const resp = await fetch(url, { ...opts, signal: ctrl.signal });
       clearTimeout(timer);
@@ -95,6 +105,9 @@ async function lmStudioFetch(url, opts, signal, label) {
       clearTimeout(timer);
       if (signal) signal.removeEventListener('abort', onAbort);
       if (e && e.cancelled) throw e;
+      // Deadline hit while waiting: report the timeout, not "cannot reach"
+      // — the server was reachable but too slow.
+      if (Date.now() >= deadline) throw timedOut();
       // AbortError from timeout: retry if attempts remain.
       const isTimeout = e && e.name === 'AbortError' && !signal?.aborted;
       const isNetwork = e && (e.name === 'TypeError' || /fetch failed|cannot reach|network/i.test(String(e.message)));
@@ -105,6 +118,8 @@ async function lmStudioFetch(url, opts, signal, label) {
       throw e;
     }
   }
+  // Attempts exhausted on timeouts: report the deadline, not "cannot reach".
+  if (lastErr && lastErr.name === 'AbortError') throw timedOut();
   throw lastErr || new Error('LM Studio: request failed');
 }
 
@@ -303,11 +318,11 @@ function lmStudioEndpoints(settings) {
 // is gone (unloaded/swapped in LM Studio), the caller rediscovers once and
 // retries. Prefers the native v1 shape (key + loaded_instances), falls back
 // to older {id, state} shapes.
-async function lmStudioDiscoverModel(ep, headers, signal) {
+async function lmStudioDiscoverModel(ep, headers, signal, deadlineMs) {
   await ensureLmStudioHostAccess(ep.models);
   let resp;
   try {
-    resp = await lmStudioFetch(ep.models, { headers }, signal, 'model discovery');
+    resp = await lmStudioFetch(ep.models, { headers }, signal, 'model discovery', deadlineMs);
   } catch (e) {
     if (e && e.cancelled) throw e;
     throw new Error('LM Studio: cannot reach ' + ep.models + ' — is the server running?');
@@ -322,7 +337,7 @@ async function lmStudioDiscoverModel(ep, headers, signal) {
   if (!loaded) throw new Error('LM Studio: no model is loaded — load one in LM Studio first, then translate again');
   const id = loaded.key || loaded.id;
   try {
-    await updateSettings({ lmStudioModelId: id });
+    await updateSettingsField('lmStudioModelId', id);
   } catch { /* remembering is best-effort; the id is still returned */ }
   return id;
 }
@@ -348,12 +363,12 @@ function lmStudioPrompt(texts, settings) {
     '\n' + JSON.stringify(texts);
 }
 
-async function lmStudio(texts, settings, signal) {
+async function lmStudio(texts, settings, signal, deadlineMs) {
   const ep = lmStudioEndpoints(settings);
   await ensureLmStudioHostAccess(ep.chat);
   const headers = { 'Content-Type': 'application/json' };
   if ((settings.lmStudioKey || '').trim()) headers['Authorization'] = 'Bearer ' + settings.lmStudioKey.trim();
-  if (ep.flavor === 'lmstudio-v1') return lmStudioV1(texts, settings, ep, headers, signal);
+  if (ep.flavor === 'lmstudio-v1') return lmStudioV1(texts, settings, ep, headers, signal, deadlineMs);
   const body = {
     messages: [{ role: 'user', content: lmStudioPrompt(texts, settings) }],
     temperature: 0,
@@ -367,7 +382,7 @@ async function lmStudio(texts, settings, signal) {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
-    }, signal, 'chat');
+    }, signal, 'chat', deadlineMs);
   } catch (e) {
     if (e && e.cancelled) throw e;
     throw new Error('LM Studio: cannot reach ' + ep.chat + ' (' + ep.label + ') — is the server running? (' + String(e).slice(0, 100) + ')');
@@ -386,7 +401,7 @@ async function lmStudio(texts, settings, signal) {
 // temperature}. The model id is the remembered one when we have it; learned
 // once when we don't; re-learned once if the remembered one fails (the user
 // may have swapped models in LM Studio since).
-async function lmStudioV1(texts, settings, ep, headers, signal) {
+async function lmStudioV1(texts, settings, ep, headers, signal, deadlineMs) {
   const input = lmStudioPrompt(texts, settings);
   const post = async (modelId) => {
     try {
@@ -394,7 +409,7 @@ async function lmStudioV1(texts, settings, ep, headers, signal) {
         method: 'POST',
         headers,
         body: JSON.stringify({ model: modelId, input, temperature: 0 }),
-      }, signal, 'v1 chat');
+      }, signal, 'v1 chat', deadlineMs);
     } catch (e) {
       if (e && e.cancelled) throw e;
       throw new Error('LM Studio: cannot reach ' + ep.chat + ' — is the server running? (' + String(e).slice(0, 100) + ')');
@@ -407,13 +422,13 @@ async function lmStudioV1(texts, settings, ep, headers, signal) {
   const n = texts.length;
   let modelId = settings.lmStudioModelId;
   if (!modelId) {
-    const resp = await post(await lmStudioDiscoverModel(ep, headers, signal));
+    const resp = await post(await lmStudioDiscoverModel(ep, headers, signal, deadlineMs));
     if (!resp.ok) await fail(resp);
     return parseLmStudioBody(await resp.text(), n);
   }
   let resp = await post(modelId);
   if (!resp.ok) {
-    resp = await post(await lmStudioDiscoverModel(ep, headers, signal));
+    resp = await post(await lmStudioDiscoverModel(ep, headers, signal, deadlineMs));
     if (!resp.ok) await fail(resp);
   }
   return parseLmStudioBody(await resp.text(), n);
@@ -619,7 +634,7 @@ export async function checkLmStudio(settings) {
     const loaded = models.find(m => m && Array.isArray(m.loaded_instances) && m.loaded_instances.length > 0 && (m.key || m.id));
     if (loaded) {
       try {
-        await updateSettings({ lmStudioModelId: loaded.key || loaded.id });
+        await updateSettingsField('lmStudioModelId', loaded.key || loaded.id);
       } catch { /* best-effort */ }
     }
   }
@@ -664,7 +679,7 @@ async function localLlm(texts, settings, signal) {
   return googleFree(texts, settings.sourceLang, settings.targetLang, signal);
 }
 
-export async function translateBlocks(blocks, settings, onProgress, signal) {
+export async function translateBlocks(blocks, settings, onProgress, signal, deadlineMs = 170000) {
   const idx = [], texts = [];
   blocks.forEach((b, i) => {
     if (b.text && b.text.trim()) { idx.push(i); texts.push(b.text); }
@@ -674,12 +689,14 @@ export async function translateBlocks(blocks, settings, onProgress, signal) {
   const backend = settings.translationBackend || 'google';
   const runBackend = async (b) => {
     if (b === 'azure') return await azure(texts, settings, signal);
-    if (b === 'lmstudio') return await lmStudio(texts, settings, signal);
+    if (b === 'lmstudio') return await lmStudio(texts, settings, signal, deadlineMs);
     if (b === 'local-llm') return await localLlm(texts, settings, signal);
     return await googleFree(texts, settings.sourceLang, settings.targetLang, signal);
   };
   let results;
   let lastErr = null;
+  let backendUsed = backend;
+  let azureConsumed = false;
   try {
     results = await runBackend(backend);
   } catch (e) {
@@ -699,15 +716,23 @@ export async function translateBlocks(blocks, settings, onProgress, signal) {
           // Skip LM Studio failover if it was the failing backend (avoid loop).
           // Skip backends that need config we don't have.
           if (fb === 'lmstudio' && backend === 'lmstudio') continue;
+          // User-visible notice: failover must not happen silently.
+          onProgress && onProgress({ failoverFrom: backend, failoverTo: fb });
           results = await runBackend(fb);
           lastErr = null;
+          backendUsed = fb;
+          if (fb === 'azure') azureConsumed = true;
           console.warn(`[ct] backend failover: ${backend} failed, ${fb} succeeded`);
           break;
         } catch (fe) {
           if (fe && fe.cancelled) throw fe;
           lastErr = fe;
+          if (fb === 'azure') azureConsumed = true;
         }
       }
+      // Failover already tried Azure (and it failed): don't offer a
+      // "retry with Azure" — it was just consumed.
+      if (lastErr && azureConsumed) lastErr.azureRetryAvailable = false;
     } else if ((settings.azureKey || '').trim() && backend !== 'azure') {
       // Not opted in: don't fail over automatically, but tag the error so
       // the UI can offer one-click "retry with Azure".
@@ -716,6 +741,8 @@ export async function translateBlocks(blocks, settings, onProgress, signal) {
     if (lastErr) throw lastErr;
   }
   results.forEach((t, k) => { translated[idx[k]] = t; });
+  // Record which backend produced the translation (surfaced in debug rows).
+  blocks.forEach(b => { b.backendUsed = backendUsed; });
   onProgress && onProgress();
   return translated;
 }

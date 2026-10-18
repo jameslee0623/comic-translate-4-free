@@ -291,7 +291,12 @@ const handlers = {
     return { ok: true, results, ms: Math.round(performance.now() - t0), engine };
   },
 
-  async [MSG.ML_INPAINT]({ patches, runId }) {
+  async [MSG.ML_INPAINT]({ patches, runId, attempt }) {
+    // `attempt` (from ml-bridge.js): if this is a retry after a timed-out
+    // call, namespace the `:out` result keys (`key:out#a2`) so a late
+    // completion of the timed-out attempt can't clobber this retry's output.
+    // The SW reads resKey from the response, so this is transparent to it.
+    const outSuffix = attempt > 1 ? `#a${attempt}` : '';
     throwIfCancelled(runId);
     await ensureModel('inpaint');
     throwIfCancelled(runId);
@@ -339,7 +344,7 @@ const handlers = {
               (done, total) => reportInpaint((pi + done / total) / patches.length));
           }
         }
-        const resKey = p.key + ':out';
+        const resKey = p.key + ':out' + outSuffix;
         await pixelPut(resKey, out.buffer);
         results.push({ id: p.id, key: resKey, width: p.width, height: p.height });
         reportInpaint((pi + 1) / patches.length);

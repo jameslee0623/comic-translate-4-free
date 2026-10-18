@@ -100,13 +100,52 @@ const ML_TIMEOUT_MS = {
 };
 const ML_TIMEOUT_DEFAULT_MS = 5 * 60 * 1000;
 
+// Attempt tracking per (runId, type, key): if a callMl times out and the
+// caller retries the same ML op, the retry must not reuse the timed-out
+// call's pixel keys — a late completion could otherwise clobber the retry's
+// payload (notably inpaint's `:out` result keys). The attempt number rides
+// along in msg.attempt; handlers namespace their output keys when > 1.
+const mlAttempts = new Map(); // `${runId}::${type}::${key}` -> count
+function nextAttempt(msg) {
+  const k = `${msg.runId || ''}::${msg.type}::${msg.key || ''}`;
+  const n = (mlAttempts.get(k) || 0) + 1;
+  mlAttempts.set(k, n);
+  // Bound the map: runs are short-lived; drop the oldest entry first
+  // (Maps iterate in insertion order).
+  if (mlAttempts.size > 512) mlAttempts.delete(mlAttempts.keys().next().value);
+  return n;
+}
+
+// Best-effort abort of a run's in-flight ML work. Used when callMl times out:
+// the inner op keeps running past the Promise.race, so without this a late
+// completion could still burn CPU / write pixel payloads for a dead run.
+// Fire-and-forget — the host itself may be hung, and we're already failing.
+function cancelMlRun(runId) {
+  if (!runId) return;
+  try {
+    const direct = directHandlers();
+    if (direct && direct[MSG.ML_CANCEL]) {
+      direct[MSG.ML_CANCEL]({ runId });
+      return;
+    }
+  } catch { /* fall through to messaging */ }
+  try {
+    chrome.runtime.sendMessage({ type: MSG.ML_CANCEL, runId }).catch(() => {});
+  } catch { /* host unreachable */ }
+}
+
 // Call one ML_* handler. Mirrors the old callOffscreen contract: resolves
 // with the handler's payload, throws a human message on failure.
 export async function callMl(msg) {
   const timeoutMs = ML_TIMEOUT_MS[msg.type] || ML_TIMEOUT_DEFAULT_MS;
+  const attempt = nextAttempt(msg);
+  const effMsg = attempt > 1 ? { ...msg, attempt } : msg;
   let timer = null;
   const timeoutP = new Promise((_, reject) => {
     timer = setTimeout(() => {
+      // Stop the runaway op first: without this it keeps running past the
+      // race and could complete late (stale pixelPut, double resource use).
+      cancelMlRun(msg.runId);
       const group = ML_GROUP_FOR_TYPE[msg.type] || 'ML';
       const err = new Error(`ML host timed out during ${group} after ${Math.round(timeoutMs / 60000)} min — the model may be stuck. Try again; if it repeats, restart the browser.`);
       err.mlTimeout = true;
@@ -115,7 +154,7 @@ export async function callMl(msg) {
     }, timeoutMs);
   });
   try {
-    return await Promise.race([callMlInner(msg), timeoutP]);
+    return await Promise.race([callMlInner(effMsg), timeoutP]);
   } finally {
     clearTimeout(timer);
   }

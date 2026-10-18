@@ -19,7 +19,7 @@ import {
   pageCacheGet, pageCachePut,
   pageCacheStats, clearPageCache,
 } from '../shared/page-cache.js';
-import { displayHost, hostOf, isSiteAllowed, imageHostOrigins } from '../shared/site-access.js';
+import { baseDomain, displayHost, hostOf, isSiteAllowed, imageHostOrigins } from '../shared/site-access.js';
 
 // Translated-page cache is session-scoped: initPageCache() wipes the store on
 // every browser startup (via a chrome.storage.session marker) and the
@@ -162,12 +162,22 @@ async function dataUrlToRGBA(dataUrl, maxPixels = CAPTURE_MAX_PIXELS) {
 // hosts with hotlink protection 403 requests with NO Referer. Trying both
 // covers both kinds; only a 403 falls through to the next attempt.
 async function fetchImagePixels(url, referrer) {
-  // Mimic the page's <img> load: image Accept header, user cookies, and the
-  // Priority header browsers send on subresource image loads. (Sec-Fetch-Dest
-  // can't be forged — fetch always sends `empty`, never `image` — so a strict
-  // bot filter can still tell us apart.)
+  // Cookie policy: never send the user's cookies to an arbitrary image host
+  // (the 403-retry path can hit attacker-controlled URLs). `credentials:
+  // 'include'` is only used when the image host is same-site with the page
+  // (same eTLD+1 via baseDomain — covers the page's own CDN subdomains);
+  // otherwise default to 'omit'. The request still mimics the page's <img>
+  // via the image Accept header and referrer strategy, just without cookies.
+  const imgHost = hostOf(url) || '';
+  const pageHost = hostOf(referrer) || '';
+  const sameSite = !!imgHost && !!pageHost &&
+    (imgHost === pageHost || baseDomain(imgHost) === baseDomain(pageHost));
+  // Mimic the page's <img> load: image Accept header and the Priority
+  // header browsers send on subresource image loads. (Sec-Fetch-Dest can't
+  // be forged — fetch always sends `empty`, never `image` — so a strict bot
+  // filter can still tell us apart.)
   const base = {
-    credentials: 'include',
+    credentials: sameSite ? 'include' : 'omit',
     headers: {
       Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
       Priority: 'i',
@@ -540,14 +550,16 @@ async function renderFromTier1(tabId, runId, tier1Entry, tier2Key, settings, tim
   const t0 = performance.now();
   // Blocks from Tier-1 have OCR text but no translations.
   const blocks = tier1Entry.blocks.map(b => ({ ...b }));
-  // Determine effective settings (source lang was fixed at Tier-1 time).
+  // Source language was resolved at Tier-1 write time — reuse it verbatim
+  // instead of re-detecting (G10). Entries written before this field existed
+  // fall back to detection.
   let effSettings = settings;
   if (settings.sourceLang === 'auto') {
-    const detected = detectPageLang(blocks.map(b => b.text));
-    effSettings = { ...settings, sourceLang: detected || 'ja' };
+    const resolved = tier1Entry.sourceLang || detectPageLang(blocks.map(b => b.text));
+    effSettings = { ...settings, sourceLang: resolved || 'ja' };
   }
   const abortController = runs.get(runId)?.abortController || new AbortController();
-  const translated = await translateBlocks(blocks, effSettings, null, abortController.signal);
+  const translated = await translateBlocks(blocks, effSettings, null, abortController.signal, 170000);
   checkCancelled(runId);
   blocks.forEach((b, i) => { b.translation = translated[i]; });
   const translateMs = Math.round(performance.now() - t0);
@@ -865,7 +877,7 @@ async function runPipeline(tabId, opts = {}) {
       let translated;
       try {
         translated = await Promise.race([
-          translateBlocks(blocks, effSettings, null, abortController.signal),
+          translateBlocks(blocks, effSettings, null, abortController.signal, 170000),
           timeoutP,
         ]);
       } finally {
@@ -877,7 +889,7 @@ async function runPipeline(tabId, opts = {}) {
       parProgress('translate', 1);
       await emitDebug(runId, tabId, settings, 'translate', {
         title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
-        rows: blocks.map(b => ({ text: b.text, translation: b.translation })),
+        rows: blocks.map(b => ({ text: b.text, translation: b.translation, backend: b.backendUsed || settings.translationBackend })),
         ms: translateMs,
       });
       return { translateMs };
@@ -982,7 +994,7 @@ async function runPipeline(tabId, opts = {}) {
         }, 180000);
         tWorker.onmessage = (e) => {
           killTranslateWorker();
-          if (e.data.ok) resolve(e.data.translated);
+          if (e.data.ok) resolve({ translated: e.data.translated, backendUsed: e.data.backendUsed });
           else reject(new Error(e.data.error));
         };
         tWorker.onerror = (err) => {
@@ -1013,12 +1025,16 @@ async function runPipeline(tabId, opts = {}) {
       }
       try { tWorker.terminate(); } catch { /* already terminated by onmessage */ }
       checkCancelled(runId);
-      blocks.forEach((b, i) => { b.translation = translated[i]; });
+      blocks.forEach((b, i) => {
+        b.translation = translated.translated[i];
+        b.backendUsed = translated.backendUsed;
+      });
+      translated = translated.translated;
       const translateMs = Math.round(performance.now() - t0t);
       parProgress('translate', 1);
       await emitDebug(runId, tabId, settings, 'translate', {
         title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
-        rows: blocks.map(b => ({ text: b.text, translation: b.translation })),
+        rows: blocks.map(b => ({ text: b.text, translation: b.translation, backend: b.backendUsed || settings.translationBackend })),
         ms: translateMs,
       });
       translateOut = { translateMs };
@@ -1069,6 +1085,9 @@ async function runPipeline(tabId, opts = {}) {
         await pageCachePut(t1Key, {
           imageDataUrl: finalDataUrl, width: w, height: h,
           blocks: blocksNoTrans, mode,
+          // Resolved source language ('auto' already detected above) — reused
+          // verbatim on Tier-1 hits instead of re-detecting (G10).
+          sourceLang: effSettings.sourceLang,
         });
         const t2Key = buildCacheKeyTier2(t1Key, settings);
         await pageCachePut(t2Key, {

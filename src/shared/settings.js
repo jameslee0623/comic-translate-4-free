@@ -166,6 +166,10 @@ export async function readSettingsRaw() {
 // Serialized settings write: read-modify-write chained so concurrent
 // callers don't clobber each other (the translators.js lmStudioModelId
 // write-back raced the popup's writes before this).
+// NOTE: the chain is per-JS-context — the SW, popup, and options page each
+// have their own. Concurrent writes from DIFFERENT contexts can still race.
+// Keep full-patch writes rare (user-initiated saves); hot single-field
+// write-backs should use updateSettingsField() below.
 let settingsWriteChain = Promise.resolve();
 export function updateSettings(patch) {
   const w = settingsWriteChain.then(async () => {
@@ -174,6 +178,15 @@ export function updateSettings(patch) {
   }).catch(() => {});
   settingsWriteChain = w;
   return w;
+}
+
+// Single-field write-back for cross-context hot paths (e.g. translators.js
+// persisting the discovered lmStudioModelId while the popup may be saving).
+// Reads fresh at write time and changes ONLY that field, so at worst we
+// overwrite with near-current data instead of a stale snapshot.
+export async function updateSettingsField(key, value) {
+  const s = await readSettingsRaw();
+  await chrome.storage.local.set({ settings: { ...s, [key]: value } });
 }
 
 export async function getSettings() {
