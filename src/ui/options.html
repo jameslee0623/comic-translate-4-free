@@ -49,6 +49,7 @@
     <option value="azure" data-i18n="backend_azure_opt">Azure Translator (key required)</option>
     <option value="lmstudio" data-i18n="backend_lmstudio_opt">LM Studio (local server)</option>
   </select></div>
+  <div class="row"><label for="backendFailover" data-i18n="backend_failover">If the engine fails, try another</label><input type="checkbox" id="backendFailover"></div>
   <div class="row"><label data-i18n="azure_key">Azure API key</label><input type="password" id="azureKey" autocomplete="off"></div>
   <div class="row"><label data-i18n="azure_region">Azure region</label><input type="text" id="azureRegion" data-i18n-ph="azure_region_ph" placeholder="e.g. japaneast" autocomplete="off"></div>
   <div class="row"><label></label><button id="checkAzure" data-i18n="check_azure">Check Azure connection</button><span id="azureResult" class="check-result"></span></div>

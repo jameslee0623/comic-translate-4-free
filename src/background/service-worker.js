@@ -6,17 +6,17 @@ import { MODEL_GROUPS, getModelStatus, deleteModelGroup } from '../shared/model-
 import { getSettings } from '../shared/settings.js';
 import {
   makeTextBlock, mergeOverlappingBoxes, sortBlocks,
-  boxIoU, clampBox,
+  boxIoU, clampBox, dedupAndMergeSeams, mergePaddedBoxes,
 } from '../shared/textblock.js';
-import { toGrayU8, meanBrightness } from '../offscreen/ml/image-ops.js';
+import { toGrayU8, meanBrightness } from '../shared/image-ops.js';
 import { pixelPut, pixelTake, pixelDrop } from '../shared/pixel-bus.js';
-import { generateMask } from '../offscreen/ml/mask.js';
-import { mergePaddedBoxes } from '../offscreen/ml/inpaint.js';
+import { generateMask } from '../shared/mask.js';
 import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL } from './translators.js';
 import { detectPageLang } from '../shared/lang-detect.js';
 import { mlHostAlive, ensureMlHost, callMl, makeCanvas, canvasToBlob, directHandlers, WEBP_TYPE, WEBP_QUALITY } from './ml-bridge.js';
 import {
-  initPageCache, buildCacheKey, pageCacheGet, pageCachePut,
+  initPageCache, buildCacheKey, buildCacheKeyTier1, buildCacheKeyTier2,
+  pageCacheGet, pageCachePut,
   pageCacheStats, clearPageCache,
 } from '../shared/page-cache.js';
 import { displayHost, hostOf, isSiteAllowed, imageHostOrigins } from '../shared/site-access.js';
@@ -520,6 +520,43 @@ async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timing
 // page already knows (RUN_STARTED went out before capture), and the message
 // shape is identical to the live pipeline's — the content script can't tell
 // the difference, and re-composites the text with the CURRENT font settings.
+// Tier-1 hit with a new targetLang: translate the OCR'd blocks only,
+// skipping detect/OCR/inpaint entirely. Stores the Tier-2 entry for next time.
+async function renderFromTier1(tabId, runId, tier1Entry, tier2Key, settings, timings, srcUrl, rgba, w, h, mode, tier) {
+  checkCancelled(runId);
+  setProgress(runId, 'translate', 0.5);
+  const t0 = performance.now();
+  // Blocks from Tier-1 have OCR text but no translations.
+  const blocks = tier1Entry.blocks.map(b => ({ ...b }));
+  // Determine effective settings (source lang was fixed at Tier-1 time).
+  let effSettings = settings;
+  if (settings.sourceLang === 'auto') {
+    const detected = detectPageLang(blocks.map(b => b.text));
+    effSettings = { ...settings, sourceLang: detected || 'ja' };
+  }
+  const abortController = runs.get(runId)?.abortController || new AbortController();
+  const translated = await translateBlocks(blocks, effSettings, null, abortController.signal);
+  checkCancelled(runId);
+  blocks.forEach((b, i) => { b.translation = translated[i]; });
+  const translateMs = Math.round(performance.now() - t0);
+  timings.translate = translateMs;
+  // Store Tier-2 entry for next time.
+  try {
+    if (!(await isIncognitoTab(tabId))) {
+      await pageCachePut(tier2Key, {
+        translations: translated,
+        targetLang: settings.targetLang,
+        backend: settings.translationBackend,
+      });
+    }
+  } catch (e) {
+    console.warn('[ct] tier-2 cache write failed:', String((e && e.message) || e).slice(0, 120));
+  }
+  // Render with the translated blocks.
+  const entry = { ...tier1Entry, blocks };
+  return await renderFromPageCache(tabId, runId, entry, settings, timings, srcUrl);
+}
+
 async function renderFromPageCache(tabId, runId, entry, settings, timings, srcUrl) {
   checkCancelled(runId);
   setProgress(runId, 'render', 0.96);
@@ -613,14 +650,43 @@ async function runPipeline(tabId, opts = {}) {
     // dropping staged pixel payloads), so cleanup is unchanged.
     checkCancelled(runId);
     let cacheHit = null;
+    let tier1Key = null, tier1Entry = null;
     try {
       if (!(await isIncognitoTab(tabId))) {
-        cacheHit = await pageCacheGet(await buildCacheKey(rgba, w, h, settings));
+        // Two-tier lookup: Tier 1 (target-independent) first, then Tier 2
+        // (targetLang + backend). A Tier-1 hit with a new targetLang
+        // translates only — skipping detect/OCR/inpaint.
+        tier1Key = await buildCacheKeyTier1(rgba, w, h, settings);
+        tier1Entry = await pageCacheGet(tier1Key);
+        if (tier1Entry) {
+          const tier2Key = buildCacheKeyTier2(tier1Key, settings);
+          const tier2Entry = await pageCacheGet(tier2Key);
+          if (tier2Entry && tier2Entry.translations) {
+            // Full hit: apply cached translations to the Tier-1 blocks.
+            const blocks = tier1Entry.blocks.map((b, i) => ({
+              ...b, translation: tier2Entry.translations[i] || '',
+            }));
+            cacheHit = { ...tier1Entry, blocks };
+          } else {
+            // Tier-1 hit, Tier-2 miss: translate the OCR'd blocks only.
+            // (Falls through to the translate-only path below.)
+            cacheHit = { tier1Only: true, entry: tier1Entry, tier2Key };
+          }
+        } else {
+          // No Tier 1: try the legacy v1 key for backward compatibility.
+          cacheHit = await pageCacheGet(await buildCacheKey(rgba, w, h, settings));
+        }
       }
     } catch (e) {
       console.warn('[ct] page-cache lookup failed:', String((e && e.message) || e).slice(0, 120));
     }
     if (cacheHit) {
+      if (cacheHit.tier1Only) {
+        // Translate-only path: Tier-1 gave us inpainted base + OCR blocks.
+        // Translate to the new targetLang, store Tier-2, render.
+        return await renderFromTier1(tabId, runId, cacheHit.entry, cacheHit.tier2Key,
+          settings, timings, manualSrc, rgba, w, h, mode, tier);
+      }
       return await renderFromPageCache(tabId, runId, cacheHit, settings, timings, manualSrc);
     }
 
@@ -890,7 +956,9 @@ async function runPipeline(tabId, opts = {}) {
         // Collect translation from worker
         translated = await translateP;
       } catch (e) {
-        killTranslateWorker();
+        // Pass the error so translateReject fires — otherwise translateP
+        // pends forever, leaking the closure chain per failed Firefox run.
+        killTranslateWorker(e instanceof Error ? e : new Error(String(e)));
         throw e;
       }
       try { tWorker.terminate(); } catch { /* already terminated by onmessage */ }
@@ -940,6 +1008,26 @@ async function runPipeline(tabId, opts = {}) {
     // incognito; a cancelled run never reaches this point (it throws above).
     try {
       if (!(await isIncognitoTab(tabId))) {
+        // Two-tier write: Tier 1 (target-independent) stores the inpainted
+        // base + OCR'd blocks (translations stripped). Tier 2 stores the
+        // translations for this targetLang/backend.
+        const t1Key = await buildCacheKeyTier1(rgba, w, h, settings);
+        const blocksNoTrans = blocks.map(b => {
+          const { translation, ...rest } = b;
+          return rest;
+        });
+        await pageCachePut(t1Key, {
+          imageDataUrl: finalDataUrl, width: w, height: h,
+          blocks: blocksNoTrans, mode,
+        });
+        const t2Key = buildCacheKeyTier2(t1Key, settings);
+        await pageCachePut(t2Key, {
+          translations: blocks.map(b => b.translation || ''),
+          targetLang: settings.targetLang,
+          backend: settings.translationBackend,
+        });
+        // Legacy v1 key (for backward compat during transition; will be
+        // removed once Tier 1 is populated).
         await pageCachePut(await buildCacheKey(rgba, w, h, settings), {
           imageDataUrl: finalDataUrl, width: w, height: h, blocks, mode,
         });
@@ -980,6 +1068,7 @@ async function detectSliced(rgba, w, h, threshold, runId, pxKeys) {
   const sliceH = Math.round(w * 3.0);
   const step = Math.round(sliceH * 0.8);
   const all = [];
+  const seams = [];
   for (let y0 = 0; y0 < h; y0 += step) {
     checkCancelled(runId);
     const y1 = Math.min(h, y0 + sliceH);
@@ -994,8 +1083,10 @@ async function detectSliced(rgba, w, h, threshold, runId, pxKeys) {
       all.push({ ...b, xyxy: [b.xyxy[0], b.xyxy[1] + y0, b.xyxy[2], b.xyxy[3] + y0] });
     }
     if (y1 >= h) break;
+    seams.push(y1);
   }
-  return all;
+  // Dedup overlap-zone doubles and merge bubbles split across slice seams.
+  return dedupAndMergeSeams(all, seams, true);
 }
 
 // ---------------------------------------------------------------- auto-translate on page load

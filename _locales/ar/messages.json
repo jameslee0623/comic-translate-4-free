@@ -44,6 +44,10 @@
   "backend": {
     "message": "محرك الترجمة"
   },
+  "backend_failover": {
+    "message": "If the engine fails, try another",
+    "description": "Checkbox: try another translation backend if the selected one fails"
+  },
   "backend_azure": {
     "message": "Azure Translator"
   },

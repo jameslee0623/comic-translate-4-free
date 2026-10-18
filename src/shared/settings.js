@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS = {
   sourceLang: 'auto', // 'auto' = detect from the OCR'd text; or 'ja' | 'en' | 'zh-CN' | 'zh-TW'
   targetLang: 'en',
   translationBackend: 'google', // 'google' | 'azure' | 'lmstudio' | 'local-llm'
+  backendFailover: false, // if the selected backend fails, try another (opt-in; never silently uses paid Azure)
   azureKey: '',
   azureRegion: '',
   lmStudioUrl: 'http://127.0.0.1:1234', // LM Studio server (bare host:port; flavour adds its path)
@@ -27,6 +28,12 @@ export const DEFAULT_SETTINGS = {
 export const LANGS = [
   ['ja', 'Japanese'], ['en', 'English'], ['zh-CN', 'Chinese (Simplified)'],
   ['zh-TW', 'Chinese (Traditional)'],
+];
+
+// Native names for the source-language dropdowns in popup/options UI.
+export const NATIVE_LANGS = [
+  ['ja', '日本語'], ['en', 'English'], ['zh-CN', '简体中文'],
+  ['zh-TW', '繁體中文'],
 ];
 
 // Every language both Google Translate and Azure Translator support
@@ -148,6 +155,26 @@ export const TARGET_LANGS = [
   ['yo', 'Yoruba'],
   ['zu', 'Zulu'],
 ];
+
+// Raw settings read: merged with defaults, no migrations or validation.
+// Use for UI reads; getSettings() below is the validated pipeline read.
+export async function readSettingsRaw() {
+  const stored = await chrome.storage.local.get('settings');
+  return { ...DEFAULT_SETTINGS, ...(stored.settings || {}) };
+}
+
+// Serialized settings write: read-modify-write chained so concurrent
+// callers don't clobber each other (the translators.js lmStudioModelId
+// write-back raced the popup's writes before this).
+let settingsWriteChain = Promise.resolve();
+export function updateSettings(patch) {
+  const w = settingsWriteChain.then(async () => {
+    const s = await readSettingsRaw();
+    await chrome.storage.local.set({ settings: { ...s, ...patch } });
+  }).catch(() => {});
+  settingsWriteChain = w;
+  return w;
+}
 
 export async function getSettings() {
   const stored = await chrome.storage.local.get('settings');

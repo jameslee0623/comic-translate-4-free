@@ -11,7 +11,7 @@ import {
   toGrayU8, otsuThreshold, connectedComponentsWithStats,
   dilate, erode, morphClose, fillHoles, dominantBinCenter,
 } from './image-ops.js';
-import { adjustTextLineCoords } from '../../shared/textblock.js';
+import { adjustTextLineCoords } from './textblock.js';
 
 // ---- detect_content_mask_in_bbox ------------------------------------------------
 // Otsu on grayscale, dual polarity (dark text + light text), CC filtering:

@@ -18,6 +18,52 @@ function sleepAbortable(ms, signal) {
   });
 }
 
+// Fetch with timeout and retry for LM Studio (the flakiest backend).
+// 10-min timeout per attempt; 2 retries with 2s/6s backoff on network
+// errors and 5xx only (4xx are not retried).
+async function lmStudioFetch(url, opts, signal, label) {
+  const timeoutMs = 10 * 60 * 1000;
+  const backoffs = [2000, 6000];
+  let lastErr = null;
+  for (let attempt = 0; attempt <= backoffs.length; attempt++) {
+    if (attempt > 0) {
+      await sleepAbortable(backoffs[attempt - 1], signal);
+    }
+    // Combine the caller's cancel signal with the timeout.
+    const ctrl = new AbortController();
+    const onAbort = () => ctrl.abort();
+    if (signal) {
+      if (signal.aborted) throw Object.assign(new Error('cancelled'), { cancelled: true });
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const resp = await fetch(url, { ...opts, signal: ctrl.signal });
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener('abort', onAbort);
+      // Retry on 5xx; 4xx are client errors (not retried).
+      if (resp.status >= 500 && resp.status < 600 && attempt < backoffs.length) {
+        lastErr = new Error(`LM Studio: HTTP ${resp.status} from ${label} (retrying)`);
+        continue;
+      }
+      return resp;
+    } catch (e) {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener('abort', onAbort);
+      if (e && e.cancelled) throw e;
+      // AbortError from timeout: retry if attempts remain.
+      const isTimeout = e && e.name === 'AbortError' && !signal?.aborted;
+      const isNetwork = e && (e.name === 'TypeError' || /fetch failed|cannot reach|network/i.test(String(e.message)));
+      if ((isTimeout || isNetwork) && attempt < backoffs.length) {
+        lastErr = e;
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr || new Error('LM Studio: request failed');
+}
+
 function langName(code) {
   const hit = LANGS.find(([c]) => c === code) || TARGET_LANGS.find(([c]) => c === code);
   return hit ? hit[1] : code;
@@ -194,11 +240,12 @@ function lmStudioEndpoints(settings) {
 // is gone (unloaded/swapped in LM Studio), the caller rediscovers once and
 // retries. Prefers the native v1 shape (key + loaded_instances), falls back
 // to older {id, state} shapes.
-async function lmStudioDiscoverModel(ep, headers) {
+async function lmStudioDiscoverModel(ep, headers, signal) {
   let resp;
   try {
-    resp = await fetch(ep.models, { headers });
+    resp = await lmStudioFetch(ep.models, { headers }, signal, 'model discovery');
   } catch (e) {
+    if (e && e.cancelled) throw e;
     throw new Error('LM Studio: cannot reach ' + ep.models + ' — is the server running?');
   }
   if (!resp.ok) throw new Error(`LM Studio: HTTP ${resp.status} from ${ep.models}`);
@@ -211,8 +258,7 @@ async function lmStudioDiscoverModel(ep, headers) {
   if (!loaded) throw new Error('LM Studio: no model is loaded — load one in LM Studio first, then translate again');
   const id = loaded.key || loaded.id;
   try {
-    const cur = await chrome.storage.local.get('settings');
-    await chrome.storage.local.set({ settings: { ...(cur.settings || {}), lmStudioModelId: id } });
+    await updateSettings({ lmStudioModelId: id });
   } catch { /* remembering is best-effort; the id is still returned */ }
   return id;
 }
@@ -252,13 +298,13 @@ async function lmStudio(texts, settings, signal) {
   if (settings.sourceLang && settings.sourceLang !== 'auto') body.source = settings.sourceLang;
   let resp;
   try {
-    resp = await fetch(ep.chat, {
+    resp = await lmStudioFetch(ep.chat, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
-      ...(signal ? { signal } : {}),
-    });
+    }, signal, 'chat');
   } catch (e) {
+    if (e && e.cancelled) throw e;
     throw new Error('LM Studio: cannot reach ' + ep.chat + ' (' + ep.label + ') — is the server running? (' + String(e).slice(0, 100) + ')');
   }
   // Read as text, not res.json(): the reply is not reliably JSON, an error
@@ -279,13 +325,13 @@ async function lmStudioV1(texts, settings, ep, headers, signal) {
   const input = lmStudioPrompt(texts, settings);
   const post = async (modelId) => {
     try {
-      return await fetch(ep.chat, {
+      return await lmStudioFetch(ep.chat, {
         method: 'POST',
         headers,
         body: JSON.stringify({ model: modelId, input, temperature: 0 }),
-        ...(signal ? { signal } : {}),
-      });
+      }, signal, 'v1 chat');
     } catch (e) {
+      if (e && e.cancelled) throw e;
       throw new Error('LM Studio: cannot reach ' + ep.chat + ' — is the server running? (' + String(e).slice(0, 100) + ')');
     }
   };
@@ -296,13 +342,13 @@ async function lmStudioV1(texts, settings, ep, headers, signal) {
   const n = texts.length;
   let modelId = settings.lmStudioModelId;
   if (!modelId) {
-    const resp = await post(await lmStudioDiscoverModel(ep, headers));
+    const resp = await post(await lmStudioDiscoverModel(ep, headers, signal));
     if (!resp.ok) await fail(resp);
     return parseLmStudioBody(await resp.text(), n);
   }
   let resp = await post(modelId);
   if (!resp.ok) {
-    resp = await post(await lmStudioDiscoverModel(ep, headers));
+    resp = await post(await lmStudioDiscoverModel(ep, headers, signal));
     if (!resp.ok) await fail(resp);
   }
   return parseLmStudioBody(await resp.text(), n);
@@ -508,8 +554,7 @@ export async function checkLmStudio(settings) {
     const loaded = models.find(m => m && Array.isArray(m.loaded_instances) && m.loaded_instances.length > 0 && (m.key || m.id));
     if (loaded) {
       try {
-        const cur = await chrome.storage.local.get('settings');
-        await chrome.storage.local.set({ settings: { ...(cur.settings || {}), lmStudioModelId: loaded.key || loaded.id } });
+        await updateSettings({ lmStudioModelId: loaded.key || loaded.id });
       } catch { /* best-effort */ }
     }
   }
@@ -562,11 +607,49 @@ export async function translateBlocks(blocks, settings, onProgress, signal) {
   const translated = new Array(blocks.length).fill('');
   if (!texts.length) return translated;
   const backend = settings.translationBackend || 'google';
+  const runBackend = async (b) => {
+    if (b === 'azure') return await azure(texts, settings, signal);
+    if (b === 'lmstudio') return await lmStudio(texts, settings, signal);
+    if (b === 'local-llm') return await localLlm(texts, settings, signal);
+    return await googleFree(texts, settings.sourceLang, settings.targetLang, signal);
+  };
   let results;
-  if (backend === 'azure') results = await azure(texts, settings, signal);
-  else if (backend === 'lmstudio') results = await lmStudio(texts, settings, signal);
-  else if (backend === 'local-llm') results = await localLlm(texts, settings, signal);
-  else results = await googleFree(texts, settings.sourceLang, settings.targetLang, signal);
+  let lastErr = null;
+  try {
+    results = await runBackend(backend);
+  } catch (e) {
+    if (e && e.cancelled) throw e;
+    lastErr = e;
+    // Opt-in failover: try the next backend. Never silently fail over to
+    // paid Azure without the opt-in — the setting gates it.
+    if (settings.backendFailover) {
+      const azureConfigured = !!(settings.azureKey || '').trim();
+      // Failover order: prefer free/local backends first, then Azure if configured.
+      const candidates = [];
+      if (backend !== 'google') candidates.push('google');
+      if (backend !== 'lmstudio') candidates.push('lmstudio');
+      if (azureConfigured && backend !== 'azure') candidates.push('azure');
+      for (const fb of candidates) {
+        try {
+          // Skip LM Studio failover if it was the failing backend (avoid loop).
+          // Skip backends that need config we don't have.
+          if (fb === 'lmstudio' && backend === 'lmstudio') continue;
+          results = await runBackend(fb);
+          lastErr = null;
+          console.warn(`[ct] backend failover: ${backend} failed, ${fb} succeeded`);
+          break;
+        } catch (fe) {
+          if (fe && fe.cancelled) throw fe;
+          lastErr = fe;
+        }
+      }
+    } else if ((settings.azureKey || '').trim() && backend !== 'azure') {
+      // Not opted in: don't fail over automatically, but tag the error so
+      // the UI can offer one-click "retry with Azure".
+      lastErr.azureRetryAvailable = true;
+    }
+    if (lastErr) throw lastErr;
+  }
   results.forEach((t, k) => { translated[idx[k]] = t; });
   onProgress && onProgress();
   return translated;

@@ -88,6 +88,33 @@ export async function buildCacheKey(rgba, w, h, settings) {
   ].join('~');
 }
 
+// Two-tier cache (P2): Tier 1 is target-independent (inpainted base + OCR'd
+// blocks). Tier 2 adds the target language + backend. A Tier-1 hit with a
+// new targetLang translates only — skipping detect/OCR/inpaint (minutes).
+export async function buildCacheKeyTier1(rgba, w, h, settings) {
+  const digest = await crypto.subtle.digest('SHA-256', samplePixels(rgba, w, h));
+  const models = MODEL_GROUPS
+    .map(g => g.id + ':' + g.files.map(f => f.file + '@' + f.bytes).join(','))
+    .join('|');
+  return [
+    'v2t1',
+    hex(digest),
+    settings.sourceLang,
+    String(settings.detectionThreshold),
+    models,
+    BUILD,
+  ].join('~');
+}
+
+export function buildCacheKeyTier2(tier1Key, settings) {
+  return [
+    tier1Key,
+    't2',
+    settings.targetLang, settings.translationBackend,
+    settings.lmStudioModelId || '',
+  ].join('~');
+}
+
 // ---- store ------------------------------------------------------------------
 let dbPromise = null;
 function db() {

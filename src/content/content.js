@@ -253,7 +253,7 @@
   // (the manual-send path); otherwise the main image. Throws (tainted
   // canvas) when the image host sends no CORS headers — the worker then
   // tries a direct fetch.
-  function mainImagePixels(srcUrl) {
+  async function mainImagePixels(srcUrl) {
     let im = null;
     if (srcUrl) {
       im = [...document.images].find(im => {
@@ -274,7 +274,16 @@
     // the pixels go as a WebP data URL string, the same trick the render path
     // uses for the translated image. Throws (tainted canvas) when the image
     // host sends no CORS headers — the pipeline then tries a direct fetch.
-    return { dataUrl: c.toDataURL('image/webp', 0.95), w: c.width, h: c.height };
+    // Async blob encode (not toDataURL): toDataURL is fully synchronous and
+    // freezes the page for 1-3s on multi-MP images.
+    const blob = await c.convertToBlob({ type: 'image/webp', quality: 0.95 });
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('read failed'));
+      reader.readAsDataURL(blob);
+    });
+    return { dataUrl, w: c.width, h: c.height };
   }
 
   function replaceMainImage(dataUrl) {
@@ -591,9 +600,11 @@
       return false;
     }
     if (msg.type === 'ct/get-image-pixels') {
-      try { sendResponse({ ok: true, ...mainImagePixels(msg.srcUrl) }); }
-      catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
-      return false;
+      mainImagePixels(msg.srcUrl).then(
+        r => sendResponse({ ok: true, ...r }),
+        e => sendResponse({ ok: false, error: String((e && e.message) || e) })
+      );
+      return true; // async response
     }
     if (msg.type === 'ct/fetch-image-bytes') {
       // Download the image inside the PAGE (not the service worker): the
@@ -607,7 +618,9 @@
       // the same string route the render path uses for the translated PNG.
       (async () => {
         try {
-          const res = await fetch(msg.srcUrl);
+          // credentials:'include' — send the page's cookies like its own
+          // <img> does. Cookie-gated image hosts 403 without them.
+          const res = await fetch(msg.srcUrl, { credentials: 'include' });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const blob = await res.blob();
           if (!blob.size) throw new Error('empty response body');
@@ -700,7 +713,15 @@
             // No overlay mask — the translation lives in the page itself.
             // The manual-send path names the exact <img> (msg.srcUrl); the
             // auto path replaces the detected main image.
-            const dataUrl = work.toDataURL('image/webp', 0.95);
+            // Async blob encode (not toDataURL): toDataURL is fully synchronous
+            // and freezes the page for 1-3s on multi-MP images.
+            const blob = await work.convertToBlob({ type: 'image/webp', quality: 0.95 });
+            const dataUrl = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = () => reject(reader.error || new Error('read failed'));
+              reader.readAsDataURL(blob);
+            });
             replaced = msg.srcUrl ? replaceImageBySrc(msg.srcUrl, dataUrl)
                                   : replaceMainImage(dataUrl);
             if (replaced) {

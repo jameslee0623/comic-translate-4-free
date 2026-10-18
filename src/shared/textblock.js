@@ -99,3 +99,96 @@ export function mergeOverlappingBoxes(boxes, iouThresh = 0.3) {
   }
   return merged;
 }
+
+// Two boxes from a seam-split bubble? Their edges abut at the same seam
+// line (within tolerance) on opposite sides, with >50% overlap on the
+// perpendicular axis.
+export function seamAdjacent(a, b, seams, vertical, tol = 24) {
+  const [ax1, ay1, ax2, ay2] = a.xyxy;
+  const [bx1, by1, bx2, by2] = b.xyxy;
+  for (const s of seams) {
+    let touches = false, overlap = 0, minSpan = 1;
+    if (vertical) {
+      // Horizontal seam at y=s: A above / B below, or vice versa.
+      touches = (Math.abs(ay2 - s) < tol && Math.abs(by1 - s) < tol) ||
+                (Math.abs(by2 - s) < tol && Math.abs(ay1 - s) < tol);
+      overlap = Math.max(0, Math.min(ax2, bx2) - Math.max(ax1, bx1));
+      minSpan = Math.min(ax2 - ax1, bx2 - bx1);
+    } else {
+      // Vertical seam at x=s: A left / B right, or vice versa.
+      touches = (Math.abs(ax2 - s) < tol && Math.abs(bx1 - s) < tol) ||
+                (Math.abs(bx2 - s) < tol && Math.abs(ax1 - s) < tol);
+      overlap = Math.max(0, Math.min(ay2, by2) - Math.max(ay1, by1));
+      minSpan = Math.min(ay2 - ay1, by2 - by1);
+    }
+    if (touches && overlap > minSpan * 0.5) return true;
+  }
+  return false;
+}
+
+// Dedup boxes detected in slice/strip overlap zones (keep higher score),
+// then merge bubbles split across slice seams. A bubble larger than the
+// overlap straddling a seam is detected as two partial boxes (one per
+// slice) with ~0 IoU, so plain dedup keeps both — each half would be OCR'd
+// and translated separately. `seams` are the slice boundary positions in
+// the same coordinate space as the boxes; `vertical` means the slices were
+// stacked vertically (seams are horizontal lines at y=s).
+export function dedupAndMergeSeams(boxes, seams, vertical) {
+  const all = [...boxes].sort((a, b) => b.score - a.score);
+  const kept = [];
+  for (const b of all) {
+    if (kept.some(k => boxIoU(k.xyxy, b.xyxy) >= 0.5)) continue;
+    kept.push(b);
+  }
+  const merged = [];
+  const consumed = new Set();
+  for (let i = 0; i < kept.length; i++) {
+    if (consumed.has(i)) continue;
+    let cur = kept[i];
+    for (let j = i + 1; j < kept.length; j++) {
+      if (consumed.has(j)) continue;
+      if (seamAdjacent(cur, kept[j], seams, vertical)) {
+        const [ax1, ay1, ax2, ay2] = cur.xyxy;
+        const [bx1, by1, bx2, by2] = kept[j].xyxy;
+        cur = {
+          xyxy: [Math.min(ax1, bx1), Math.min(ay1, by1), Math.max(ax2, bx2), Math.max(ay2, by2)],
+          label: cur.label,
+          score: Math.max(cur.score, kept[j].score),
+        };
+        consumed.add(j);
+      }
+    }
+    merged.push(cur);
+  }
+  merged.sort((a, b) => b.score - a.score);
+  return merged;
+}
+
+// Merge padded inpaint boxes: expand entries by `pad` px, clamp to image,
+// then merge overlapping boxes. Used to batch inpaint patches.
+export function mergePaddedBoxes(entries, pad, imgW, imgH) {
+  // entries: [{bounds:[x1,y1,x2,y2]}]
+  let boxes = entries.map(e => {
+    const [x1, y1, x2, y2] = e.bounds;
+    return [
+      Math.max(0, x1 - pad), Math.max(0, y1 - pad),
+      Math.min(imgW, x2 + pad), Math.min(imgH, y2 + pad),
+    ];
+  });
+  let changed = true;
+  while (changed) {
+    changed = false;
+    outer: for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i], b = boxes[j];
+        if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) {
+          boxes[i] = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+          boxes.splice(j, 1);
+          changed = true;
+          break outer;
+        }
+      }
+    }
+  }
+  return boxes;
+}

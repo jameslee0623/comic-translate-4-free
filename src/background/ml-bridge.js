@@ -89,9 +89,39 @@ function mlHostError(type, raw) {
   return new Error('ML host error: ' + m.slice(0, 160));
 }
 
+// Per-stage timeouts for ML calls (ms). A hung WASM session or dead
+// offscreen document would otherwise wedge the run forever — the await
+// never resolves, the run entry leaks, pixel payloads accumulate, and
+// Cancel can't help because runPipeline's finally never runs.
+const ML_TIMEOUT_MS = {
+  [MSG.ML_DETECT]: 5 * 60 * 1000,
+  [MSG.ML_OCR]: 10 * 60 * 1000,
+  [MSG.ML_INPAINT]: 15 * 60 * 1000,
+};
+const ML_TIMEOUT_DEFAULT_MS = 5 * 60 * 1000;
+
 // Call one ML_* handler. Mirrors the old callOffscreen contract: resolves
 // with the handler's payload, throws a human message on failure.
 export async function callMl(msg) {
+  const timeoutMs = ML_TIMEOUT_MS[msg.type] || ML_TIMEOUT_DEFAULT_MS;
+  let timer = null;
+  const timeoutP = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const group = ML_GROUP_FOR_TYPE[msg.type] || 'ML';
+      const err = new Error(`ML host timed out during ${group} after ${Math.round(timeoutMs / 60000)} min — the model may be stuck. Try again; if it repeats, restart the browser.`);
+      err.mlTimeout = true;
+      err.mlType = msg.type;
+      reject(err);
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([callMlInner(msg), timeoutP]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function callMlInner(msg) {
   const direct = directHandlers();
   if (direct) {
     const fn = direct[msg.type];

@@ -5,7 +5,7 @@
 //   out: inpainted [1,3,h,w] float32
 // Patch dims must be multiples of 8. All graph ops are WASM-safe
 // (FFC is compiled to Cos/Sin/MatMul; no DFT op in the graph).
-import { toNCHW, padToMod } from './image-ops.js';
+import { toNCHW, padToMod } from '../../shared/image-ops.js';
 
 // Tiled inpainting: LaMa's peak WASM memory scales with patch area, and a
 // dense page can merge its text boxes into one huge patch. On Firefox the
@@ -162,27 +162,6 @@ export class Inpainter {
 }
 
 // Merge overlapping padded boxes -> patch list (port of merge_overlapping_padded_boxes).
-export function mergePaddedBoxes(entries, pad, imgW, imgH) {
-  // entries: [{bounds:[x1,y1,x2,y2]}]
-  let boxes = entries.map(e => {
-    const [x1, y1, x2, y2] = e.bounds;
-    return [
-      Math.max(0, x1 - pad), Math.max(0, y1 - pad),
-      Math.min(imgW, x2 + pad), Math.min(imgH, y2 + pad),
-    ];
-  });
-  let changed = true;
-  while (changed) {
-    changed = false;
-    outer: for (let i = 0; i < boxes.length; i++) {
-      for (let j = i + 1; j < boxes.length; j++) {
-        const a = boxes[i], b = boxes[j];
-        if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) {
-          boxes[i] = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
-          boxes.splice(j, 1);
-          changed = true;
-          break outer;
-        }
       }
     }
   }

@@ -1,6 +1,7 @@
 // Popup: trigger runs, show progress, backend + language quick-switch, whitelist.
 import { BUILD } from '../shared/version.js';
 import { baseDomain, imageHostOrigins, originAccessPatterns, displayHost, hostOf, isSiteAllowed } from '../shared/site-access.js';
+import { NATIVE_LANGS as LANGS, TARGET_LANGS, readSettingsRaw, updateSettings as writeSettings } from '../shared/settings.js';
 const $ = id => document.getElementById(id);
 // Escape for innerHTML interpolation (hostnames are DNS-safe, but explicit).
 const escHtml = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -15,131 +16,6 @@ for (const k of Object.keys(STAGE_LABEL)) {
   const m = ctMsg('stage_' + k);
   if (m) STAGE_LABEL[k] = m;
 }
-// Language names in their native form — readable in any UI language.
-const LANGS = [
-  ['ja', '日本語'], ['en', 'English'], ['zh-CN', '简体中文'],
-  ['zh-TW', '繁體中文'],
-];
-
-// Every language both Google Translate and Azure Translator support
-// (intersection verified 2026-09-28). English names; Google-style codes.
-const TARGET_LANGS = [
-
-  ['en', 'English'],
-  ['af', 'Afrikaans'],
-  ['sq', 'Albanian'],
-  ['am', 'Amharic'],
-  ['ar', 'Arabic'],
-  ['hy', 'Armenian'],
-  ['as', 'Assamese'],
-  ['az', 'Azerbaijani'],
-  ['ba', 'Bashkir'],
-  ['eu', 'Basque'],
-  ['bn', 'Bengali'],
-  ['bho', 'Bhojpuri'],
-  ['bs', 'Bosnian'],
-  ['bg', 'Bulgarian'],
-  ['yue', 'Cantonese'],
-  ['ca', 'Catalan'],
-  ['ny', 'Chichewa'],
-  ['zh-CN', 'Chinese (Simplified)'],
-  ['zh-TW', 'Chinese (Traditional)'],
-  ['hr', 'Croatian'],
-  ['cs', 'Czech'],
-  ['da', 'Danish'],
-  ['dv', 'Divehi'],
-  ['doi', 'Dogri'],
-  ['nl', 'Dutch'],
-  ['et', 'Estonian'],
-  ['fj', 'Fijian'],
-  ['fil', 'Filipino'],
-  ['fi', 'Finnish'],
-  ['fr', 'French'],
-  ['fr-CA', 'French (Canada)'],
-  ['gl', 'Galician'],
-  ['ka', 'Georgian'],
-  ['de', 'German'],
-  ['el', 'Greek'],
-  ['gu', 'Gujarati'],
-  ['ht', 'Haitian Creole'],
-  ['ha', 'Hausa'],
-  ['he', 'Hebrew'],
-  ['hi', 'Hindi'],
-  ['hu', 'Hungarian'],
-  ['is', 'Icelandic'],
-  ['ig', 'Igbo'],
-  ['id', 'Indonesian'],
-  ['ga', 'Irish'],
-  ['it', 'Italian'],
-  ['ja', 'Japanese'],
-  ['kn', 'Kannada'],
-  ['kk', 'Kazakh'],
-  ['km', 'Khmer'],
-  ['rw', 'Kinyarwanda'],
-  ['gom', 'Konkani'],
-  ['ko', 'Korean'],
-  ['ku', 'Kurdish (Kurmanji)'],
-  ['ckb', 'Kurdish (Sorani)'],
-  ['ky', 'Kyrgyz'],
-  ['lo', 'Lao'],
-  ['lv', 'Latvian'],
-  ['lt', 'Lithuanian'],
-  ['ln', 'Lingala'],
-  ['lg', 'Luganda'],
-  ['mk', 'Macedonian'],
-  ['mai', 'Maithili'],
-  ['mg', 'Malagasy'],
-  ['ms', 'Malay'],
-  ['ml', 'Malayalam'],
-  ['mt', 'Maltese'],
-  ['mi', 'Maori'],
-  ['mr', 'Marathi'],
-  ['mn', 'Mongolian'],
-  ['my', 'Myanmar (Burmese)'],
-  ['ne', 'Nepali'],
-  ['nso', 'Northern Sotho'],
-  ['nb', 'Norwegian'],
-  ['or', 'Odia'],
-  ['ps', 'Pashto'],
-  ['fa', 'Persian'],
-  ['pl', 'Polish'],
-  ['pt', 'Portuguese'],
-  ['pt-BR', 'Portuguese (Brazil)'],
-  ['pt-PT', 'Portuguese (Portugal)'],
-  ['pa', 'Punjabi'],
-  ['ro', 'Romanian'],
-  ['rn', 'Rundi'],
-  ['ru', 'Russian'],
-  ['sm', 'Samoan'],
-  ['sr', 'Serbian'],
-  ['st', 'Sesotho'],
-  ['sn', 'Shona'],
-  ['sd', 'Sindhi'],
-  ['si', 'Sinhala'],
-  ['sk', 'Slovak'],
-  ['sl', 'Slovenian'],
-  ['so', 'Somali'],
-  ['es', 'Spanish'],
-  ['sw', 'Swahili'],
-  ['sv', 'Swedish'],
-  ['ta', 'Tamil'],
-  ['tt', 'Tatar'],
-  ['te', 'Telugu'],
-  ['th', 'Thai'],
-  ['ti', 'Tigrinya'],
-  ['tn', 'Tswana'],
-  ['tr', 'Turkish'],
-  ['tk', 'Turkmen'],
-  ['uk', 'Ukrainian'],
-  ['ur', 'Urdu'],
-  ['ug', 'Uyghur'],
-  ['uz', 'Uzbek'],
-  ['vi', 'Vietnamese'],
-  ['cy', 'Welsh'],
-  ['xh', 'Xhosa'],
-  ['yo', 'Yoruba'],
-  ['zu', 'Zulu'],
-];
 
 let currentHost = null;
 
@@ -179,15 +55,6 @@ async function saveLang(key, value) {
 // read-modify-write cycles would otherwise clobber each other: two quick
 // dropdown changes → the second get() returns pre-first-set() state → the
 // first change is silently lost ("needs multiple tries").
-let settingsWriteChain = Promise.resolve();
-function writeSettings(patch) {
-  const w = settingsWriteChain.then(async () => {
-    const { settings } = await chrome.storage.local.get('settings');
-    await chrome.storage.local.set({ settings: { ...(settings || {}), ...patch } });
-  }).catch(() => {});
-  settingsWriteChain = w;
-  return w;
-}
 
 let lastStatus = null;
 
@@ -233,7 +100,7 @@ async function refreshStatus() {
 }
 
 async function refreshSettings() {
-  const { settings } = await chrome.storage.local.get('settings');
+  const settings = await readSettingsRaw();
   // Reconcile the allow-all-sites flag with the real <all_urls> permission.
   // The permission prompt steals focus and can close the popup, killing this
   // JS context before permissions.request() resolves — the grant then never
@@ -250,7 +117,7 @@ async function refreshSettings() {
       // clearing firstRun in the meantime). Merge only the reconciled flag
       // into fresh state so a stale write can't resurrect firstRun or
       // clobber a concurrent change.
-      const { settings: fresh } = await chrome.storage.local.get('settings');
+      const fresh = await readSettingsRaw();
       await chrome.storage.local.set({ settings: { ...(fresh || {}), allowAllSites: has } });
     }
   } catch { /* permissions API unavailable — leave storage alone */ }
@@ -425,7 +292,7 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
       // Re-read: the optimistic write above (or a Settings-page edit) may
       // have moved the list since this handler ran.
       let cur = null;
-      try { ({ settings: cur } = await chrome.storage.local.get('settings')); } catch { /* keep going */ }
+      try { (cur = await readSettingsRaw()); } catch { /* keep going */ }
       const wl2 = new Set((cur && cur.siteWhitelist) || []);
       if (granting) {
         if (!granted) wl2.delete(currentHost); // denied: roll back the optimistic add
@@ -563,7 +430,7 @@ fillLangs();
 // SW's onInstalled handler; consumed here.
 (async () => {
   try {
-    const { settings } = await chrome.storage.local.get('settings');
+    const settings = await readSettingsRaw();
     if (settings && settings.firstRun) {
       await chrome.storage.local.set({ settings: { ...settings, firstRun: false } });
       chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/options.html#models-download') });

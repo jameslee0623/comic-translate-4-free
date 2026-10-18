@@ -1,131 +1,7 @@
 // Settings page: read/write settings + model management + connection checks.
 import { BUILD } from '../shared/version.js';
-import { DEFAULT_SETTINGS } from '../shared/settings.js';
+import { DEFAULT_SETTINGS, NATIVE_LANGS as LANGS, TARGET_LANGS, readSettingsRaw, updateSettings } from '../shared/settings.js';
 const $ = id => document.getElementById(id);
-const LANGS = [
-  ['ja', '日本語'], ['en', 'English'], ['zh-CN', '简体中文'],
-  ['zh-TW', '繁體中文'],
-];
-
-// Every language both Google Translate and Azure Translator support
-// (intersection verified 2026-09-28). English names; Google-style codes.
-const TARGET_LANGS = [
-
-  ['en', 'English'],
-  ['af', 'Afrikaans'],
-  ['sq', 'Albanian'],
-  ['am', 'Amharic'],
-  ['ar', 'Arabic'],
-  ['hy', 'Armenian'],
-  ['as', 'Assamese'],
-  ['az', 'Azerbaijani'],
-  ['ba', 'Bashkir'],
-  ['eu', 'Basque'],
-  ['bn', 'Bengali'],
-  ['bho', 'Bhojpuri'],
-  ['bs', 'Bosnian'],
-  ['bg', 'Bulgarian'],
-  ['yue', 'Cantonese'],
-  ['ca', 'Catalan'],
-  ['ny', 'Chichewa'],
-  ['zh-CN', 'Chinese (Simplified)'],
-  ['zh-TW', 'Chinese (Traditional)'],
-  ['hr', 'Croatian'],
-  ['cs', 'Czech'],
-  ['da', 'Danish'],
-  ['dv', 'Divehi'],
-  ['doi', 'Dogri'],
-  ['nl', 'Dutch'],
-  ['et', 'Estonian'],
-  ['fj', 'Fijian'],
-  ['fil', 'Filipino'],
-  ['fi', 'Finnish'],
-  ['fr', 'French'],
-  ['fr-CA', 'French (Canada)'],
-  ['gl', 'Galician'],
-  ['ka', 'Georgian'],
-  ['de', 'German'],
-  ['el', 'Greek'],
-  ['gu', 'Gujarati'],
-  ['ht', 'Haitian Creole'],
-  ['ha', 'Hausa'],
-  ['he', 'Hebrew'],
-  ['hi', 'Hindi'],
-  ['hu', 'Hungarian'],
-  ['is', 'Icelandic'],
-  ['ig', 'Igbo'],
-  ['id', 'Indonesian'],
-  ['ga', 'Irish'],
-  ['it', 'Italian'],
-  ['ja', 'Japanese'],
-  ['kn', 'Kannada'],
-  ['kk', 'Kazakh'],
-  ['km', 'Khmer'],
-  ['rw', 'Kinyarwanda'],
-  ['gom', 'Konkani'],
-  ['ko', 'Korean'],
-  ['ku', 'Kurdish (Kurmanji)'],
-  ['ckb', 'Kurdish (Sorani)'],
-  ['ky', 'Kyrgyz'],
-  ['lo', 'Lao'],
-  ['lv', 'Latvian'],
-  ['lt', 'Lithuanian'],
-  ['ln', 'Lingala'],
-  ['lg', 'Luganda'],
-  ['mk', 'Macedonian'],
-  ['mai', 'Maithili'],
-  ['mg', 'Malagasy'],
-  ['ms', 'Malay'],
-  ['ml', 'Malayalam'],
-  ['mt', 'Maltese'],
-  ['mi', 'Maori'],
-  ['mr', 'Marathi'],
-  ['mn', 'Mongolian'],
-  ['my', 'Myanmar (Burmese)'],
-  ['ne', 'Nepali'],
-  ['nso', 'Northern Sotho'],
-  ['nb', 'Norwegian'],
-  ['or', 'Odia'],
-  ['ps', 'Pashto'],
-  ['fa', 'Persian'],
-  ['pl', 'Polish'],
-  ['pt', 'Portuguese'],
-  ['pt-BR', 'Portuguese (Brazil)'],
-  ['pt-PT', 'Portuguese (Portugal)'],
-  ['pa', 'Punjabi'],
-  ['ro', 'Romanian'],
-  ['rn', 'Rundi'],
-  ['ru', 'Russian'],
-  ['sm', 'Samoan'],
-  ['sr', 'Serbian'],
-  ['st', 'Sesotho'],
-  ['sn', 'Shona'],
-  ['sd', 'Sindhi'],
-  ['si', 'Sinhala'],
-  ['sk', 'Slovak'],
-  ['sl', 'Slovenian'],
-  ['so', 'Somali'],
-  ['es', 'Spanish'],
-  ['sw', 'Swahili'],
-  ['sv', 'Swedish'],
-  ['ta', 'Tamil'],
-  ['tt', 'Tatar'],
-  ['te', 'Telugu'],
-  ['th', 'Thai'],
-  ['ti', 'Tigrinya'],
-  ['tn', 'Tswana'],
-  ['tr', 'Turkish'],
-  ['tk', 'Turkmen'],
-  ['uk', 'Ukrainian'],
-  ['ur', 'Urdu'],
-  ['ug', 'Uyghur'],
-  ['uz', 'Uzbek'],
-  ['vi', 'Vietnamese'],
-  ['cy', 'Welsh'],
-  ['xh', 'Xhosa'],
-  ['yo', 'Yoruba'],
-  ['zu', 'Zulu'],
-];
 // Defaults live in shared/settings.js — single source of truth.
 const DEFAULTS = DEFAULT_SETTINGS;
 
@@ -267,6 +143,7 @@ function applyToForm(s) {
   fillLangs($('sourceLang'), [['auto', ctMsg('source_auto') || 'Auto-detect'], ...LANGS], s.sourceLang);
   fillLangs($('targetLang'), TARGET_LANGS, s.targetLang);
   setVal('backend', s.translationBackend);
+  setChecked('backendFailover', s.backendFailover);
   setVal('azureKey', s.azureKey || '');
   setVal('azureRegion', s.azureRegion || '');
   setVal('lmStudioUrl', s.lmStudioUrl || '');
@@ -286,8 +163,7 @@ function applyToForm(s) {
 }
 
 async function load() {
-  const { settings } = await chrome.storage.local.get('settings');
-  const s = { ...DEFAULTS, ...(settings || {}) };
+  const s = await readSettingsRaw();
   lastSettings = s;
   applyToForm(s);
   formLoaded = true;
@@ -320,7 +196,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 $('threshold').oninput = e => { $('thresholdVal').textContent = Number(e.target.value).toFixed(2); autoSave(); };
 
 // Every control auto-saves; no Save button.
-for (const id of ['sourceLang', 'targetLang', 'backend', 'azureKey', 'azureRegion',
+for (const id of ['sourceLang', 'targetLang', 'backend', 'backendFailover', 'azureKey', 'azureRegion',
     'lmStudioUrl', 'lmStudioApi', 'lmStudioKey',
     'threshold', 'initFontSize', 'minFontSize', 'minImageSize',
     'debugMode', 'autoTranslate', 'playDing']) {
@@ -344,6 +220,7 @@ function collect() {
     minFontSize: parseInt($('minFontSize').value, 10) || 10,
     minImageSize: parseInt($('minImageSize').value, 10) || 500,
     debugMode: $('debugMode').checked,
+    backendFailover: $('backendFailover').checked,
     siteWhitelist: [...allowedSites], autoTranslateOnLoad: $('autoTranslate').checked,
     playDing: $('playDing').checked,
     allowAllSites: $('allowAllSites').checked,
