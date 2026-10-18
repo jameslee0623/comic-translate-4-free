@@ -559,7 +559,16 @@ async function renderFromTier1(tabId, runId, tier1Entry, tier2Key, settings, tim
     effSettings = { ...settings, sourceLang: resolved || 'ja' };
   }
   const abortController = runs.get(runId)?.abortController || new AbortController();
-  const translated = await translateBlocks(blocks, effSettings, null, abortController.signal, 170000);
+  const failoverNotice = (p) => {
+    if (p && p.failoverFrom && p.failoverTo) {
+      chrome.tabs.sendMessage(tabId, {
+        type: MSG.PILL_NOTICE,
+        text: `Engine ${p.failoverFrom} failed — retrying with ${p.failoverTo}`,
+        sticky: false,
+      }).catch(() => {});
+    }
+  };
+  const translated = await translateBlocks(blocks, effSettings, failoverNotice, abortController.signal, 170000);
   checkCancelled(runId);
   blocks.forEach((b, i) => { b.translation = translated[i]; });
   const translateMs = Math.round(performance.now() - t0);
@@ -876,8 +885,17 @@ async function runPipeline(tabId, opts = {}) {
       });
       let translated;
       try {
+        const failoverNotice = (p) => {
+          if (p && p.failoverFrom && p.failoverTo) {
+            chrome.tabs.sendMessage(tabId, {
+              type: MSG.PILL_NOTICE,
+              text: `Engine ${p.failoverFrom} failed — retrying with ${p.failoverTo}`,
+              sticky: false,
+            }).catch(() => {});
+          }
+        };
         translated = await Promise.race([
-          translateBlocks(blocks, effSettings, null, abortController.signal, 170000),
+          translateBlocks(blocks, effSettings, failoverNotice, abortController.signal, 170000),
           timeoutP,
         ]);
       } finally {
@@ -993,6 +1011,16 @@ async function runPipeline(tabId, opts = {}) {
           reject(new Error('translate worker timeout'));
         }, 180000);
         tWorker.onmessage = (e) => {
+          // Failover notices arrive before the final ok/error — show a pill
+          // but don't settle the promise.
+          if (e.data && e.data.type === 'failover-notice') {
+            chrome.tabs.sendMessage(tabId, {
+              type: MSG.PILL_NOTICE,
+              text: `Engine ${e.data.failoverFrom} failed — retrying with ${e.data.failoverTo}`,
+              sticky: false,
+            }).catch(() => {});
+            return;
+          }
           killTranslateWorker();
           if (e.data.ok) resolve({ translated: e.data.translated, backendUsed: e.data.backendUsed });
           else reject(new Error(e.data.error));

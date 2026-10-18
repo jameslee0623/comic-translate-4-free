@@ -328,7 +328,7 @@
   async function mainImagePixels(srcUrl) {
     let im = null;
     if (srcUrl) {
-      im = [...document.images].find(im => {
+      im = allImages().find(im => {
         if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
         const cur = im.currentSrc || im.src || '';
         return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
@@ -379,7 +379,7 @@
   // In-place replace for the manual-send path: swap the <img> matching
   // srcUrl (live src, shown data URL, or stashed original).
   function replaceImageBySrc(srcUrl, dataUrl) {
-    const im = [...document.images].find(im => {
+    const im = allImages().find(im => {
       if (!im.isConnected) return false;
       const cur = im.currentSrc || im.src || '';
       return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
@@ -737,6 +737,14 @@
       // from any older run (a page the user already left) are ignored — they
       // must never touch this page's DOM.
       latestRunId = msg.runId;
+      // Clear stale original-image markers from a previous run (SPA
+      // navigation can leave them behind; a new run must not resolve
+      // against the old page's stashed URLs).
+      try {
+        document.querySelectorAll('img[data-ct-original]').forEach(im => {
+          delete im.dataset.ctOriginal;
+        });
+      } catch { /* best-effort */ }
       sendResponse({ ok: true });
       return false;
     }

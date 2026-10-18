@@ -51,7 +51,10 @@ let formLoaded = false;
 window.addEventListener('pagehide', () => {
   if (!formLoaded) return;
   clearTimeout(saveTimer);
-  try { persistSettings(collect()).catch(() => {}); } catch { /* ignore */ }
+  // collect() returns null on invalid numerics — never persist null, which
+  // would clobber the stored settings with a non-object.
+  const s = collect();
+  if (s) { try { persistSettings(s).catch(() => {}); } catch { /* ignore */ } }
 });
 
 function renderSiteList() {

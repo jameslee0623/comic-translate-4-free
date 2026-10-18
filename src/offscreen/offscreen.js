@@ -288,6 +288,9 @@ const handlers = {
     } finally {
       releaseRun(runId);
     }
+    // Guard against late completion after timeout/cancel: don't deliver
+    // stale results if the run was cancelled while we were working.
+    throwIfCancelled(runId);
     return { ok: true, results, ms: Math.round(performance.now() - t0), engine };
   },
 
