@@ -41,7 +41,10 @@ const CONTENT_SCRIPT_FILES = (typeof window !== 'undefined' && window.document)
 // (a click = the user gesture permissions.request requires) — a site typed
 // into Settings never gets it. Without it every run dies here, silently as far
 // as the page is concerned (nothing can be injected to show an error).
-async function hasHostAccess(host) {
+// NOTE: this checks the PAGE host. For the image-host grant patterns see
+// originAccessPatterns() in shared/site-access.js — keep the two in sync
+// conceptually (page host = exact, image host = base domain).
+async function hasPageHostAccess(host) {
   try {
     // permissions.contains needs a granted SUPERSET of the queried pattern:
     // a manifest-baked `http://127.0.0.1/*` grant does NOT satisfy a
@@ -606,7 +609,7 @@ async function runPipeline(tabId, opts = {}) {
     const tab = await chrome.tabs.get(tabId).catch(() => null);
     const tabUrl = (tab && tab.url) || '';
     const tabHost = hostOf(tabUrl);
-    if (tabHost && !(await hasHostAccess(tabHost))) {
+    if (tabHost && !(await hasPageHostAccess(tabHost))) {
       throw settings.allowAllSites
         ? new Error('"Allow all sites" is on, but the extension no longer has access to all sites (the permission may have been revoked) — reopen Settings → Site access and turn it back on.')
         : hostAccessError(tabHost);
@@ -639,6 +642,19 @@ async function runPipeline(tabId, opts = {}) {
       ({ rgba, w, h, mode, tier } = await getPipelineImage(tabId, settings, tabUrl, { srcUrl: manualSrc }));
     }
     timings.capture = Math.round(performance.now() - t0);
+    // Single source of truth for dimensions: normalize ALL capture tiers to
+    // renderScale dims HERE, once. Tier 1a (page canvas) already downscales,
+    // but tiers 1b/1c (fetches) return full-res — without this, detector
+    // boxes, cache keys, and Tier-1 entries disagree on the coordinate system.
+    // Everything downstream (detect, OCR, inpaint, cache) uses these scaled w/h.
+    {
+      const cs = renderScale(w, h);
+      if (cs < 1) {
+        const sw = Math.max(1, Math.round(w * cs)), sh = Math.max(1, Math.round(h * cs));
+        rgba = resizeBilinearRGBA(rgba, w, h, sw, sh);
+        w = sw; h = sh;
+      }
+    }
     const capMean = meanBrightness(rgba);
     if (capMean < 0.004) {
       throw new Error(
@@ -667,6 +683,12 @@ async function runPipeline(tabId, opts = {}) {
         // translates only — skipping detect/OCR/inpaint.
         tier1Key = await buildCacheKeyTier1(rgba, w, h, settings);
         tier1Entry = await pageCacheGet(tier1Key);
+        // Dimension guard: the entry must match the CURRENT (scaled) capture
+        // dims. A mismatch means the entry was stored at different dims
+        // (e.g. before the R3 normalization) — treat as miss and overwrite.
+        if (tier1Entry && (tier1Entry.width !== w || tier1Entry.height !== h)) {
+          tier1Entry = null;
+        }
         if (tier1Entry) {
           const tier2Key = buildCacheKeyTier2(tier1Key, settings);
           const tier2Entry = await pageCacheGet(tier2Key);
@@ -829,7 +851,26 @@ async function runPipeline(tabId, opts = {}) {
     const runTranslate = async () => {
       parProgress('translate', 0);
       const t0t = performance.now();
-      const translated = await translateBlocks(blocks, effSettings, null, abortController.signal);
+      // Chrome parity with the Firefox 180s worker timeout: a hung backend
+      // must not hang the run forever. The abortController lets translateBlocks
+      // stop early when the timeout fires.
+      const TRANSLATE_TIMEOUT_MS = 180000;
+      let timeoutId = null;
+      const timeoutP = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          try { abortController.abort(); } catch { /* already aborted */ }
+          reject(new Error('translate timed out after 180s — the translation backend may be stuck'));
+        }, TRANSLATE_TIMEOUT_MS);
+      });
+      let translated;
+      try {
+        translated = await Promise.race([
+          translateBlocks(blocks, effSettings, null, abortController.signal),
+          timeoutP,
+        ]);
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+      }
       checkCancelled(runId);
       blocks.forEach((b, i) => { b.translation = translated[i]; });
       const translateMs = Math.round(performance.now() - t0t);

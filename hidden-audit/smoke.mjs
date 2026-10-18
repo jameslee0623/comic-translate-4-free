@@ -1,8 +1,11 @@
 // Headless smoke test: load the built chrome/ extension, verify the service
 // worker starts clean and the popup + options pages render without errors.
+// Usage: build first (./build.sh), then: node hidden-audit/smoke.mjs
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 import http from 'node:http';
+import { readFileSync } from 'node:fs';
+import WebSocket from 'ws';
 
 const CHROME = '/opt/meta-chromium/chrome';
 const EXT = new URL('../dist/chrome', import.meta.url).pathname;
@@ -62,7 +65,9 @@ try {
     await sleep(5000);
     ws.close();
     console.log('BUILD stamp in SW:', stamp);
-    if (stamp !== '20260930s') { console.log(`FAIL: expected stamp 20260930u, got ${stamp}`); failures++; }
+    // Read the expected stamp from version.js — never hardcode it.
+    const expected = (readFileSync(new URL('../src/shared/version.js', import.meta.url).pathname, 'utf8').match(/BUILD = '([^']+)'/) || [])[1];
+    if (stamp !== expected) { console.log(`FAIL: expected stamp ${expected}, got ${stamp}`); failures++; }
     const fatal = errors.filter(e => !/favicon|net::ERR/i.test(e));
     if (fatal.length) { console.log('FAIL: SW errors:', fatal.slice(0, 5)); failures++; }
     else console.log('SW: no errors in 5s window');

@@ -47,6 +47,25 @@ for f in src/background/service-worker.js src/background/translators.js src/cont
 done
 echo "files OK"
 
+# Locale parity: all 16 _locales must have identical key sets. Fail on drift.
+python3 - <<'EOF'
+import json, glob, sys
+locales = sorted(glob.glob('_locales/*/messages.json'))
+assert len(locales) == 16, f'expected 16 locales, found {len(locales)}'
+base = set(json.load(open(locales[0])).keys())
+ok = True
+for loc in locales[1:]:
+    keys = set(json.load(open(loc)).keys())
+    missing = base - keys
+    extra = keys - base
+    if missing or extra:
+        ok = False
+        print(f'DRIFT {loc}: missing={sorted(missing)[:5]} extra={sorted(extra)[:5]}')
+if not ok:
+    sys.exit(1)
+print(f'locales OK: 16 locales, {len(base)} keys each')
+EOF
+
 # Zip with chrome/ + firefox/ top-level dirs and the README.
 cd "$DIST"
 rm -f "$OUT"

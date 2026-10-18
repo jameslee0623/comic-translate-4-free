@@ -29,12 +29,24 @@ export function baseDomain(host) {
 }
 
 /**
+ * Bracket an IPv6 literal for use in an origin pattern: `::1` -> `[::1]`.
+ * IPv4 and hostnames pass through unchanged. Already-bracketed input is
+ * left alone.
+ */
+function bracketIPv6(host) {
+  const h = String(host || '');
+  // IPv6 has 2+ colons; IPv4:port has exactly one.
+  if ((h.match(/:/g) || []).length >= 2 && !h.startsWith('[')) return `[${h}]`;
+  return h;
+}
+
+/**
  * Origins to request for an image host: base domain, its subdomains, and
  * the exact host (covers the no-subdomain case). One grant then survives
  * random per-visit subdomains.
  */
 export function imageHostOrigins(host) {
-  const h = String(host || '').toLowerCase().trim();
+  const h = bracketIPv6(String(host || '').toLowerCase().trim());
   if (!h) return [];
   const base = baseDomain(h);
   const out = [`*://${base}/*`, `*://*.${base}/*`];
@@ -49,7 +61,7 @@ export function imageHostOrigins(host) {
  * re-prompt after this change, unless the host itself is random per visit.
  */
 export function originAccessPatterns(host) {
-  const h = String(host || '').toLowerCase().trim();
+  const h = bracketIPv6(String(host || '').toLowerCase().trim());
   if (!h) return [];
   const base = baseDomain(h);
   const pats = [`*://${h}/*`, `http://${h}/*`, `https://${h}/*`];

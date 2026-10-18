@@ -95,7 +95,17 @@
   // iterations, each doing a full wrap + measure pass). "Fits" is monotonic
   // in size, so the search converges to the largest fitting size.
   function fitFont(ctx, text, rw, rh, initSize, minSize, vertical) {
+    // Early exit: degenerate box — skip the binary search entirely.
+    if (!(rw > 0 && rh > 0)) {
+      const size = minSize;
+      ctx.font = `${size}px ${FONT_STACK}`;
+      return vertical
+        ? { size, lines: wrapVertical(text, 1), lh: size * 1.18 }
+        : { size, lines: [text], lh: size * 1.18 };
+    }
     const fits = (size) => {
+      // Cache the font string per size probe — wrapGreedy/wrapVertical call
+      // measureText many times but the font only changes here.
       ctx.font = `${size}px ${FONT_STACK}`;
       const lh = size * 1.18;
       if (vertical) {
@@ -110,7 +120,9 @@
     };
     let best = null;
     let lo = minSize, hi = initSize;
-    for (let i = 0; i < 16 && hi - lo > 0.5; i++) {
+    // 10 iterations: 0.5px precision is enough (16 was overkill — each
+    // iteration re-wraps and re-measures every line).
+    for (let i = 0; i < 10 && hi - lo > 0.5; i++) {
       const mid = (lo + hi) / 2;
       const r = fits(mid);
       if (r.ok) { best = { size: mid, lines: r.lines, lh: r.lh }; lo = mid; }
@@ -216,23 +228,48 @@
 
   // Collect <img> elements from light DOM and shadow DOMs (some readers
   // render pages inside shadow roots; document.images misses those).
+  // The shadow-root scan is cached per "image run" (see _imgScanCache) —
+  // querySelectorAll('*') on every find is slow on large pages.
+  let _imgScanCache = null;
+  function invalidateImageCache() { _imgScanCache = null; }
+
+  function collectShadowImages(root, depth, out) {
+    if (depth > 3) return;
+    let els;
+    try { els = root.querySelectorAll('*'); } catch { return; }
+    for (const el of els) {
+      let sr = null;
+      try { sr = el.shadowRoot; } catch { continue; }
+      if (sr) {
+        try { out.push(...sr.querySelectorAll('img')); } catch { /* best-effort */ }
+        collectShadowImages(sr, depth + 1, out);
+      }
+    }
+  }
+
   function allImages() {
+    if (_imgScanCache) return _imgScanCache;
     const out = [...document.images];
     try {
-      const els = document.querySelectorAll('*');
-      for (const el of els) {
-        const sr = el.shadowRoot;
-        if (sr) out.push(...sr.querySelectorAll('img'));
-      }
-    } catch { /* querySelectorAll on shadow roots is best-effort */ }
+      collectShadowImages(document, 0, out);
+    } catch { /* shadow scan is best-effort */ }
+    _imgScanCache = out;
     return out;
   }
 
+  // Placeholder test matches only the path/filename — never the query
+  // string (a legit URL like /img.png?placeholder=0 is not a placeholder).
+  function isPlaceholderUrl(url) {
+    const path = String(url || '').split(/[?#]/)[0];
+    return /placeholder|blank|1x1|spacer/i.test(path);
+  }
+
   // Lazy-load fallback: if the <img> src is a placeholder, try data-src /
-  // data-original / data-lazy-src for the real URL.
+  // data-original / data-lazy-src for the real URL. Falls back to `cur`
+  // (even a placeholder) when no data-src is present — better than ''.
   function realSrc(im) {
     const cur = im.currentSrc || im.src || '';
-    if (cur && !/placeholder|blank|1x1|spacer/i.test(cur)) return cur;
+    if (cur && !isPlaceholderUrl(cur)) return cur;
     return im.dataset.src || im.dataset.original || im.dataset.lazySrc ||
            im.getAttribute('data-src') || im.getAttribute('data-original') || cur;
   }
@@ -630,6 +667,9 @@
   // ------------------------------------------------------------ messages
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || typeof msg.type !== 'string' || !msg.type.startsWith('ct/')) return false;
+    // Fresh image scan per message ("run"): the DOM may have changed since
+    // the last scan (lazy-load, SPA navigation).
+    invalidateImageCache();
     if (msg.type === 'ct/find-image') {
       try { sendResponse({ ok: true, image: findMainImage() }); }
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
@@ -703,6 +743,11 @@
     if (msg.type === 'ct/debug-stage') {
       if (msg.runId !== latestRunId) { sendResponse({ ok: false, error: 'stale run' }); return false; }
       ensureOverlay();
+      // New run: drop the previous run's stage payloads (each holds a data
+      // URL image). Keeps memory bounded across runs.
+      if (currentRunId !== msg.runId) {
+        for (const k of Object.keys(stageTabs)) delete stageTabs[k];
+      }
       currentRunId = msg.runId;
       stageTabs[msg.stage] = msg.payload;
       if (msg.debug) {

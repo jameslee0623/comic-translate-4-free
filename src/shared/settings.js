@@ -215,5 +215,13 @@ export async function getSettings() {
       chrome.storage.local.set({ settings: s }).catch(() => {});
     }
   } catch { /* best effort */ }
+  // Safety-net clamps (mirrors options.js validNum): stored values are
+  // trusted, but a corrupt write must never produce NaN thresholds or
+  // absurd sizes downstream. No storage write here — just sanitize the read.
+  const clamp = (v, lo, hi, fb) => Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fb;
+  s.detectionThreshold = clamp(+s.detectionThreshold, 0.05, 0.9, DEFAULT_SETTINGS.detectionThreshold);
+  s.initFontSize = Math.round(clamp(+s.initFontSize, 10, 120, DEFAULT_SETTINGS.initFontSize));
+  s.minFontSize = Math.round(clamp(+s.minFontSize, 6, 40, DEFAULT_SETTINGS.minFontSize));
+  s.minImageSize = Math.round(clamp(+s.minImageSize, 100, 4000, DEFAULT_SETTINGS.minImageSize));
   return s;
 }

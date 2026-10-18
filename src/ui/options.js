@@ -31,13 +31,17 @@ function autoSave() {
   if (!formLoaded) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
-    await persistSettings(collect());
+    const s = collect();
+    if (!s) return; // invalid numerics — field is red, don't save or flash
+    await persistSettings(s);
     flashSaved();
   }, 400);
 }
 function saveNow() {
   clearTimeout(saveTimer);
-  return persistSettings(collect()).then(flashSaved);
+  const s = collect();
+  if (!s) return Promise.resolve(); // invalid — don't save or flash
+  return persistSettings(s).then(flashSaved);
 }
 
 // Flush any pending debounced save if the page is closed before the timer fires.
@@ -206,7 +210,25 @@ for (const id of ['sourceLang', 'targetLang', 'backend', 'backendFailover', 'azu
   el.addEventListener(evt, autoSave);
 }
 
+// Numeric validation: returns {ok, value} — clamps to [min,max], marks the
+// field red on non-numeric input. Callers skip the save when !ok.
+function validNum(id, raw, min, max) {
+  const el = $(id);
+  const v = parseFloat(raw);
+  const ok = Number.isFinite(v);
+  el.classList.toggle('invalid', !ok);
+  if (!ok) return { ok: false };
+  return { ok: true, value: Math.min(max, Math.max(min, v)) };
+}
+
 function collect() {
+  // Validate numerics first; on any invalid field, skip the save entirely
+  // (no "Saved" flash) so garbage never persists.
+  const threshold = validNum('threshold', $('threshold').value, 0.05, 0.9);
+  const initFont = validNum('initFontSize', $('initFontSize').value, 10, 120);
+  const minFont = validNum('minFontSize', $('minFontSize').value, 6, 40);
+  const minImg = validNum('minImageSize', $('minImageSize').value, 100, 4000);
+  if (!threshold.ok || !initFont.ok || !minFont.ok || !minImg.ok) return null;
   return {
     ...lastSettings,
     sourceLang: $('sourceLang').value, targetLang: $('targetLang').value,
@@ -215,10 +237,10 @@ function collect() {
     lmStudioUrl: $('lmStudioUrl').value.trim() || DEFAULTS.lmStudioUrl,
     lmStudioApi: $('lmStudioApi').value,
     lmStudioKey: $('lmStudioKey').value.trim(),
-    detectionThreshold: parseFloat($('threshold').value),
-    initFontSize: parseInt($('initFontSize').value, 10) || 40,
-    minFontSize: parseInt($('minFontSize').value, 10) || 10,
-    minImageSize: parseInt($('minImageSize').value, 10) || 500,
+    detectionThreshold: threshold.value,
+    initFontSize: Math.round(initFont.value),
+    minFontSize: Math.round(minFont.value),
+    minImageSize: Math.round(minImg.value),
     debugMode: $('debugMode').checked,
     backendFailover: $('backendFailover').checked,
     siteWhitelist: [...allowedSites], autoTranslateOnLoad: $('autoTranslate').checked,

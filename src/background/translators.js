@@ -31,7 +31,22 @@ export function lmStudioHostPattern(url) {
     const u = new URL(url);
     const host = u.hostname.toLowerCase();
     if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') return null; // covered by manifest
-    return `${u.protocol}//${u.host}/*`;
+    // Ensure IPv6 literals are bracketed in the permission pattern.
+    // u.host is already bracketed for IPv6, but be explicit: an IPv6
+    // address has 2+ colons (IPv4:port has exactly one).
+    let h = u.host;
+    const colons = (h.match(/:/g) || []).length;
+    if (colons >= 2 && !h.startsWith('[')) {
+      // Unbracketed IPv6 (with or without port) — bracket the address.
+      const lastColon = h.lastIndexOf(':');
+      const afterLast = h.slice(lastColon + 1);
+      if (/^\d+$/.test(afterLast) && h.slice(0, lastColon).includes(':')) {
+        h = `[${h.slice(0, lastColon)}]:${afterLast}`; // addr:port
+      } else {
+        h = `[${h}]`; // bare address
+      }
+    }
+    return `${u.protocol}//${h}/*`;
   } catch { return null; }
 }
 

@@ -108,10 +108,14 @@ export async function buildCacheKeyTier1(rgba, w, h, settings) {
 }
 
 export function buildCacheKeyTier2(tier1Key, settings) {
+  // lmStudioModelId matters: swapping LM Studio models must not serve stale
+  // translations from the other model. Only relevant for lmstudio backend,
+  // but harmless to always include (empty string otherwise).
   return [
     tier1Key,
     't2',
     settings.targetLang, settings.translationBackend,
+    settings.lmStudioModelId || '',
   ].join('~');
 }
 

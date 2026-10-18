@@ -62,22 +62,27 @@ export async function pixelTake(key) {
   const rec = await idbGet(d, prefix(key));
   if (!rec) throw new Error(`pixel payload "${key}" not found in transfer store`);
   if (rec.chunks) {
-    // Chunked payload: reassemble, deleting chunks as we go.
+    // Chunked payload: read ALL chunks first, verify size matches the
+    // manifest, and only then delete. Deleting as we go would destroy the
+    // payload on a mid-read failure, making retry impossible.
+    const parts = [];
+    let total = 0;
+    for (let i = 0; i < rec.chunks; i++) {
+      const cre = await idbGet(d, chunkId(key, i));
+      if (!cre || !cre.data) throw new Error(`pixel payload "${key}" is missing chunk ${i} of ${rec.chunks}`);
+      const u8 = new Uint8Array(cre.data);
+      parts.push(u8);
+      total += u8.length;
+    }
+    if (total !== rec.bytes) throw new Error(`pixel payload "${key}" reassembled to ${total} bytes but should be ${rec.bytes}`);
     const buf = new Uint8Array(rec.bytes);
     let off = 0;
-    try {
-      for (let i = 0; i < rec.chunks; i++) {
-        const cre = await idbGet(d, chunkId(key, i));
-        if (!cre || !cre.data) throw new Error(`pixel payload "${key}" is missing chunk ${i} of ${rec.chunks}`);
-        const u8 = new Uint8Array(cre.data);
-        buf.set(u8, off);
-        off += u8.length;
-        try { await idbDel(d, chunkId(key, i)); } catch { /* best effort */ }
-      }
-    } finally {
-      try { await idbDel(d, prefix(key)); } catch { /* best effort */ }
+    for (const u8 of parts) { buf.set(u8, off); off += u8.length; }
+    // Verified complete — now delete chunks + manifest (best-effort).
+    for (let i = 0; i < rec.chunks; i++) {
+      try { await idbDel(d, chunkId(key, i)); } catch { /* best effort */ }
     }
-    if (off !== rec.bytes) throw new Error(`pixel payload "${key}" reassembled to ${off} bytes but should be ${rec.bytes}`);
+    try { await idbDel(d, prefix(key)); } catch { /* best effort */ }
     return buf.buffer;
   }
   try { await idbDel(d, prefix(key)); } catch { /* best effort */ }
