@@ -80,9 +80,9 @@ export async function buildCacheKey(rgba, w, h, settings) {
   return [
     'v1',
     hex(digest),
+    `${w}x${h}`,
     settings.sourceLang, settings.targetLang, settings.translationBackend,
     String(settings.detectionThreshold),
-    settings.lmStudioModelId || '', settings.localLlmModel || '',
     models,
     BUILD,
   ].join('~');
@@ -99,6 +99,7 @@ export async function buildCacheKeyTier1(rgba, w, h, settings) {
   return [
     'v2t1',
     hex(digest),
+    `${w}x${h}`,
     settings.sourceLang,
     String(settings.detectionThreshold),
     models,
@@ -111,7 +112,6 @@ export function buildCacheKeyTier2(tier1Key, settings) {
     tier1Key,
     't2',
     settings.targetLang, settings.translationBackend,
-    settings.lmStudioModelId || '',
   ].join('~');
 }
 
@@ -152,14 +152,15 @@ export async function pageCacheGet(key) {
   });
 }
 
-// entry: {imageDataUrl, width, height, blocks, mode} — the ct/render payload.
+// entry: Tier-1 {imageDataUrl, width, height, blocks, mode} or
+// Tier-2 {translations, targetLang, backend} — shape-agnostic.
 // LRU eviction (~200 entries / 512 MB) runs inside the same transaction.
 export async function pageCachePut(key, entry) {
   await initPageCache();
   const d = await db();
-  // IDB stores strings as UTF-16; the data URL is ASCII but the blocks JSON
-  // may not be — ×2 is the honest estimate for the stats readout.
-  const bytes = entry.imageDataUrl.length * 2 + JSON.stringify(entry.blocks).length * 2;
+  // IDB stores strings as UTF-16; ×2 is the honest estimate for stats.
+  // Shape-agnostic: works for Tier-1 (image+blocks) and Tier-2 (translations).
+  const bytes = JSON.stringify(entry).length * 2;
   const now = Date.now();
   const metas = await scanMeta(d);
   const existing = metas.find(m => m.id === key);
@@ -178,13 +179,7 @@ export async function pageCachePut(key, entry) {
     const t = d.transaction(PAGE_CACHE_STORE, 'readwrite');
     const st = t.objectStore(PAGE_CACHE_STORE);
     for (const id of evict) st.delete(id);
-    st.put({
-      id: key,
-      imageDataUrl: entry.imageDataUrl,
-      width: entry.width, height: entry.height,
-      blocks: entry.blocks, mode: entry.mode,
-      bytes, createdAt: now,
-    });
+    st.put({ ...entry, id: key, bytes, createdAt: now });
     t.oncomplete = () => resolve();
     t.onerror = () => reject(t.error);
     t.onabort = () => reject(t.error || new DOMException('page-cache write aborted (storage full?)', 'AbortError'));

@@ -410,5 +410,9 @@
         "content": "$1"
       }
     }
+  },
+  "grant_host": {
+    "message": "ہوسٹ تک رسائی دیں",
+    "description": "Button to grant host permission for LM Studio server URL"
   }
 }

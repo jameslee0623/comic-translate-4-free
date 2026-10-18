@@ -21,6 +21,35 @@ function sleepAbortable(ms, signal) {
 // Fetch with timeout and retry for LM Studio (the flakiest backend).
 // 10-min timeout per attempt; 2 retries with 2s/6s backoff on network
 // errors and 5xx only (4xx are not retried).
+
+// LM Studio host permission check. Manifest covers localhost/127.0.0.1;
+// a LAN host (192.168.x.x) or remote URL needs an explicit grant. Check
+// before fetching so the user gets an actionable error instead of a bare
+// "Failed to fetch".
+export function lmStudioHostPattern(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') return null; // covered by manifest
+    return `${u.protocol}//${u.host}/*`;
+  } catch { return null; }
+}
+
+export async function ensureLmStudioHostAccess(url) {
+  const pattern = lmStudioHostPattern(url);
+  if (!pattern) return; // localhost — manifest covers it
+  let has = false;
+  try {
+    has = await chrome.permissions.contains({ origins: [pattern] });
+  } catch { /* assume not granted */ }
+  if (!has) {
+    const host = (() => { try { return new URL(url).host; } catch { return url; } })();
+    const err = new Error(`LM Studio: no permission to reach ${host}. Click "Grant host access" next to the server URL in Settings, then try again.`);
+    err.needsHostGrant = true;
+    err.hostPattern = pattern;
+    throw err;
+  }
+}
 async function lmStudioFetch(url, opts, signal, label) {
   const timeoutMs = 10 * 60 * 1000;
   const backoffs = [2000, 6000];
@@ -129,6 +158,8 @@ function azureLang(code) {
   // Same language, different code per backend (Google-style -> Azure).
   // ku is a semantic trap: Google's ku is Kurmanji, Azure's ku is Central
   // Kurdish (Sorani) — the mapping is mandatory, not cosmetic.
+  // Source of truth for the 114 codes: TARGET_LANGS in shared/settings.js.
+  // Verified against https://learn.microsoft.com/en-us/azure/ai-services/translator/language-support
   const m = {
     'zh-CN': 'zh-Hans', 'zh-TW': 'zh-Hant',
     pt: 'pt-pt', 'pt-BR': 'pt', 'pt-PT': 'pt-pt', 'fr-CA': 'fr-ca',
@@ -136,8 +167,25 @@ function azureLang(code) {
     ny: 'nya', lg: 'lug', rn: 'run',
     ku: 'kmr', ckb: 'ku',
   };
-  return m[code] || code;
+  const mapped = m[code] || code;
+  // Safety net: if TARGET_LANGS gains a code Azure doesn't support, fail
+  // fast with a clear message instead of sending a bad code (HTTP 400).
+  if (!AZURE_SUPPORTED.has(mapped.toLowerCase())) {
+    throw new Error(`Azure Translator does not support language "${code}" — pick Google or LM Studio for this target`);
+  }
+  return mapped;
 }
+
+// Azure Cloud Text-translation codes (lowercased). All 114 TARGET_LANGS
+// codes map into this set via azureLang() above.
+const AZURE_SUPPORTED = new Set(
+  ('af sq am ar hy as az bn ba eu bho bs bg yue ca zh-Hans zh-Hant sn hr cs da ' +
+   'dv doi nl en et fj fil fi fr fr-ca gl ka de el gu ht ha he hi hu is ig id ' +
+   'ga it ja kn kk km rw gom ko ku kmr ky lo lv lt ln lug mk mai mg ms ml mt ' +
+   'mi mr mn-Cyrl mn-Mong my ne nb nya or ps fa pl pt pt-pt pa ro run ru sm ' +
+   'sr-Cyrl sr-Latn st nso tn sd si sk sl so es sw sv ta tt te th ti tr tk uk ' +
+   'ur ug uz vi cy xh yo zu').toLowerCase().split(' ')
+);
 
 async function azure(texts, settings, signal) {
   const key = (settings.azureKey || '').trim();
@@ -241,6 +289,7 @@ function lmStudioEndpoints(settings) {
 // retries. Prefers the native v1 shape (key + loaded_instances), falls back
 // to older {id, state} shapes.
 async function lmStudioDiscoverModel(ep, headers, signal) {
+  await ensureLmStudioHostAccess(ep.models);
   let resp;
   try {
     resp = await lmStudioFetch(ep.models, { headers }, signal, 'model discovery');
@@ -286,6 +335,7 @@ function lmStudioPrompt(texts, settings) {
 
 async function lmStudio(texts, settings, signal) {
   const ep = lmStudioEndpoints(settings);
+  await ensureLmStudioHostAccess(ep.chat);
   const headers = { 'Content-Type': 'application/json' };
   if ((settings.lmStudioKey || '').trim()) headers['Authorization'] = 'Bearer ' + settings.lmStudioKey.trim();
   if (ep.flavor === 'lmstudio-v1') return lmStudioV1(texts, settings, ep, headers, signal);

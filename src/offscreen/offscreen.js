@@ -195,7 +195,7 @@ const handlers = {
     return { ok: true };
   },
 
-  async [MSG.ML_DETECT]({ key, width, height, threshold, runId }) {
+  async [MSG.ML_DETECT]({ key, width, height, threshold, runId, noStrip }) {
     throwIfCancelled(runId);
     const t0 = performance.now();
     // Pixel bytes arrive via the IDB pixel bus (see pixel-bus.js) — they do
@@ -208,6 +208,7 @@ const handlers = {
       throwIfCancelled(runId);
       return detector.detect(buf, width, height, threshold, {
         shouldAbort: () => cancelledRuns.has(runId),
+        noStrip: !!noStrip,
       });
     };
     try {

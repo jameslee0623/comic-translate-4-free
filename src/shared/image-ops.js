@@ -222,3 +222,17 @@ export function meanBrightness(rgba) {
   for (let i = 0; i < rgba.length; i += 4) sum += rgba[i] + rgba[i + 1] + rgba[i + 2];
   return sum / (n * 3 * 255);
 }
+
+// Browser canvas size guards. Canvas limits vary (Chrome ~16384px side,
+// Firefox ~11180, Safari ~4096-8192); staying under 16MP / 8192px side avoids
+// toBlob/getImageData failures everywhere. NOTE: content.js is a classic
+// script (no modules) — it duplicates these constants; keep in sync.
+export const MAX_RENDER_MP = 16;
+export const MAX_RENDER_SIDE = 8192;
+// Scale factor (<=1) to fit w,h within the canvas guards.
+export function renderScale(w, h) {
+  if (!(w > 0 && h > 0)) return 1;
+  return Math.min(1,
+    Math.sqrt(MAX_RENDER_MP * 1e6 / (w * h)),
+    MAX_RENDER_SIDE / Math.max(w, h));
+}

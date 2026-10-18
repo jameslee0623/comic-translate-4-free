@@ -7,6 +7,18 @@
 
   const FONT_STACK = '"Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Noto Sans",sans-serif';
 
+  // Browser canvas size guards (mirrors src/shared/image-ops.js renderScale —
+  // this is a classic script, no modules, so the constants are duplicated).
+  // Chrome ~16384px side, Firefox ~11180, Safari ~4096-8192.
+  const MAX_RENDER_MP = 16;
+  const MAX_RENDER_SIDE = 8192;
+  function renderScale(w, h) {
+    if (!(w > 0 && h > 0)) return 1;
+    return Math.min(1,
+      Math.sqrt(MAX_RENDER_MP * 1e6 / (w * h)),
+      MAX_RENDER_SIDE / Math.max(w, h));
+  }
+
   // ------------------------------------------------------------ text utils
   // Port of ogkalu2/comic-translate's shrink_bbox (Apache License 2.0,
   // https://github.com/ogkalu2/comic-translate): `pct` is the TOTAL shrink, applied
@@ -202,8 +214,31 @@
   // The page's own picture: largest fully-loaded <img> on the page.
   let mainImgEl = null;
 
+  // Collect <img> elements from light DOM and shadow DOMs (some readers
+  // render pages inside shadow roots; document.images misses those).
+  function allImages() {
+    const out = [...document.images];
+    try {
+      const els = document.querySelectorAll('*');
+      for (const el of els) {
+        const sr = el.shadowRoot;
+        if (sr) out.push(...sr.querySelectorAll('img'));
+      }
+    } catch { /* querySelectorAll on shadow roots is best-effort */ }
+    return out;
+  }
+
+  // Lazy-load fallback: if the <img> src is a placeholder, try data-src /
+  // data-original / data-lazy-src for the real URL.
+  function realSrc(im) {
+    const cur = im.currentSrc || im.src || '';
+    if (cur && !/placeholder|blank|1x1|spacer/i.test(cur)) return cur;
+    return im.dataset.src || im.dataset.original || im.dataset.lazySrc ||
+           im.getAttribute('data-src') || im.getAttribute('data-original') || cur;
+  }
+
   function findMainImage() {
-    const imgs = [...document.images].filter(im => {
+    const imgs = allImages().filter(im => {
       if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
       const r = im.getBoundingClientRect();
       return r.width >= 120 && r.height >= 120;
@@ -212,7 +247,7 @@
     imgs.sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight));
     const im = imgs[0];
     mainImgEl = im;
-    const cur = im.currentSrc || im.src || '';
+    const cur = realSrc(im);
     // Already translated in place: the <img> now shows our rendered data URL
     // (the real url was kept in dataset.ctOriginal). Report the ORIGINAL url:
     // a multi-MB data URL in this message can break tabs.sendMessage (the
@@ -234,13 +269,13 @@
   // manual send bypasses the minimum image size on purpose.
   function findImageBySrc(srcUrl) {
     if (!srcUrl) return null;
-    const im = [...document.images].find(im => {
+    const im = allImages().find(im => {
       if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
-      const cur = im.currentSrc || im.src || '';
+      const cur = realSrc(im);
       return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
     });
     if (!im) return null;
-    const cur = im.currentSrc || im.src || '';
+    const cur = realSrc(im);
     const wasTranslated = !!im.dataset.ctOriginal && /^data:/i.test(cur);
     return {
       src: wasTranslated ? im.dataset.ctOriginal : cur,
@@ -265,10 +300,14 @@
       im = mainImgEl && mainImgEl.isConnected ? mainImgEl : null;
     }
     if (!im) throw new Error(srcUrl ? 'image not found on page' : 'no main image');
+    // Canvas guard: natural size can exceed browser limits (e.g. 2000x15000).
+    // Downscale to fit — the pipeline downscales to 6.5MP anyway.
+    const s = renderScale(im.naturalWidth, im.naturalHeight);
     const c = document.createElement('canvas');
-    c.width = im.naturalWidth; c.height = im.naturalHeight;
+    c.width = Math.max(1, Math.round(im.naturalWidth * s));
+    c.height = Math.max(1, Math.round(im.naturalHeight * s));
     const cx = c.getContext('2d');
-    cx.drawImage(im, 0, 0);
+    cx.drawImage(im, 0, 0, c.width, c.height);
     // NOTE: raw pixel buffers CANNOT travel via extension messaging — Chrome
     // silently turns ArrayBuffers into {} in both directions (verified). So
     // the pixels go as a WebP data URL string, the same trick the render path
@@ -684,9 +723,13 @@
           currentRunId = msg.runId;
           const { imageDataUrl, width, height, blocks, timings, debug, mode } = msg;
           // Compose the final translated page on a scratch canvas.
+          // Canvas guard: downscale if over browser limits; draw blocks in
+          // original coordinates via ctx.scale so text layout is unchanged.
           const renderT0 = performance.now();
+          const rs = renderScale(width, height);
           const work = document.createElement('canvas');
-          work.width = width; work.height = height;
+          work.width = Math.max(1, Math.round(width * rs));
+          work.height = Math.max(1, Math.round(height * rs));
           const wctx = work.getContext('2d');
           // The inpainted page arrives as a WebP data URL (raw pixel buffers do
           // not survive extension messaging from the service worker).
@@ -696,7 +739,8 @@
             baseImg.onerror = () => rej(new Error('could not decode the translated page image'));
             baseImg.src = imageDataUrl;
           });
-          wctx.drawImage(baseImg, 0, 0, width, height);
+          wctx.drawImage(baseImg, 0, 0, work.width, work.height);
+          if (rs < 1) wctx.scale(rs, rs);
           const settings = await chrome.storage.local.get('settings').then(r => r.settings || {});
           const maxSize = settings.initFontSize || 40, minSize = settings.minFontSize || 10;
           const srcLang = (blocks[0] && blocks[0].source_lang) || settings.sourceLang || 'ja';
@@ -704,7 +748,9 @@
           for (const b of blocks) {
             const info = drawBlock(wctx, b, srcLang, maxSize, minSize);
             if (info) {
-              b.render_xyxy = info.render_xyxy;
+              // render_xyxy is debug info in original coordinates; scale to
+              // match the downscaled output when the guard kicked in.
+              b.render_xyxy = rs < 1 ? info.render_xyxy.map(v => Math.round(v * rs)) : info.render_xyxy;
               b.render_font_size = info.render_font_size;
               renderInfo.push({ text: b.text, size: info.render_font_size, auto: info.auto_font_size, vertical: info.vertical });
             }

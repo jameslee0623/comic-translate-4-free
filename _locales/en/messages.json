@@ -410,5 +410,9 @@
   "pill_err_render_mode": {
     "message": "unexpected render mode — reload the page to retry",
     "description": "Pill error: pill_err_render_mode"
+  },
+  "grant_host": {
+    "message": "Grant host access",
+    "description": "Button to grant host permission for LM Studio server URL"
   }
 }

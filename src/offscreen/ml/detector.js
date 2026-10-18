@@ -58,8 +58,10 @@ export class Detector {
 
   // rgba: Uint8ClampedArray, w/h: image dims. Returns [{xyxy:[x1,y1,x2,y2], label, score}]
   async detect(rgba, w, h, threshold = 0.3, opts = {}) {
-    const { shouldAbort = null } = opts;
-    if (Math.max(w, h) / Math.min(w, h) <= STRIP_ASPECT) {
+    const { shouldAbort = null, noStrip = false } = opts;
+    // noStrip: the caller (SW detectSliced) already sliced the image; skip
+    // the internal strip path so seams aren't merged twice (over-merge risk).
+    if (noStrip || Math.max(w, h) / Math.min(w, h) <= STRIP_ASPECT) {
       return this.detectSingle(rgba, w, h, threshold);
     }
     const vertical = h > w;

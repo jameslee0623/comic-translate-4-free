@@ -141,8 +141,10 @@ export class Inpainter {
             let wx = 1;
             if (leftIn && lx < TILE_OVERLAP) wx = Math.min(wx, lx / TILE_OVERLAP);
             if (rightIn && lx > tw - 1 - TILE_OVERLAP) wx = Math.min(wx, (tw - 1 - lx) / TILE_OVERLAP);
-            const wt = wx * wy;
-            if (wt <= 0) continue;
+            const wt = Math.max(wx * wy, 1e-3);
+            // (was: if (wt <= 0) continue — that could leave wsum[gi] = 0 for
+            // edge pixels no tile claims, producing black dots. Clamping to a
+            // tiny weight keeps the feather smooth and guarantees coverage.)
             const gi = gy * w + tx + lx, go = gi * 4, to = (ly * tw + lx) * 4;
             const ws = wsum[gi], wn = ws + wt;
             const k1 = ws / wn, k2 = wt / wn;

@@ -253,6 +253,38 @@ $('checkLmStudio').onclick = async () => {
   btn.disabled = false;
 };
 
+// Grant host access for a non-localhost LM Studio URL (e.g. 192.168.x.x).
+// Must run in a user gesture for Firefox (permissions.request requirement).
+$('grantLmStudioHost').onclick = async () => {
+  const btn = $('grantLmStudioHost'), out = $('lmStudioResult');
+  const url = ($('lmStudioUrl').value || '').trim() || 'http://127.0.0.1:1234';
+  let pattern = null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') {
+      out.className = 'check-result ok';
+      out.textContent = 'localhost needs no grant — already covered.';
+      return;
+    }
+    pattern = `${u.protocol}//${u.host}/*`;
+  } catch {
+    out.className = 'check-result err';
+    out.textContent = 'Invalid URL.';
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const granted = await chrome.permissions.request({ origins: [pattern] });
+    out.className = 'check-result ' + (granted ? 'ok' : 'err');
+    out.textContent = granted ? `Granted access to ${pattern}` : 'Grant denied.';
+  } catch (e) {
+    out.className = 'check-result err';
+    out.textContent = 'Grant failed: ' + String((e && e.message) || e);
+  }
+  btn.disabled = false;
+};
+
 // --- model download progress ---------------------------------------------
 // Downloads run fire-and-forget in the ML host; it broadcasts ct/model-progress
 // (progress {fileId, loaded, total}, completion {fileId, done:true},

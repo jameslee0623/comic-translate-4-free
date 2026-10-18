@@ -410,5 +410,9 @@
   "pill_err_render_mode": {
     "message": "mode render tak terduga — muat ulang halaman untuk mencoba lagi",
     "description": "Pill error: pill_err_render_mode"
+  },
+  "grant_host": {
+    "message": "Berikan akses host",
+    "description": "Button to grant host permission for LM Studio server URL"
   }
 }

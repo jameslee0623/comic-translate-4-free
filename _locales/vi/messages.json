@@ -410,5 +410,9 @@
   "pill_err_render_mode": {
     "message": "chế độ hiển thị không mong đợi — tải lại trang để thử lại",
     "description": "Pill error: pill_err_render_mode"
+  },
+  "grant_host": {
+    "message": "Cấp quyền truy cập máy chủ",
+    "description": "Button to grant host permission for LM Studio server URL"
   }
 }

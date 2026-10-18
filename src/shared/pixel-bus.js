@@ -7,6 +7,10 @@
 // arrived as {bytes:0, mean:0}. IndexedDB structured-clones binary data
 // reliably, so payloads go through IDB and only the lookup key travels in
 // the message. Keys are namespaced 'px:' and deleted on read (take).
+//
+// Large payloads (>8MB) are chunked: a single huge IDB value can hit
+// QuotaExceeded (e.g. 4000x6000x4 = 96MB). Chunks live at `px:key#i` with a
+// manifest at `px:key` ({chunks, bytes}). Small payloads use one record.
 import { openDb, idbGet, idbPut, idbDel } from './contracts.js';
 
 let dbPromise = null;
@@ -18,6 +22,8 @@ function db() {
 }
 
 const prefix = key => 'px:' + key;
+const chunkId = (key, i) => `${prefix(key)}#${i}`;
+const CHUNK_BYTES = 8 * 1024 * 1024;
 
 /** Store an ArrayBuffer (or view) under key for the other side to take. */
 export async function pixelPut(key, buffer) {
@@ -31,7 +37,20 @@ export async function pixelPut(key, buffer) {
   } else {
     throw new Error('pixelPut expects an ArrayBuffer or typed-array view');
   }
-  await idbPut(d, { id: prefix(key), data: ab });
+  if (ab.byteLength <= CHUNK_BYTES) {
+    await idbPut(d, { id: prefix(key), data: ab });
+    return;
+  }
+  // Chunked: manifest at px:key, chunks at px:key#i.
+  const n = Math.ceil(ab.byteLength / CHUNK_BYTES);
+  const u8 = new Uint8Array(ab);
+  for (let i = 0; i < n; i++) {
+    const start = i * CHUNK_BYTES;
+    const end = Math.min(ab.byteLength, start + CHUNK_BYTES);
+    // slice() copies — each chunk is an independent ArrayBuffer.
+    await idbPut(d, { id: chunkId(key, i), data: u8.slice(start, end).buffer });
+  }
+  await idbPut(d, { id: prefix(key), chunks: n, bytes: ab.byteLength });
 }
 
 /**
@@ -42,11 +61,40 @@ export async function pixelTake(key) {
   const d = await db();
   const rec = await idbGet(d, prefix(key));
   if (!rec) throw new Error(`pixel payload "${key}" not found in transfer store`);
+  if (rec.chunks) {
+    // Chunked payload: reassemble, deleting chunks as we go.
+    const buf = new Uint8Array(rec.bytes);
+    let off = 0;
+    try {
+      for (let i = 0; i < rec.chunks; i++) {
+        const cre = await idbGet(d, chunkId(key, i));
+        if (!cre || !cre.data) throw new Error(`pixel payload "${key}" is missing chunk ${i} of ${rec.chunks}`);
+        const u8 = new Uint8Array(cre.data);
+        buf.set(u8, off);
+        off += u8.length;
+        try { await idbDel(d, chunkId(key, i)); } catch { /* best effort */ }
+      }
+    } finally {
+      try { await idbDel(d, prefix(key)); } catch { /* best effort */ }
+    }
+    if (off !== rec.bytes) throw new Error(`pixel payload "${key}" reassembled to ${off} bytes but should be ${rec.bytes}`);
+    return buf.buffer;
+  }
   try { await idbDel(d, prefix(key)); } catch { /* best effort */ }
   return rec.data;
 }
 
-/** Best-effort delete (cleanup after a failed/cancelled run). */
+/** Best-effort delete (cleanup after a failed/cancelled run). Deletes chunks too. */
 export async function pixelDrop(key) {
-  try { await idbDel(await db(), prefix(key)); } catch { /* best effort */ }
+  let d;
+  try { d = await db(); } catch { return; }
+  try {
+    const rec = await idbGet(d, prefix(key));
+    if (rec && rec.chunks) {
+      for (let i = 0; i < rec.chunks; i++) {
+        try { await idbDel(d, chunkId(key, i)); } catch { /* already gone */ }
+      }
+    }
+  } catch { /* best effort */ }
+  try { await idbDel(d, prefix(key)); } catch { /* best effort */ }
 }

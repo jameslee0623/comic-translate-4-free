@@ -410,5 +410,9 @@
   "pill_err_render_mode": {
     "message": "예상치 못한 렌더링 모드입니다 — 페이지를 새로고침하고 다시 시도하세요",
     "description": "Pill error: pill_err_render_mode"
+  },
+  "grant_host": {
+    "message": "호스트 액세스 허용",
+    "description": "Button to grant host permission for LM Studio server URL"
   }
 }

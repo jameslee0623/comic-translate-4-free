@@ -8,7 +8,7 @@ import {
   makeTextBlock, mergeOverlappingBoxes, sortBlocks,
   boxIoU, clampBox, dedupAndMergeSeams, mergePaddedBoxes,
 } from '../shared/textblock.js';
-import { toGrayU8, meanBrightness } from '../shared/image-ops.js';
+import { toGrayU8, meanBrightness, renderScale, resizeBilinearRGBA } from '../shared/image-ops.js';
 import { pixelPut, pixelTake, pixelDrop } from '../shared/pixel-bus.js';
 import { generateMask } from '../shared/mask.js';
 import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL } from './translators.js';
@@ -419,8 +419,17 @@ function buildBlocks(detections, w, h, rgba, settings) {
 async function rgbaToDataURL(rgba, w, h, maxDim = 420) {
   const scale = Math.min(1, maxDim / Math.max(w, h));
   const dw = Math.max(1, Math.round(w * scale)), dh = Math.max(1, Math.round(h * scale));
-  const src = makeCanvas(w, h);
-  src.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(rgba), w, h), 0, 0);
+  // Canvas guard: the full-res src canvas can exceed browser limits on long
+  // strips (e.g. 413x15402) even when the output is small. Downscale the
+  // working buffer first if needed.
+  const gs = renderScale(w, h);
+  let gw = w, gh = h, grasp = rgba;
+  if (gs < 1) {
+    gw = Math.max(1, Math.round(w * gs)); gh = Math.max(1, Math.round(h * gs));
+    grasp = resizeBilinearRGBA(rgba, w, h, gw, gh);
+  }
+  const src = makeCanvas(gw, gh);
+  src.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(grasp), gw, gh), 0, 0);
   const c = makeCanvas(dw, dh);
   c.getContext('2d').drawImage(src, 0, 0, dw, dh);
   const blob = await canvasToBlob(c, WEBP_TYPE, WEBP_QUALITY);
@@ -1026,11 +1035,14 @@ async function runPipeline(tabId, opts = {}) {
           targetLang: settings.targetLang,
           backend: settings.translationBackend,
         });
-        // Legacy v1 key (for backward compat during transition; will be
-        // removed once Tier 1 is populated).
-        await pageCachePut(await buildCacheKey(rgba, w, h, settings), {
-          imageDataUrl: finalDataUrl, width: w, height: h, blocks, mode,
-        });
+        // Legacy v1 key: backfill for old clients during transition. Only
+        // write when Tier-1 wasn't already populated (not on every run).
+        // Will be removed once Tier 1 is populated.
+        if (!tier1Entry) {
+          await pageCachePut(await buildCacheKey(rgba, w, h, settings), {
+            imageDataUrl: finalDataUrl, width: w, height: h, blocks, mode,
+          });
+        }
       }
     } catch (e) {
       console.warn('[ct] page-cache write failed:', String((e && e.message) || e).slice(0, 120));
@@ -1078,6 +1090,8 @@ async function detectSliced(rgba, w, h, threshold, runId, pxKeys) {
     await pixelPut(pxKey, c.data.buffer);
     const r = await callMlChecked(runId, {
       type: MSG.ML_DETECT, key: pxKey, width: w, height: c.h, threshold, runId,
+      // SW already sliced; detector must not strip again (double seams).
+      noStrip: true,
     });
     for (const b of r.boxes) {
       all.push({ ...b, xyxy: [b.xyxy[0], b.xyxy[1] + y0, b.xyxy[2], b.xyxy[3] + y0] });

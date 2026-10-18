@@ -410,5 +410,9 @@
   "pill_err_render_mode": {
     "message": "意外的渲染模式 — 请重新加载页面后重试",
     "description": "Pill error: pill_err_render_mode"
+  },
+  "grant_host": {
+    "message": "授予主机访问权限",
+    "description": "Button to grant host permission for LM Studio server URL"
   }
 }
