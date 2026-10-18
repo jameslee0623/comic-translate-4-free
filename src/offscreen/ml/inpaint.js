@@ -160,10 +160,3 @@ export class Inpainter {
     return out;
   }
 }
-
-// Merge overlapping padded boxes -> patch list (port of merge_overlapping_padded_boxes).
-      }
-    }
-  }
-  return boxes;
-}

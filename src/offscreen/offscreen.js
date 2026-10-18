@@ -7,7 +7,7 @@ import { MSG, openDb, idbGet } from '../shared/contracts.js';
 import { ALL_FILES, downloadFileToIdb, readChunked, ocrEngineForLang, BABERU_VOCAB_ASSET } from '../shared/model-specs.js';
 import { Detector } from './ml/detector.js';
 import { BaberuOCR } from './ml/baberu.js';
-import { meanBrightness } from './ml/image-ops.js';
+import { meanBrightness } from '../shared/image-ops.js';
 import { Inpainter } from './ml/inpaint.js';
 import { pixelPut, pixelTake } from '../shared/pixel-bus.js';
 
