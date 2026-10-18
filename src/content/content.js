@@ -275,8 +275,10 @@
     // uses for the translated image. Throws (tainted canvas) when the image
     // host sends no CORS headers — the pipeline then tries a direct fetch.
     // Async blob encode (not toDataURL): toDataURL is fully synchronous and
-    // freezes the page for 1-3s on multi-MP images.
-    const blob = await c.convertToBlob({ type: 'image/webp', quality: 0.95 });
+    // freezes the page for 1-3s on multi-MP images. Note: HTMLCanvasElement
+    // has toBlob (callback), not convertToBlob (that's OffscreenCanvas only).
+    const blob = await new Promise((resolve, reject) =>
+      c.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/webp', 0.95));
     const dataUrl = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
@@ -715,7 +717,10 @@
             // auto path replaces the detected main image.
             // Async blob encode (not toDataURL): toDataURL is fully synchronous
             // and freezes the page for 1-3s on multi-MP images.
-            const blob = await work.convertToBlob({ type: 'image/webp', quality: 0.95 });
+            // Note: HTMLCanvasElement has toBlob (callback), not convertToBlob
+            // (that's OffscreenCanvas only).
+            const blob = await new Promise((resolve, reject) =>
+              work.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/webp', 0.95));
             const dataUrl = await new Promise((resolve, reject) => {
               const reader = new FileReader();
               reader.onload = () => resolve(reader.result);
