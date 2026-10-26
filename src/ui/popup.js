@@ -27,16 +27,14 @@ function setProgress(p) {
   $('progress').style.width = Math.round((p || 0) * 100) + '%';
 }
 
-// One button does both jobs: "Translate this page" when idle, "Cancel" while
-// a run is in flight.
+// Two buttons: "Translate this page" starts a run, "Cancel" stops one.
+// Translate is disabled while a run is in flight; Cancel is disabled
+// when idle — so a second run can't start and there's nothing to cancel.
 let running = false;
 function setRunning(r) {
   running = !!r;
-  const b = $('translateBtn');
-  b.textContent = running ? (ctMsg('cancel') || 'Cancel')
-                          : (ctMsg('translate_page') || 'Translate this page');
-  b.classList.toggle('primary', !running);
-  b.classList.toggle('danger', running);
+  $('translateBtn').disabled = running;
+  $('cancelBtn').disabled = !running;
 }
 
 function fillLangs() {
@@ -308,11 +306,11 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
   };
 }
 
+$('cancelBtn').onclick = () => {
+  chrome.runtime.sendMessage({ type: 'ct/cancel-run' });
+};
+
 $('translateBtn').onclick = async () => {
-  if (running) {
-    chrome.runtime.sendMessage({ type: 'ct/cancel-run' });
-    return;
-  }
   $('error').textContent = '';
   try {
     // Best-effort one-time permission so the worker can download the page's
