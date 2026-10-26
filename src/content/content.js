@@ -370,7 +370,12 @@
     // the <img>); re-find it before giving up.
     if (!im) { findMainImage(); im = mainImgEl && mainImgEl.isConnected ? mainImgEl : null; }
     if (!im) return false;
-    if (!im.dataset.ctOriginal) im.dataset.ctOriginal = im.currentSrc || im.src;
+    // Always refresh the marker: on SPA-reused elements the old marker
+    // points at a previous picture. Never overwrite with a data: URL —
+    // on a re-render the element shows the old translation, and the
+    // existing marker is the true original.
+    const cur = im.currentSrc || im.src;
+    if (cur && !/^data:/i.test(cur)) im.dataset.ctOriginal = cur;
     im.removeAttribute('srcset');
     im.src = dataUrl;
     return true;
@@ -385,7 +390,11 @@
       return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
     });
     if (!im) return false;
-    if (!im.dataset.ctOriginal) im.dataset.ctOriginal = im.currentSrc || im.src;
+    // Always refresh the marker to this render's original (srcUrl): on
+    // SPA-reused elements the old marker points at a previous picture.
+    // Never overwrite with a data: URL (re-translate after the run-start
+    // clear wiped the marker) — any existing marker stays.
+    if (srcUrl && !/^data:/i.test(srcUrl)) im.dataset.ctOriginal = srcUrl;
     im.removeAttribute('srcset');
     im.src = dataUrl;
     return true;
@@ -739,9 +748,11 @@
       latestRunId = msg.runId;
       // Clear stale original-image markers from a previous run (SPA
       // navigation can leave them behind; a new run must not resolve
-      // against the old page's stashed URLs).
+      // against the old page's stashed URLs). allImages() also descends
+      // into shadow roots — querySelectorAll does not, so a stale marker
+      // inside a shadow box survived the clear.
       try {
-        document.querySelectorAll('img[data-ct-original]').forEach(im => {
+        allImages().forEach(im => {
           delete im.dataset.ctOriginal;
         });
       } catch { /* best-effort */ }
