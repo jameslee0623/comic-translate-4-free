@@ -403,7 +403,14 @@
   // ------------------------------------------------------------ status pill
   let pill = null, pillTimer = null;
   function ensurePill() {
-    if (pill) return pill;
+    if (pill) {
+      // The debug overlay shares the pill's max z-index but is appended
+      // later, so it paints on top and hides the pill in debug mode.
+      // Re-appending the pill moves it after the overlay, so it stays
+      // visible even with the panel open.
+      if (overlay) document.documentElement.appendChild(pill);
+      return pill;
+    }
     pill = document.createElement('div');
     pill.id = 'ct-pill';
     pill.style.cssText = 'position:fixed;right:16px;top:16px;z-index:2147483647;background:#1c1c22;color:#eee;' +
@@ -412,11 +419,18 @@
     document.documentElement.appendChild(pill);
     return pill;
   }
+  // Mirror of the pill's latest text inside the debug panel, so everything
+  // the pill shows is also visible in the panel (plain text only — the
+  // pill's buttons must not be duplicated with the same ids).
+  function mirrorPillStatus(text) {
+    try { if (debugStatus) debugStatus.textContent = text; } catch { /* never break the pill */ }
+  }
   function showPill(html, sticky) {
     const p = ensurePill();
     p.innerHTML = html;
     p.style.display = 'block';
     p.style.borderColor = '#444';
+    mirrorPillStatus(p.textContent);
     clearTimeout(pillTimer);
     if (!sticky) pillTimer = setTimeout(() => { p.style.display = 'none'; }, 4000);
   }
@@ -448,6 +462,7 @@
     p.innerHTML = html;
     p.style.display = 'block';
     p.style.borderColor = '#a33';
+    mirrorPillStatus(p.textContent);
     const x = document.getElementById('ct-pill-x');
     if (x) x.onclick = e => { e.preventDefault(); p.style.display = 'none'; };
     const g = document.getElementById('ct-pill-grant');
@@ -544,7 +559,7 @@
   }
 
   // ------------------------------------------------------------ overlay DOM
-  let overlay = null, debugPanel = null, debugBody = null, dbgBtn = null;  const stageTabs = {};   // stage -> payload
+  let overlay = null, debugPanel = null, debugBody = null, dbgBtn = null, debugStatus = null;  const stageTabs = {};   // stage -> payload
   const stageOrder = ['capture', 'detect', 'blocks', 'ocr', 'mask', 'inpaint', 'translate', 'render'];
   let currentRunId = null;
   let latestRunId = null;   // run the service worker last started for this tab
@@ -584,6 +599,13 @@
     wrap.style.cssText = 'flex:1;display:flex;min-height:0;width:100%;justify-content:flex-end;';
     debugPanel = document.createElement('div');
     debugPanel.style.cssText = 'display:none;pointer-events:auto;width:340px;max-height:calc(100vh - 60px);overflow:auto;background:rgba(18,18,24,0.96);color:#ddd;font:12px sans-serif;border-left:1px solid #333;flex-direction:column;';
+    // Status line mirroring the pill (first child, so it is visible when
+    // the panel opens). Initialized from the pill's current text, then kept
+    // in sync by showPill/showPillError.
+    debugStatus = document.createElement('div');
+    debugStatus.style.cssText = 'padding:8px;border-bottom:1px solid #333;color:#eee;white-space:pre-wrap;';
+    debugStatus.textContent = pill ? pill.textContent : '';
+    debugPanel.appendChild(debugStatus);
     const tabBar = document.createElement('div');
     tabBar.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;padding:8px;position:sticky;top:0;background:#16161a;';
     debugPanel.appendChild(tabBar);
@@ -604,7 +626,7 @@
 
   function closeOverlay() {
     if (overlay) overlay.remove();
-    overlay = null; debugPanel = null; debugBody = null;
+    overlay = null; debugPanel = null; debugBody = null; debugStatus = null;
     for (const k of Object.keys(stageTabs)) delete stageTabs[k];
   }
 

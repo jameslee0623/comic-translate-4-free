@@ -945,7 +945,10 @@ async function runPipeline(tabId, opts = {}) {
       const translateMs = Math.round(performance.now() - t0t);
       parProgress('translate', 1);
       await emitDebug(runId, tabId, settings, 'translate', {
-        title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
+        // Title shows the backend that ACTUALLY translated, not the
+        // configured one — after failover they differ, and the old title
+        // always said Google even when Azure/LM Studio did the work.
+        title: `Translation — ${BACKEND_LABEL[blocks[0]?.backendUsed || settings.translationBackend] || settings.translationBackend}`,
         rows: blocks.map(b => ({ text: b.text, translation: b.translation, backend: b.backendUsed || settings.translationBackend })),
         ms: translateMs,
       });
@@ -1110,7 +1113,8 @@ async function runPipeline(tabId, opts = {}) {
       const translateMs = Math.round(translateEnd - t0t);
       parProgress('translate', 1);
       await emitDebug(runId, tabId, settings, 'translate', {
-        title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
+        // Same as the main path: the actual backend, not the configured one.
+        title: `Translation — ${BACKEND_LABEL[blocks[0]?.backendUsed || settings.translationBackend] || settings.translationBackend}`,
         rows: blocks.map(b => ({ text: b.text, translation: b.translation, backend: b.backendUsed || settings.translationBackend })),
         ms: translateMs,
       });
