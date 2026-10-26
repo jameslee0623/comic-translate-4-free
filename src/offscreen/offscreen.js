@@ -11,7 +11,15 @@ import { meanBrightness } from '../shared/image-ops.js';
 import { Inpainter } from './ml/inpaint.js';
 import { pixelPut, pixelTake } from '../shared/pixel-bus.js';
 
-ort.env.wasm.wasmPaths = chrome.runtime.getURL('src/offscreen/vendor/');
+// Worker-safe: a Firefox inpaint worker imports this module, and a worker
+// may not have chrome.runtime. Fall back to a path relative to this script:
+// both offscreen.html and background/inpaint-worker.js sit one level under
+// src/, so ../offscreen/vendor/ resolves to the same dir in both.
+try {
+  ort.env.wasm.wasmPaths = chrome.runtime.getURL('src/offscreen/vendor/');
+} catch {
+  ort.env.wasm.wasmPaths = new URL('../offscreen/vendor/', self.location.href).href;
+}
 ort.env.wasm.numThreads = 1;
 
 const detector = new Detector();
@@ -364,6 +372,10 @@ const handlers = {
 // ml-bridge.js). Chrome keeps using the message listener below.
 export const mlHandlers = handlers;
 
+// Guarded: a worker importing this module may not have chrome.runtime.
+// (Chrome offscreen doc and Firefox background page both have it, so their
+// listener registers exactly as before.)
+if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage?.addListener) {
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   const fn = handlers[msg && msg.type];
   if (!fn) return false; // not ours
@@ -377,3 +389,4 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   })();
   return true; // async response
 });
+}
