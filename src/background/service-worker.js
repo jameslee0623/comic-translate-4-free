@@ -1263,10 +1263,14 @@ async function detectSliced(rgba, w, h, threshold, runId, pxKeys) {
 const autoFired = new Map(); // tabId -> {url, at}
 chrome.tabs.onRemoved.addListener(tabId => autoFired.delete(tabId));
 
-// First install: flag the popup to send the user straight to the models
-// section of the Settings page (download button highlighted) on first open.
+// First install AND every update: flag the popup to send the user straight
+// to the models section of the Settings page (download button highlighted)
+// on next open — so new or changed models (e.g. a Baberu swap) get
+// downloaded instead of silently running stale weights. Consumed by the
+// popup on first open after the install/update; opening the popup is what
+// triggers the lead, so it waits if the user never opens it.
 chrome.runtime.onInstalled.addListener(details => {
-  if (!details || details.reason !== 'install') return;
+  if (!details || (details.reason !== 'install' && details.reason !== 'update')) return;
   chrome.storage.local.get('settings').then(({ settings }) => {
     if (settings && settings.firstRun) return;
     chrome.storage.local.set({ settings: { ...(settings || {}), firstRun: true } }).catch(() => {});
