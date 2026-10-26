@@ -97,6 +97,15 @@ export async function deleteModelGroup(groupId) {
 // before the v1.2 download so users don't carry ~122MB of stale weights.
 const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav', 'ocr-pororo', 'ocr-ppocr-en', 'ocr-ppocr-chinese', 'ocr-ppocrv6', 'ocr-ppocr-ko', 'ocr-encoder', 'ocr-decoder-init', 'ocr-decoder-step', 'ocr-baberu-prefill', 'ocr-baberu-step', 'ocr-baberu-vision', 'ocr-baberu-prefill-v11', 'ocr-baberu-step-v11'];
 export { PRUNED_MODEL_IDS };
+// Fingerprint of the model list (group + file IDs + expected sizes).
+// URLs are excluded on purpose: a URL-only change needs no re-download
+// (the downloader skips on matching size), while an ID or size change
+// means a new or changed file must be downloaded. Used by the SW's
+// onInstalled handler to lead the user to the models section only when
+// an update actually makes a download necessary.
+export function computeModelFingerprint() {
+  return JSON.stringify(MODEL_GROUPS.map(g => [g.id, g.files.map(f => [f.id, f.bytes])]));
+}
 export async function pruneModelIds(ids) {
   const db = await openDb();
   for (const id of ids) {

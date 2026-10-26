@@ -2,7 +2,7 @@
 // translation APIs, capture, debug emission. ML inference itself lives in
 // the offscreen document; pure-JS stages (blocks, mask) run here.
 import { MSG } from '../shared/contracts.js';
-import { MODEL_GROUPS, getModelStatus, deleteModelGroup } from '../shared/model-specs.js';
+import { MODEL_GROUPS, getModelStatus, deleteModelGroup, computeModelFingerprint } from '../shared/model-specs.js';
 import { getSettings } from '../shared/settings.js';
 import {
   makeTextBlock, mergeOverlappingBoxes, sortBlocks,
@@ -1263,17 +1263,32 @@ async function detectSliced(rgba, w, h, threshold, runId, pxKeys) {
 const autoFired = new Map(); // tabId -> {url, at}
 chrome.tabs.onRemoved.addListener(tabId => autoFired.delete(tabId));
 
-// First install AND every update: flag the popup to send the user straight
-// to the models section of the Settings page (download button highlighted)
-// on next open — so new or changed models (e.g. a Baberu swap) get
-// downloaded instead of silently running stale weights. Consumed by the
-// popup on first open after the install/update; opening the popup is what
-// triggers the lead, so it waits if the user never opens it.
+// First install: always flag the popup to send the user straight to the
+// models section of the Settings page (download button highlighted) on
+// next open. Update: flag it ONLY when the update changes the model list
+// (new/changed file IDs or sizes — e.g. a Baberu swap), i.e. when a new
+// download is actually necessary; a code-only update does not lead.
+// The fingerprint is stored on install and on every model-changing
+// update, so the next update compares against the last installed list.
+// No stored fingerprint (updating from before this check existed) counts
+// as changed — one lead to set the baseline, then only real changes.
+// Consumed by the popup on first open after the install/update; opening
+// the popup is what triggers the lead, so it waits if the user never
+// opens it.
 chrome.runtime.onInstalled.addListener(details => {
   if (!details || (details.reason !== 'install' && details.reason !== 'update')) return;
-  chrome.storage.local.get('settings').then(({ settings }) => {
-    if (settings && settings.firstRun) return;
-    chrome.storage.local.set({ settings: { ...(settings || {}), firstRun: true } }).catch(() => {});
+  chrome.storage.local.get(['settings', 'modelFingerprint']).then(({ settings, modelFingerprint: stored }) => {
+    const current = computeModelFingerprint();
+    const modelsChanged = stored !== current;
+    if (details.reason === 'install') {
+      if (settings && settings.firstRun && !modelsChanged) return;
+    } else if (!modelsChanged) {
+      return;
+    }
+    const patch = {};
+    if (!(settings && settings.firstRun)) patch.settings = { ...(settings || {}), firstRun: true };
+    if (modelsChanged) patch.modelFingerprint = current;
+    if (Object.keys(patch).length) chrome.storage.local.set(patch).catch(() => {});
   }).catch(() => {});
 });
 
