@@ -10,6 +10,23 @@
 // started (1018p bug). importScripts gives the worker a real `self.ort`
 // global; the ESM handler module then loads via dynamic import.
 // Relative URLs resolve against this worker's own URL.
+//
+// Firefox workers have no `chrome` global, but the handler module loads
+// model assets (Baberu vocab) via chrome.runtime.getURL — without this
+// shim every OCR load fails with "chrome is not defined". Provide the
+// minimal equivalent: getURL takes an extension-root-relative path, so
+// resolve it against this worker's own origin (moz-extension://<id>/).
+// The wasmPaths use and the message listener are already guarded, and
+// downloads (the only sendMessage user) never run on the worker, so
+// getURL is the only piece the worker needs.
+if (typeof chrome === 'undefined') {
+  globalThis.chrome = {
+    runtime: {
+      getURL: (path) => new URL(path, new URL('/', self.location.href)).href,
+    },
+  };
+}
+
 importScripts('../offscreen/vendor/ort.min.js');
 
 Promise.all([
