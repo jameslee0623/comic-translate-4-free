@@ -66,9 +66,9 @@ export async function ensureLmStudioHostAccess(url) {
   }
 }
 // deadlineMs caps the TOTAL wall time across attempts + backoffs (default
-// 170s — under the 180s Firefox worker timeout and Chrome's translate
+// 90s — matching the Firefox worker timeout and Chrome's translate
 // deadline, so a hung server can't hold the worker past its kill). Callers
-// thread their own deadline: the SW passes 170s on both browser paths.
+// thread their own deadline: the SW passes 90s on both browser paths.
 async function lmStudioFetch(url, opts, signal, label, deadlineMs = 90000) {
   const deadline = Date.now() + deadlineMs;
   const backoffs = [1000, 2000, 4000];

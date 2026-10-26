@@ -104,7 +104,7 @@ function abortRunResources(id, r) {
   // waiting for the stage boundary.
   try { r.abortController?.abort(); } catch {}
   // Firefox: translation runs on a Web Worker — terminate it now instead
-  // of waiting for completion or the 180s timeout. The stored killer
+  // of waiting for completion or the 90s timeout. The stored killer
   // also rejects the pending promise so `await translateP` doesn't hang.
   try { r.killTranslateWorker?.(Object.assign(new Error('cancelled'), { cancelled: true })); } catch {}
   try { r.translateWorker?.terminate(); } catch {}
@@ -872,15 +872,16 @@ async function runPipeline(tabId, opts = {}) {
     const runTranslate = async () => {
       parProgress('translate', 0);
       const t0t = performance.now();
-      // Chrome parity with the Firefox 180s worker timeout: a hung backend
+      // Chrome parity with the Firefox 90s worker timeout: a hung backend
       // must not hang the run forever. The abortController lets translateBlocks
-      // stop early when the timeout fires.
+      // stop early when the timeout fires. The message derives from the
+      // constant so it can't drift from the value again.
       const TRANSLATE_TIMEOUT_MS = 90000;
       let timeoutId = null;
       const timeoutP = new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
           try { abortController.abort(); } catch { /* already aborted */ }
-          reject(new Error('translate timed out after 180s — the translation backend may be stuck'));
+          reject(new Error(`translate timed out after ${TRANSLATE_TIMEOUT_MS / 1000}s — the translation backend may be stuck`));
         }, TRANSLATE_TIMEOUT_MS);
       });
       let translated;
@@ -988,9 +989,9 @@ async function runPipeline(tabId, opts = {}) {
       const workerUrl = chrome.runtime.getURL('src/background/translate-worker.js');
       const tWorker = new Worker(workerUrl, { type: 'module' });
       // Track for cancellation: cancelRunsForTab terminates this immediately
-      // instead of waiting for the 180s timeout or natural completion.
+      // instead of waiting for the 90s timeout or natural completion.
       runs.get(runId).translateWorker = tWorker;
-      // Hoisted so the catch block below can cancel the 180s timer on early
+      // Hoisted so the catch block below can cancel the 90s timer on early
       // mask/inpaint failure — otherwise it fires pointlessly after terminate.
       let translateTimeout = null;
       let translateReject = null;
