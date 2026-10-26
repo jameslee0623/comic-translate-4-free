@@ -34,3 +34,22 @@ function ctApplyI18n(root) {
     if (m) el.innerHTML = m;
   });
 }
+
+// Language names in the browser's UI language, for the source/target
+// dropdowns (popup + options). chrome.i18n.getUILanguage() is the browser
+// setting; Intl.DisplayNames renders each language code in that language.
+// Falls back to the given name when DisplayNames is unavailable or does
+// not know a code. Cached: the UI language does not change mid-session.
+let _ctLangNames = null;
+function ctLangName(code, fallback) {
+  try {
+    if (!_ctLangNames) {
+      let ui = 'en';
+      try {
+        if (chrome && chrome.i18n && chrome.i18n.getUILanguage) ui = chrome.i18n.getUILanguage() || ui;
+      } catch { /* navigator default below */ }
+      _ctLangNames = new Intl.DisplayNames([ui], { type: 'language' });
+    }
+    return _ctLangNames.of(code) || fallback;
+  } catch { return fallback; }
+}

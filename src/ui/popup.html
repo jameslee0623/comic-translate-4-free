@@ -21,6 +21,9 @@
   button.remind:hover:not(:disabled) { background: #2b7de9; }
   button:disabled { opacity: .45; cursor: default; }
   .row { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+  /* Language row: both dropdowns the same width, so the arrow sits
+     centered between them. */
+  .langrow select { flex: 1; min-width: 0; }
   .bar { height: 6px; background: #2a2a2e; border-radius: 3px; overflow: hidden; margin: 6px 0; }
   .bar > div { height: 100%; background: #1a73e8; width: 0%; transition: width .2s; }
   .model { border: 1px solid #2e2e33; border-radius: 8px; padding: 8px; margin: 6px 0; background: #1b1b1f; }
@@ -61,7 +64,7 @@
   </div>
 
   <h2 data-i18n="languages">Languages</h2>
-  <div class="row">
+  <div class="row langrow">
     <select id="sourceLang" data-i18n-title="source_lang" title="Source language"></select>
     <span style="color:#9a9aa0">→</span>
     <select id="targetLang" data-i18n-title="target_lang" title="Target language"></select>

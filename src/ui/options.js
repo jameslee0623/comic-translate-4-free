@@ -9,7 +9,7 @@ function fillLangs(sel, list, val) {
   // Don't rebuild a dropdown the user is interacting with right now — the
   // innerHTML reset would collapse their open list mid-selection.
   if (document.activeElement === sel) return;
-  sel.innerHTML = list.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
+  sel.innerHTML = list.map(([c, n]) => `<option value="${c}">${ctLangName(c, n)}</option>`).join('');
   sel.value = list.some(([c]) => c === val) ? val : list[0][0];
 }
 
@@ -485,5 +485,5 @@ if (location.hash === '#models' || location.hash === '#models-download') {
 document.title = `${ctMsg('appName') || 'comic-translate-4-free'} — ${ctMsg('options_title') || 'Settings'}`;
 try {
   const v = chrome.runtime.getManifest().version;
-  $('version').textContent = `v${v} · build ${BUILD}`;
-} catch { $('version').textContent = 'build ' + BUILD; }
+  $('version').textContent = `v${v}`;
+} catch { $('version').textContent = 'v' + BUILD; }

@@ -40,8 +40,8 @@ function setRunning(r) {
 function fillLangs() {
   const autoLabel = ctMsg('source_auto') || 'Auto-detect';
   $('sourceLang').innerHTML = [`<option value="auto">${autoLabel}</option>`,
-    ...LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`)].join('');
-  $('targetLang').innerHTML = TARGET_LANGS.map(([c, n]) => `<option value="${c}">${n}</option>`).join('');
+    ...LANGS.map(([c, n]) => `<option value="${c}">${ctLangName(c, n)}</option>`)].join('');
+  $('targetLang').innerHTML = TARGET_LANGS.map(([c, n]) => `<option value="${c}">${ctLangName(c, n)}</option>`).join('');
 }
 
 async function saveLang(key, value) {
@@ -439,8 +439,8 @@ fillLangs();
 })();
 try {
   const v = chrome.runtime.getManifest().version;
-  $('build').textContent = `v${v} · build ${BUILD}`;
-} catch { $('build').textContent = 'build ' + BUILD; }
+  $('build').textContent = `v${v}`;
+} catch { $('build').textContent = 'v' + BUILD; }
 refresh();
 refreshCacheStats();
 setInterval(refreshStatus, 3000);
