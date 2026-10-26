@@ -66,9 +66,9 @@ export async function ensureLmStudioHostAccess(url) {
   }
 }
 // deadlineMs caps the TOTAL wall time across attempts + backoffs (default
-// 90s — matching the Firefox worker timeout and Chrome's translate
-// deadline, so a hung server can't hold the worker past its kill). Callers
-// thread their own deadline: the SW passes 90s on both browser paths.
+// 30s — matching the Firefox worker deadline and Chrome's translate
+// abort, so a hung server can't hold the worker past its kill). Callers
+// thread their own deadline: the SW passes 30s on both browser paths.
 async function lmStudioFetch(url, opts, signal, label, deadlineMs = 30000) {
   const deadline = Date.now() + deadlineMs;
   const backoffs = [1000, 2000, 4000];
@@ -679,7 +679,7 @@ async function localLlm(texts, settings, signal) {
   return googleFree(texts, settings.sourceLang, settings.targetLang, signal);
 }
 
-export async function translateBlocks(blocks, settings, onProgress, signal, deadlineMs = 30000) {
+export async function translateBlocks(blocks, settings, onProgress, signal, deadlineMs = 30000, isUserCancelled) {
   const idx = [], texts = [];
   blocks.forEach((b, i) => {
     if (b.text && b.text.trim()) { idx.push(i); texts.push(b.text); }
@@ -688,11 +688,11 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
   if (!texts.length) return translated;
   const backend = settings.translationBackend || 'google';
   const translateStart = performance.now();
-  const runBackend = async (b, attemptDeadlineMs) => {
-    if (b === 'azure') return await azure(texts, settings, signal);
-    if (b === 'lmstudio') return await lmStudio(texts, settings, signal, attemptDeadlineMs ?? deadlineMs);
-    if (b === 'local-llm') return await localLlm(texts, settings, signal);
-    return await googleFree(texts, settings.sourceLang, settings.targetLang, signal);
+  const runBackend = async (b, attemptDeadlineMs, sig = signal) => {
+    if (b === 'azure') return await azure(texts, settings, sig);
+    if (b === 'lmstudio') return await lmStudio(texts, settings, sig, attemptDeadlineMs ?? deadlineMs);
+    if (b === 'local-llm') return await localLlm(texts, settings, sig);
+    return await googleFree(texts, settings.sourceLang, settings.targetLang, sig);
   };
   let results;
   let lastErr = null;
@@ -701,7 +701,10 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
   try {
     results = await runBackend(backend);
   } catch (e) {
-    if (e && e.cancelled) throw e;
+    // Only a real user cancel skips failover. A timeout-abort is also
+    // marked 'cancelled' by the backend helpers, but it must still fail
+    // over — otherwise a stalled backend never switches to Azure.
+    if (isUserCancelled?.()) throw e;
     lastErr = e;
     // Opt-in failover: try the next backend. Never silently fail over to
     // paid Azure without the opt-in — the setting gates it.
@@ -712,6 +715,22 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
       if (backend !== 'google') candidates.push('google');
       if (backend !== 'lmstudio') candidates.push('lmstudio');
       if (azureConfigured && backend !== 'azure') candidates.push('azure');
+      // If the primary died by timeout-abort, the caller's signal is dead:
+      // failover attempts on it would die instantly. Rescue on a fresh
+      // signal with its own 20s budget, so stall (30s) + rescue fits
+      // under the caller's 60s backstop. A user cancel during rescue
+      // still stops it via the loop-top check below.
+      const rescueMode = signal?.aborted && !isUserCancelled?.();
+      const failoverBudgetMs = rescueMode ? 20000 : deadlineMs;
+      const budgetStart = rescueMode ? performance.now() : translateStart;
+      let attemptSignal = signal;
+      let failoverTimer = null;
+      let failoverAttempted = false;
+      if (rescueMode) {
+        const fc = new AbortController();
+        attemptSignal = fc.signal;
+        failoverTimer = setTimeout(() => { try { fc.abort(); } catch {} }, failoverBudgetMs);
+      }
       // Failover must fit inside the same overall budget: a slow middle
       // backend (a running LM Studio server generating slowly) used to burn
       // the whole deadline, so later backends never got a turn and the
@@ -720,25 +739,43 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
       // always gets its turn inside the 30s translate budget.
       const FAILOVER_LM_DEADLINE_MS = 15000;
       for (const fb of candidates) {
-        const remaining = deadlineMs - (performance.now() - translateStart);
+        const remaining = failoverBudgetMs - (performance.now() - budgetStart);
         if (remaining <= 0) break;
+        if (isUserCancelled?.()) {
+          if (failoverTimer) clearTimeout(failoverTimer);
+          throw Object.assign(new Error('cancelled'), { cancelled: true });
+        }
+        failoverAttempted = true;
         try {
           // Skip LM Studio failover if it was the failing backend (avoid loop).
           // Skip backends that need config we don't have.
           if (fb === 'lmstudio' && backend === 'lmstudio') continue;
           // User-visible notice: failover must not happen silently.
           onProgress && onProgress({ failoverFrom: backend, failoverTo: fb });
-          results = await runBackend(fb, fb === 'lmstudio' ? Math.min(remaining, FAILOVER_LM_DEADLINE_MS) : undefined);
+          results = await runBackend(fb, fb === 'lmstudio' ? Math.min(remaining, FAILOVER_LM_DEADLINE_MS) : undefined, attemptSignal);
+          if (isUserCancelled?.()) {
+            if (failoverTimer) clearTimeout(failoverTimer);
+            throw Object.assign(new Error('cancelled'), { cancelled: true });
+          }
           lastErr = null;
           backendUsed = fb;
           if (fb === 'azure') azureConsumed = true;
           console.warn(`[ct] backend failover: ${backend} failed, ${fb} succeeded`);
           break;
         } catch (fe) {
-          if (fe && fe.cancelled) throw fe;
+          if (isUserCancelled?.()) throw fe;
           lastErr = fe;
           if (fb === 'azure') azureConsumed = true;
         }
+      }
+      if (failoverTimer) clearTimeout(failoverTimer);
+      // A timeout-abort that failover couldn't rescue must not surface as
+      // a bare 'cancelled'. No failover attempted keeps the old
+      // 'timed out after Xs' wording; a rescued-then-failed run says so.
+      if (lastErr && lastErr.cancelled && !isUserCancelled?.()) {
+        lastErr = failoverAttempted
+          ? new Error('translation failed: all backends failed or timed out')
+          : new Error(`translate timed out after ${deadlineMs / 1000}s — the translation backend may be stuck`);
       }
       // Failover ran but Azure was never a candidate (no key): say so
       // plainly, so the user isn't left wondering why it didn't switch.

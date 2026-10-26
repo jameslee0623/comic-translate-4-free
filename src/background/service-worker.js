@@ -104,7 +104,7 @@ function abortRunResources(id, r) {
   // waiting for the stage boundary.
   try { r.abortController?.abort(); } catch {}
   // Firefox: translation runs on a Web Worker — terminate it now instead
-  // of waiting for completion or the 90s timeout. The stored killer
+  // of waiting for completion or the 60s backstop. The stored killer
   // also rejects the pending promise so `await translateP` doesn't hang.
   try { r.killTranslateWorker?.(Object.assign(new Error('cancelled'), { cancelled: true })); } catch {}
   try { r.translateWorker?.terminate(); } catch {}
@@ -558,7 +558,15 @@ async function renderFromTier1(tabId, runId, tier1Entry, tier2Key, settings, tim
     const resolved = tier1Entry.sourceLang || detectPageLang(blocks.map(b => b.text));
     effSettings = { ...settings, sourceLang: resolved || 'ja' };
   }
-  const abortController = runs.get(runId)?.abortController || new AbortController();
+  const runController = runs.get(runId)?.abortController || new AbortController();
+  // Tier-1 translate needs its own 30s abort (the full pipeline has one;
+  // this path had none, so a stalled backend hung forever). Local
+  // controller: aborting the run's controller would trip the
+  // checkCancelled below even after a rescued translation.
+  const translateController = new AbortController();
+  if (runController.signal?.aborted) { try { translateController.abort(); } catch {} }
+  else runController.signal?.addEventListener('abort', () => { try { translateController.abort(); } catch {} }, { once: true });
+  const tier1TimeoutId = setTimeout(() => { try { translateController.abort(); } catch {} }, 30000);
   const failoverNotice = (p) => {
     if (p && p.failoverFrom && p.failoverTo) {
       chrome.tabs.sendMessage(tabId, {
@@ -568,7 +576,12 @@ async function renderFromTier1(tabId, runId, tier1Entry, tier2Key, settings, tim
       }).catch(() => {});
     }
   };
-  const translated = await translateBlocks(blocks, effSettings, failoverNotice, abortController.signal, 30000);
+  let translated;
+  try {
+    translated = await translateBlocks(blocks, effSettings, failoverNotice, translateController.signal, 30000, () => runs.get(runId)?.cancelled === true);
+  } finally {
+    clearTimeout(tier1TimeoutId);
+  }
   checkCancelled(runId);
   blocks.forEach((b, i) => { b.translation = translated[i]; });
   const translateMs = Math.round(performance.now() - t0);
@@ -872,17 +885,20 @@ async function runPipeline(tabId, opts = {}) {
     const runTranslate = async () => {
       parProgress('translate', 0);
       const t0t = performance.now();
-      // Chrome parity with the Firefox 90s worker timeout: a hung backend
-      // must not hang the run forever. The abortController lets translateBlocks
-      // stop early when the timeout fires. The message derives from the
-      // constant so it can't drift from the value again.
+      // 30s aborts the CURRENT attempt so translateBlocks can fail over:
+      // rejecting the race directly used to bypass failover entirely, so a
+      // stalled backend never switched to Azure. The 60s backstop kills a
+      // run wedged past stall (30s) + rescue (20s).
       const TRANSLATE_TIMEOUT_MS = 30000;
-      let timeoutId = null;
-      const timeoutP = new Promise((_, reject) => {
-        timeoutId = setTimeout(() => {
-          try { abortController.abort(); } catch { /* already aborted */ }
-          reject(new Error(`translate timed out after ${TRANSLATE_TIMEOUT_MS / 1000}s — the translation backend may be stuck`));
-        }, TRANSLATE_TIMEOUT_MS);
+      const TRANSLATE_BACKSTOP_MS = 60000;
+      let timeoutId = null, backstopId = null;
+      timeoutId = setTimeout(() => {
+        try { abortController.abort(); } catch { /* already aborted */ }
+      }, TRANSLATE_TIMEOUT_MS);
+      const backstopP = new Promise((_, reject) => {
+        backstopId = setTimeout(() => {
+          reject(new Error('translate timed out — the translation backend may be stuck'));
+        }, TRANSLATE_BACKSTOP_MS);
       });
       let translated;
       try {
@@ -896,11 +912,12 @@ async function runPipeline(tabId, opts = {}) {
           }
         };
         translated = await Promise.race([
-          translateBlocks(blocks, effSettings, failoverNotice, abortController.signal, 30000),
-          timeoutP,
+          translateBlocks(blocks, effSettings, failoverNotice, abortController.signal, 30000, () => runs.get(runId)?.cancelled === true),
+          backstopP,
         ]);
       } finally {
         if (timeoutId) clearTimeout(timeoutId);
+        if (backstopId) clearTimeout(backstopId);
       }
       checkCancelled(runId);
       blocks.forEach((b, i) => { b.translation = translated[i]; });
@@ -985,13 +1002,16 @@ async function runPipeline(tabId, opts = {}) {
       // Firefox: translation runs on a Web Worker (own thread), mask → inpaint
       // runs on the main thread. The worker's network I/O is not blocked when
       // WASM inpaint hogs the main thread.
-      const t0t = performance.now();
+      // timings.translate is the worker round-trip ONLY: t0t is set at
+      // postMessage and translateEnd at the final reply, so mask/inpaint
+      // (which run while the worker works) are NOT counted in it.
+      let t0t = 0, translateEnd = 0;
       const workerUrl = chrome.runtime.getURL('src/background/translate-worker.js');
       const tWorker = new Worker(workerUrl, { type: 'module' });
       // Track for cancellation: cancelRunsForTab terminates this immediately
-      // instead of waiting for the 90s timeout or natural completion.
+      // instead of waiting for the 60s backstop or natural completion.
       runs.get(runId).translateWorker = tWorker;
-      // Hoisted so the catch block below can cancel the 90s timer on early
+      // Hoisted so the catch block below can cancel the 60s timer on early
       // mask/inpaint failure — otherwise it fires pointlessly after terminate.
       let translateTimeout = null;
       let translateReject = null;
@@ -1006,11 +1026,14 @@ async function runPipeline(tabId, opts = {}) {
       runs.get(runId).killTranslateWorker = killTranslateWorker;
       const translateP = new Promise((resolve, reject) => {
         translateReject = reject;
+        // 60s backstop only: the worker's own 30s abort triggers failover
+        // inside translateBlocks, and stall (30s) + rescue (20s) needs up
+        // to ~50s — a 30s kill here would murder the rescue.
         translateTimeout = setTimeout(() => {
           translateTimeout = null;
           tWorker.terminate();
           reject(new Error('translate worker timeout'));
-        }, 30000);
+        }, 60000);
         tWorker.onmessage = (e) => {
           // Failover notices arrive before the final ok/error — show a pill
           // but don't settle the promise.
@@ -1023,13 +1046,16 @@ async function runPipeline(tabId, opts = {}) {
             return;
           }
           killTranslateWorker();
+          translateEnd = performance.now();
           if (e.data.ok) resolve({ translated: e.data.translated, backendUsed: e.data.backendUsed });
           else reject(new Error(e.data.error));
         };
         tWorker.onerror = (err) => {
           killTranslateWorker();
+          translateEnd = performance.now();
           reject(err instanceof Error ? err : new Error(String(err)));
         };
+        t0t = performance.now();
         tWorker.postMessage({
           blocks: blocks.map(b => ({ text: b.text })),
           settings: effSettings,
@@ -1059,7 +1085,7 @@ async function runPipeline(tabId, opts = {}) {
         b.backendUsed = translated.backendUsed;
       });
       translated = translated.translated;
-      const translateMs = Math.round(performance.now() - t0t);
+      const translateMs = Math.round(translateEnd - t0t);
       parProgress('translate', 1);
       await emitDebug(runId, tabId, settings, 'translate', {
         title: `Translation — ${BACKEND_LABEL[settings.translationBackend] || settings.translationBackend}`,
