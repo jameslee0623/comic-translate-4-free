@@ -5,18 +5,29 @@ import { translateBlocks } from './translators.js';
 
 self.onmessage = async (e) => {
   const { blocks, settings } = e.data;
+  // Deadline signal: the worker used to pass null, so Google/Azure fetch
+  // had no abort signal and no timeout — a stalled backend hung the pill
+  // forever. Abort at 170s (under the SW's 180s worker kill), matching the
+  // Chrome path's abortController. The 170s deadlineMs arg only caps LM
+  // Studio; this signal caps Google/Azure too.
+  const ctrl = new AbortController();
+  const deadlineId = setTimeout(() => ctrl.abort(), 170000);
   try {
-    // 170s deadline: under the SW's 180s worker kill, so a hung LM Studio
-    // server can't hold the worker past its termination.
     // Forward failover notices so the SW can show a pill.
     const onProgress = (p) => {
       if (p && p.failoverFrom && p.failoverTo) {
         self.postMessage({ type: 'failover-notice', failoverFrom: p.failoverFrom, failoverTo: p.failoverTo });
       }
     };
-    const translated = await translateBlocks(blocks, settings, onProgress, null, 170000);
+    const translated = await translateBlocks(blocks, settings, onProgress, ctrl.signal, 170000);
+    clearTimeout(deadlineId);
     self.postMessage({ ok: true, translated, backendUsed: blocks[0]?.backendUsed });
   } catch (err) {
-    self.postMessage({ ok: false, error: err.message || String(err) });
+    clearTimeout(deadlineId);
+    // Aborted on deadline: say so plainly instead of surfacing 'cancelled'.
+    const msg = ctrl.signal.aborted
+      ? 'translate timed out after 170s — the translation backend may be stuck'
+      : (err.message || String(err));
+    self.postMessage({ ok: false, error: msg });
   }
 };
