@@ -51,8 +51,8 @@ let formLoaded = false;
 window.addEventListener('pagehide', () => {
   if (!formLoaded) return;
   clearTimeout(saveTimer);
-  // collect() returns null on invalid numerics — never persist null, which
-  // would clobber the stored settings with a non-object.
+  // collect() never returns null now (invalid numerics keep stored values),
+  // so closing the page always flushes the latest toggles and fields.
   const s = collect();
   if (s) { try { persistSettings(s).catch(() => {}); } catch { /* ignore */ } }
 });
@@ -210,7 +210,13 @@ for (const id of ['sourceLang', 'targetLang', 'backend', 'backendFailover', 'azu
   const el = $(id);
   if (!el) continue;
   const evt = el.type === 'text' || el.type === 'password' || el.type === 'number' ? 'input' : 'change';
-  el.addEventListener(evt, autoSave);
+  // Discrete controls (checkboxes, dropdowns) save immediately: a debounced
+  // toggle could still read as the old value if a run starts within 400ms
+  // (e.g. unchecking failover then translating at once — the run would
+  // still fail over). Typing fields keep the debounce so mid-typing values
+  // don't persist.
+  const save = (el.type === 'checkbox' || el.type === 'select-one') ? saveNow : autoSave;
+  el.addEventListener(evt, save);
 }
 
 // Numeric validation: returns {ok, value} — clamps to [min,max], marks the
@@ -225,13 +231,14 @@ function validNum(id, raw, min, max) {
 }
 
 function collect() {
-  // Validate numerics first; on any invalid field, skip the save entirely
-  // (no "Saved" flash) so garbage never persists.
+  // Validate numerics first; an invalid field keeps its stored value (the
+  // field stays red) instead of vetoing the whole save — previously one bad
+  // number silently blocked every other control's save, including toggles
+  // like failover, with no "Saved" flash to explain it.
   const threshold = validNum('threshold', $('threshold').value, 0.05, 0.9);
   const initFont = validNum('initFontSize', $('initFontSize').value, 10, 120);
   const minFont = validNum('minFontSize', $('minFontSize').value, 6, 40);
   const minImg = validNum('minImageSize', $('minImageSize').value, 100, 4000);
-  if (!threshold.ok || !initFont.ok || !minFont.ok || !minImg.ok) return null;
   return {
     ...lastSettings,
     sourceLang: $('sourceLang').value, targetLang: $('targetLang').value,
@@ -240,10 +247,10 @@ function collect() {
     lmStudioUrl: $('lmStudioUrl').value.trim() || DEFAULTS.lmStudioUrl,
     lmStudioApi: $('lmStudioApi').value,
     lmStudioKey: $('lmStudioKey').value.trim(),
-    detectionThreshold: threshold.value,
-    initFontSize: Math.round(initFont.value),
-    minFontSize: Math.round(minFont.value),
-    minImageSize: Math.round(minImg.value),
+    detectionThreshold: threshold.ok ? threshold.value : (lastSettings.detectionThreshold ?? DEFAULTS.detectionThreshold),
+    initFontSize: initFont.ok ? Math.round(initFont.value) : (lastSettings.initFontSize ?? DEFAULTS.initFontSize),
+    minFontSize: minFont.ok ? Math.round(minFont.value) : (lastSettings.minFontSize ?? DEFAULTS.minFontSize),
+    minImageSize: minImg.ok ? Math.round(minImg.value) : (lastSettings.minImageSize ?? DEFAULTS.minImageSize),
     debugMode: $('debugMode').checked,
     backendFailover: $('backendFailover').checked,
     siteWhitelist: [...allowedSites], autoTranslateOnLoad: $('autoTranslate').checked,
