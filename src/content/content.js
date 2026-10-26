@@ -153,8 +153,9 @@
 
   // Auto font size from the ORIGINAL text: estimate the glyph size the source
   // text was set in from its detector text box and character count (area
-  // model: each glyph occupies ~size^2 * lineHeight). The render then starts
-  // from this size and only shrinks until the translation fits the area.
+  // model: each glyph occupies ~size^2 * lineHeight). The render starts
+  // from 1.2x this size (capped by the maximum, floored by the minimum)
+  // and only shrinks until the translation fits the area.
   function estimateFontSize(block, maxSize, minSize) {
     const text = (block.text || '').replace(/\s+/g, '');
     const n = Math.max(1, [...text].length);
@@ -173,10 +174,12 @@
     const rw = Math.max(8, x2 - x1), rh = Math.max(8, y2 - y1);
     const vertical = isCJK(text) && rh > rw * 1.5;
     const autoSize = estimateFontSize(block, maxSize, minSize);
-    // Start from maxSize (not autoSize) so the translation grows to fill the
-    // box when it's shorter than the original; fitFont shrinks until it fits.
-    // "Not too big nor too small" — the largest size that fits wins.
-    const { size, lines, lh } = fitFont(ctx, text, rw, rh, maxSize, minSize, vertical);
+    // Start from 1.2x the estimated original size (not maxSize): the estimate
+    // is approximate (box area + char count), so 1.2x gives headroom to reach
+    // the original size. fitFont then shrinks until it fits the box.
+    // Capped by maxSize, floored by minSize — "not too big nor too small".
+    const startSize = Math.min(maxSize, Math.max(minSize, autoSize * 1.2));
+    const { size, lines, lh } = fitFont(ctx, text, rw, rh, startSize, minSize, vertical);
     ctx.font = `${size}px ${FONT_STACK}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -828,7 +831,11 @@
           wctx.drawImage(baseImg, 0, 0, work.width, work.height);
           if (rs < 1) wctx.scale(rs, rs);
           const settings = await chrome.storage.local.get('settings').then(r => r.settings || {});
-          const maxSize = settings.initFontSize || 40, minSize = settings.minFontSize || 10;
+          // Font size bounds are fixed now (the Maximum/Minimum settings
+          // were removed in 1.2.6): 120px cap, 10px floor. Sizing starts
+          // from the estimated original size (see drawBlock), so the
+          // bounds rarely bind.
+          const maxSize = 120, minSize = 10;
           const srcLang = (blocks[0] && blocks[0].source_lang) || settings.sourceLang || 'ja';
           const renderInfo = [];
           for (const b of blocks) {

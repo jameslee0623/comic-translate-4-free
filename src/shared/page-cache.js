@@ -82,9 +82,8 @@ export function initPageCache() {
 
 // ---- cache key --------------------------------------------------------------
 // Key = image content hash + everything that can change the output.
-// Deliberately NOT in the key: font-size settings (initFontSize/minFontSize)
-// — those are applied at render time by the content script, so changing them
-// re-renders from cache instead of missing.
+// Font size is fixed now (no font-size settings since 1.2.6), so it cannot
+// change the output and needs no key component.
 function hex(buf) {
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 }

@@ -158,8 +158,6 @@ function applyToForm(s) {
   setVal('lmStudioKey', s.lmStudioKey || '');
   setVal('threshold', s.detectionThreshold);
   $('thresholdVal').textContent = Number(s.detectionThreshold).toFixed(2);
-  setVal('initFontSize', s.initFontSize);
-  setVal('minFontSize', s.minFontSize);
   setVal('minImageSize', s.minImageSize);
   setChecked('debugMode', s.debugMode);
   setChecked('autoTranslate', s.autoTranslateOnLoad);
@@ -205,7 +203,7 @@ $('threshold').oninput = e => { $('thresholdVal').textContent = Number(e.target.
 // Every control auto-saves; no Save button.
 for (const id of ['sourceLang', 'targetLang', 'backend', 'backendFailover', 'azureKey', 'azureRegion',
     'lmStudioUrl', 'lmStudioApi', 'lmStudioKey',
-    'threshold', 'initFontSize', 'minFontSize', 'minImageSize',
+    'threshold', 'minImageSize',
     'debugMode', 'autoTranslate', 'playDing']) {
   const el = $(id);
   if (!el) continue;
@@ -236,8 +234,6 @@ function collect() {
   // number silently blocked every other control's save, including toggles
   // like failover, with no "Saved" flash to explain it.
   const threshold = validNum('threshold', $('threshold').value, 0.05, 0.9);
-  const initFont = validNum('initFontSize', $('initFontSize').value, 10, 120);
-  const minFont = validNum('minFontSize', $('minFontSize').value, 6, 40);
   const minImg = validNum('minImageSize', $('minImageSize').value, 100, 4000);
   return {
     ...lastSettings,
@@ -248,8 +244,6 @@ function collect() {
     lmStudioApi: $('lmStudioApi').value,
     lmStudioKey: $('lmStudioKey').value.trim(),
     detectionThreshold: threshold.ok ? threshold.value : (lastSettings.detectionThreshold ?? DEFAULTS.detectionThreshold),
-    initFontSize: initFont.ok ? Math.round(initFont.value) : (lastSettings.initFontSize ?? DEFAULTS.initFontSize),
-    minFontSize: minFont.ok ? Math.round(minFont.value) : (lastSettings.minFontSize ?? DEFAULTS.minFontSize),
     minImageSize: minImg.ok ? Math.round(minImg.value) : (lastSettings.minImageSize ?? DEFAULTS.minImageSize),
     debugMode: $('debugMode').checked,
     backendFailover: $('backendFailover').checked,

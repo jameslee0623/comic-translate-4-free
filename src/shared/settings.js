@@ -15,8 +15,6 @@ export const DEFAULT_SETTINGS = {
   localLlmModel: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC',
   debugMode: false,
   detectionThreshold: 0.3,
-  initFontSize: 40,
-  minFontSize: 10,
   minImageSize: 500, // skip images smaller than this (max dimension, px)
   siteWhitelist: [], // hostnames with site access, e.g. ['example.com']
   allowAllSites: false, // site access: translate on any site (requests <all_urls> when enabled)
@@ -233,8 +231,6 @@ export async function getSettings() {
   // absurd sizes downstream. No storage write here — just sanitize the read.
   const clamp = (v, lo, hi, fb) => Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fb;
   s.detectionThreshold = clamp(+s.detectionThreshold, 0.05, 0.9, DEFAULT_SETTINGS.detectionThreshold);
-  s.initFontSize = Math.round(clamp(+s.initFontSize, 10, 120, DEFAULT_SETTINGS.initFontSize));
-  s.minFontSize = Math.round(clamp(+s.minFontSize, 6, 40, DEFAULT_SETTINGS.minFontSize));
   s.minImageSize = Math.round(clamp(+s.minImageSize, 100, 4000, DEFAULT_SETTINGS.minImageSize));
   return s;
 }
