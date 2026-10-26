@@ -5,7 +5,7 @@ set -euo pipefail
 SRC="$(cd "$(dirname "$0")" && pwd)"
 VERSION="$(python3 -c "import json;print(json.load(open('$SRC/manifest.json'))['version'])")"
 BUILD="$(grep -o "const BUILD = '[^']*'" "$SRC/src/shared/version.js" | cut -d"'" -f2)"
-NAME="comic-translate-4-free-v${VERSION}-${BUILD}"
+NAME="comic-translate-4-free-v${VERSION}"
 DIST="$SRC/dist"
 OUT="$DIST/${NAME}.zip"
 # Convenience copy for local dev (ignored by git); CI uploads from $DIST.

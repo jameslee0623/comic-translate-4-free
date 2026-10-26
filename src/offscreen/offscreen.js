@@ -75,9 +75,9 @@ async function ensureModel(kind) {
       // are never all resident at once.
       const vocabJson = await assetText(BABERU_VOCAB_ASSET);
       try {
-        await baberu.loadVis(await modelBuffer('ocr-baberu-vision'));
-        await baberu.loadPre(await modelBuffer('ocr-baberu-prefill-v11'));
-        await baberu.loadStep(await modelBuffer('ocr-baberu-step-v11'));
+        await baberu.loadVis(await modelBuffer('ocr-baberu-vision-v12'));
+        await baberu.loadPre(await modelBuffer('ocr-baberu-prefill-v12'));
+        await baberu.loadStep(await modelBuffer('ocr-baberu-step-v12'));
       } catch (e) { baberu.reset(); throw e; }
       baberu.setVocab(vocabJson);
     } else if (kind === 'inpaint' && !inpainter.loaded) {

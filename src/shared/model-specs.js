@@ -22,14 +22,16 @@ export const MODEL_GROUPS = [
   {
     id: 'ocr-baberu', labelKey: 'model_baberu', label: 'Baberu OCR (Japanese + English + Chinese Simplified/Traditional, manga-trained)',
     files: [
-      { id: 'ocr-baberu-vision', file: 'vision_int4.onnx', bytes: 52293486,
+      // v1.2 (2026-10-26): retrained with Manga109-s human labels (sound
+      // effects 50%->74%, handwriting 60%->67%). All three files change,
+      // but sizes are IDENTICAL to v1.1 (quantization fixes them) — so the
+      // IDs bump (-v12): the downloader skips files whose cached size
+      // matches, and same IDs would silently keep v1.1 weights.
+      { id: 'ocr-baberu-vision-v12', file: 'vision_int4.onnx', bytes: 52293486,
         url: hf('genshiai-daichi/baberu-ocr', 'onnx/vision_int4.onnx') },
-      // v1.1 (2026-10-06): decoder retrained on labels up to 256 chars —
-      // the v1.0 64-char training cap is gone. File IDs bumped (-v11) so
-      // cached v1.0 files are re-downloaded; vision is byte-identical.
-      { id: 'ocr-baberu-prefill-v11', file: 'decoder_prefill_int8.onnx', bytes: 35133596,
+      { id: 'ocr-baberu-prefill-v12', file: 'decoder_prefill_int8.onnx', bytes: 35133596,
         url: hf('genshiai-daichi/baberu-ocr', 'onnx/decoder_prefill_int8.onnx') },
-      { id: 'ocr-baberu-step-v11', file: 'decoder_step_int8.onnx', bytes: 34715466,
+      { id: 'ocr-baberu-step-v12', file: 'decoder_step_int8.onnx', bytes: 34715466,
         url: hf('genshiai-daichi/baberu-ocr', 'onnx/decoder_step_int8.onnx') },
     ],
   },
@@ -91,7 +93,9 @@ export async function deleteModelGroup(groupId) {
 // there'd be no way to delete them otherwise.
 // Baberu v1.0 decoders (2026-10-06): superseded by v1.1 (-v11 IDs); pruned
 // before the v1.1 download so users don't carry ~70MB of stale weights.
-const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav', 'ocr-pororo', 'ocr-ppocr-en', 'ocr-ppocr-chinese', 'ocr-ppocrv6', 'ocr-ppocr-ko', 'ocr-encoder', 'ocr-decoder-init', 'ocr-decoder-step', 'ocr-baberu-prefill', 'ocr-baberu-step'];
+// Baberu v1.1 files (2026-10-26): superseded by v1.2 (-v12 IDs); pruned
+// before the v1.2 download so users don't carry ~122MB of stale weights.
+const PRUNED_MODEL_IDS = ['ocr-ppocr-latin', 'ocr-ppocr-eslav', 'ocr-pororo', 'ocr-ppocr-en', 'ocr-ppocr-chinese', 'ocr-ppocrv6', 'ocr-ppocr-ko', 'ocr-encoder', 'ocr-decoder-init', 'ocr-decoder-step', 'ocr-baberu-prefill', 'ocr-baberu-step', 'ocr-baberu-vision', 'ocr-baberu-prefill-v11', 'ocr-baberu-step-v11'];
 export { PRUNED_MODEL_IDS };
 export async function pruneModelIds(ids) {
   const db = await openDb();
