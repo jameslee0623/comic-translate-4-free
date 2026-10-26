@@ -44,6 +44,37 @@ export function initPageCache() {
         console.warn('[ct] page-cache startup check failed:',
           String((e && e.message) || e).slice(0, 120));
       }
+      // Prune dead entries (best-effort hygiene, never fails init): v2 keys
+      // carry the build stamp, so entries from older builds can never be
+      // served again — but they were still counted in stats and held space.
+      // Also drops Tier-2 entries whose Tier-1 base is gone (the lookup is
+      // Tier-1-first, so they can never render). Legacy (non-v2t1) keys are
+      // left alone: the v1 fallback still serves them.
+      try {
+        const d = await db();
+        const metas = await scanMeta(d);
+        const ids = new Set(metas.map(m => m.id));
+        const dead = [];
+        for (const m of metas) {
+          const id = String(m.id);
+          if (!id.startsWith('v2t1~')) continue;
+          const seg = id.split('~');
+          const t2 = seg.indexOf('t2');
+          const build = t2 >= 0 ? seg[6] : seg[seg.length - 1];
+          if (build !== BUILD) { dead.push(m.id); continue; }
+          if (t2 >= 0 && !ids.has(seg.slice(0, 7).join('~'))) dead.push(m.id);
+        }
+        if (dead.length) {
+          await new Promise((resolve, reject) => {
+            const t = d.transaction(PAGE_CACHE_STORE, 'readwrite');
+            const st = t.objectStore(PAGE_CACHE_STORE);
+            for (const id of dead) st.delete(id);
+            t.oncomplete = () => resolve();
+            t.onerror = () => reject(t.error);
+            t.onabort = () => reject(t.error);
+          });
+        }
+      } catch { /* prune is hygiene, not correctness */ }
     })();
   }
   return readyPromise;
@@ -205,11 +236,25 @@ export async function clearPageCache() {
   return clearStore();
 }
 
+// Distinct-image key for stats: collapse each Tier-2 entry into its Tier-1
+// image, and ignore the build stamp — otherwise one image counts as two
+// entries (Tier-1 + Tier-2), and re-caching the same image on a new build
+// counts it again. Key shapes: Tier-1 = v2t1~hash~WxH~src~thr~models~BUILD,
+// Tier-2 = Tier-1 + ~t2~target~backend~model.
+export function baseImageKey(id) {
+  const seg = String(id).split('~');
+  const t2 = seg.indexOf('t2');
+  const end = (t2 >= 0 ? t2 : seg.length) - 1; // drop the BUILD segment
+  return seg.slice(0, Math.max(end, 1)).join('~');
+}
+
 export async function pageCacheStats() {
   await initPageCache();
   const metas = await scanMeta(await db());
+  const distinct = new Set(metas.map(m => baseImageKey(m.id)));
   return {
-    count: metas.length,
+    count: distinct.size,
+    entries: metas.length,
     bytes: metas.reduce((a, m) => a + (m.bytes || 0), 0),
   };
 }

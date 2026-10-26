@@ -736,7 +736,7 @@
       const st = msg.stage;
       if (st === 'error') showPillError(msg.error || stageLabel('error'),
         msg.grantHost ? { host: msg.grantHost, label: msg.grantLabel } : null);
-      else if (st === 'done') { showPill('comic-translate-4-free — ' + esc(stageLabel('done')) + ' ✓'); maybeDing(); }
+      else if (st === 'done') { showPill('comic-translate-4-free — ' + esc(stageLabel('done')) + ' ✓' + (msg.cached ? ' (from cache)' : msg.backendLabel ? ' (' + esc(msg.backendLabel) + ')' : '')); maybeDing(); }
       else if (st === 'cancelled') showPill('comic-translate-4-free — ' + esc(stageLabel('cancelled')));
       else if (st && st !== 'idle') pillProgress(st, msg.progress);
       return false;

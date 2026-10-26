@@ -11,7 +11,7 @@ import {
 import { toGrayU8, meanBrightness, renderScale, resizeBilinearRGBA } from '../shared/image-ops.js';
 import { pixelPut, pixelTake, pixelDrop } from '../shared/pixel-bus.js';
 import { generateMask } from '../shared/mask.js';
-import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL } from './translators.js';
+import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL, BACKEND_SHORT_LABEL } from './translators.js';
 import { detectPageLang } from '../shared/lang-detect.js';
 import { mlHostAlive, ensureMlHost, callMl, cancelMlForRun, makeCanvas, canvasToBlob, directHandlers, WEBP_TYPE, WEBP_QUALITY } from './ml-bridge.js';
 import {
@@ -103,6 +103,10 @@ async function callMlChecked(runId, msg) {
 // Cancel button) both use this so cancellation is complete on every path.
 function abortRunResources(id, r) {
   r.cancelled = true;
+  // Deliberate drop (Cancel button or superseded run): its later errors
+  // must stay quiet. Distinct from the branch-dead abort below, whose
+  // original failure must still surface (see branchError).
+  r.userCancelled = true;
   // Abort in-flight translation network requests immediately instead of
   // waiting for the stage boundary.
   try { r.abortController?.abort(); } catch {}
@@ -487,9 +491,9 @@ async function emitDebug(runId, tabId, settings, stage, payload) {
   } catch { /* content script not there yet or send hung */ }
 }
 
-function setProgress(runId, stage, progress) {
+function setProgress(runId, stage, progress, extra = {}) {
   currentRun = { runId, stage, progress };
-  const payload = { type: MSG.RUN_PROGRESS, runId, stage, progress };
+  const payload = { type: MSG.RUN_PROGRESS, runId, stage, progress, ...extra };
   chrome.runtime.sendMessage(payload).catch(() => {});
   // Targeted copy for the tab's status pill (broadcasts reach every tab).
   const tabId = runs.get(runId)?.tabId;
@@ -611,7 +615,7 @@ async function renderFromTier1(tabId, runId, tier1Entry, tier2Key, settings, tim
   return await renderFromPageCache(tabId, runId, entry, settings, timings, srcUrl);
 }
 
-async function renderFromPageCache(tabId, runId, entry, settings, timings, srcUrl) {
+async function renderFromPageCache(tabId, runId, entry, settings, timings, srcUrl, opts = {}) {
   checkCancelled(runId);
   setProgress(runId, 'render', 0.96);
   const t0 = performance.now();
@@ -619,8 +623,16 @@ async function renderFromPageCache(tabId, runId, entry, settings, timings, srcUr
     entry.imageDataUrl, entry.width, entry.height, entry.blocks,
     { ...timings, cacheHit: Math.round(performance.now() - t0) },
     settings.debugMode, { srcUrl });
-  setProgress(runId, 'done', 1);
-  return { runId, ok: true, cached: true };
+  // Label the pill so a cache serve never looks like a fresh translate:
+  // full hits say "from cache"; Tier-1-after-translate says which backend
+  // actually translated (its blocks carry backendUsed from translateBlocks).
+  // Without this, a cached run with Google blocked looked exactly like
+  // Google working despite the block.
+  const doneExtra = opts.fromCache
+    ? { cached: true }
+    : { backendLabel: BACKEND_SHORT_LABEL[entry.blocks?.[0]?.backendUsed || settings.translationBackend] || settings.translationBackend };
+  setProgress(runId, 'done', 1, doneExtra);
+  return { runId, ok: true, cached: !!opts.fromCache };
 }
 
 // ---------------------------------------------------------------- pipeline
@@ -760,7 +772,7 @@ async function runPipeline(tabId, opts = {}) {
         return await renderFromTier1(tabId, runId, cacheHit.entry, cacheHit.tier2Key,
           settings, timings, manualSrc, rgba, w, h, mode, tier);
       }
-      return await renderFromPageCache(tabId, runId, cacheHit, settings, timings, manualSrc);
+      return await renderFromPageCache(tabId, runId, cacheHit, settings, timings, manualSrc, { fromCache: true });
     }
 
     // ---- 2. detection (+ tall-image slicing)
@@ -1109,9 +1121,17 @@ async function runPipeline(tabId, opts = {}) {
       const translateP = runTranslate();
       // If either branch fails, cancel the run so the other branch aborts
       // at its next checkCancelled instead of burning CPU/network on a dead run.
+      // Record the first REAL branch failure: without it, the run catch below
+      // sees the abort flag and reports quiet 'cancelled', swallowing the
+      // actual error (inpaint/timeout failures showed no notification at all).
+      // Not recorded for user cancels (their errors must stay quiet) or for
+      // cancel-marked errors (those are the abort itself, not a failure).
       const cancelOnFail = p => p.catch(e => {
         const r = runs.get(runId);
-        if (r) r.cancelled = true;
+        if (r) {
+          r.cancelled = true;
+          if (!r.userCancelled && !e.cancelled && !r.branchError) r.branchError = e;
+        }
         callMl({ type: MSG.ML_CANCEL, runId }).catch(() => {});
         throw e;
       });
@@ -1172,19 +1192,25 @@ async function runPipeline(tabId, opts = {}) {
     } catch (e) {
       console.warn('[ct] page-cache write failed:', String((e && e.message) || e).slice(0, 120));
     }
-    setProgress(runId, 'done', 1);
+    setProgress(runId, 'done', 1, { backendLabel: BACKEND_SHORT_LABEL[blocks?.[0]?.backendUsed || settings.translationBackend] || settings.translationBackend });
     result = { runId, ok: true };
   } catch (e) {
     let msg;
     // A user-cancelled run stays 'cancelled' even if the in-flight work
     // later fails (e.g. ML times out after Cancel) — the user asked to
-    // stop, so a later error must not surface as a failure.
-    if ((e && e.cancelled) || isCancelled(runId)) {
+    // stop, so a later error must not surface as a failure. But a BRANCH
+    // failure (recorded by cancelOnFail) is not a user cancel: the abort
+    // flag it sets must not swallow it. Prefer the recorded failure so
+    // inpaint/timeout/translate errors always notify.
+    const branchError = runs.get(runId)?.branchError;
+    const quietCancel = (runs.get(runId)?.userCancelled || ((e && e.cancelled) || isCancelled(runId))) && !branchError;
+    if (quietCancel) {
       setProgress(runId, 'cancelled', 0);
       msg = 'cancelled';
     } else {
-      msg = String((e && e.message) || e);
-      broadcastError(runId, msg, e && e.grantHost ? { host: e.grantHost, label: displayHost(e.grantHost) } : null);
+      const err = branchError || e;
+      msg = String((err && err.message) || err);
+      broadcastError(runId, msg, err && err.grantHost ? { host: err.grantHost, label: displayHost(err.grantHost) } : null);
       try {
         await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
         // Show the debug panel on failure too (emitDebug sets debug:true and
@@ -1193,7 +1219,7 @@ async function runPipeline(tabId, opts = {}) {
         await emitDebug(runId, tabId, settings, 'error', { title: 'Error', error: msg });
       } catch { /* ignore */ }
     }
-    result = { runId, ok: false, error: msg, cancelled: !!((e && e.cancelled) || isCancelled(runId)),
+    result = { runId, ok: false, error: msg, cancelled: !!quietCancel,
       ...(e && e.fallbackUrl ? { fallbackUrl: e.fallbackUrl } : {}) };
   } finally {
     runs.delete(runId);

@@ -812,3 +812,5 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
 }
 
 export const BACKEND_LABEL = { google: 'Google (free)', azure: 'Azure Translator', lmstudio: 'LM Studio (local)', 'local-llm': 'Local LLM (experimental)' };
+// Short labels for the status pill (it has room for one word, not a sentence).
+export const BACKEND_SHORT_LABEL = { google: 'Google', azure: 'Azure', lmstudio: 'LM Studio', 'local-llm': 'Local LLM' };
