@@ -140,20 +140,44 @@ export function dedupAndMergeSeams(boxes, seams, vertical) {
     if (kept.some(k => boxIoU(k.xyxy, b.xyxy) >= 0.5)) continue;
     kept.push(b);
   }
+  // Containment dedup (same label only): a slice may see a partial bubble
+  // while another slice sees the whole bubble. Their IoU is ~0.49 (below the
+  // 0.5 line, since the partial is half the full's area), and seamAdjacent
+  // fails because the full bubble's edges don't touch the seam — so both
+  // survive as duplicates. Drop the smaller box when it's >=80% inside a
+  // same-label box. Same-label only: text boxes live inside bubble boxes
+  // and must not be dropped.
+  const contained = new Set();
+  for (let i = 0; i < kept.length; i++) {
+    if (contained.has(i)) continue;
+    for (let j = 0; j < kept.length; j++) {
+      if (i === j || contained.has(j)) continue;
+      if (kept[i].label !== kept[j].label) continue;
+      const [ax1, ay1, ax2, ay2] = kept[i].xyxy;
+      const [bx1, by1, bx2, by2] = kept[j].xyxy;
+      const ix1 = Math.max(ax1, bx1), iy1 = Math.max(ay1, by1);
+      const ix2 = Math.min(ax2, bx2), iy2 = Math.min(ay2, by2);
+      const inter = Math.max(0, ix2 - ix1) * Math.max(0, iy2 - iy1);
+      const areaI = (ax2 - ax1) * (ay2 - ay1);
+      const areaJ = (bx2 - bx1) * (by2 - by1);
+      if (areaI > 0 && areaI < areaJ && inter / areaI >= 0.8) { contained.add(i); break; }
+    }
+  }
+  const deduped = kept.filter((_, i) => !contained.has(i));
   const merged = [];
   const consumed = new Set();
-  for (let i = 0; i < kept.length; i++) {
+  for (let i = 0; i < deduped.length; i++) {
     if (consumed.has(i)) continue;
-    let cur = kept[i];
-    for (let j = i + 1; j < kept.length; j++) {
+    let cur = deduped[i];
+    for (let j = i + 1; j < deduped.length; j++) {
       if (consumed.has(j)) continue;
-      if (seamAdjacent(cur, kept[j], seams, vertical)) {
+      if (seamAdjacent(cur, deduped[j], seams, vertical)) {
         const [ax1, ay1, ax2, ay2] = cur.xyxy;
-        const [bx1, by1, bx2, by2] = kept[j].xyxy;
+        const [bx1, by1, bx2, by2] = deduped[j].xyxy;
         cur = {
           xyxy: [Math.min(ax1, bx1), Math.min(ay1, by1), Math.max(ax2, bx2), Math.max(ay2, by2)],
           label: cur.label,
-          score: Math.max(cur.score, kept[j].score),
+          score: Math.max(cur.score, deduped[j].score),
         };
         consumed.add(j);
       }
