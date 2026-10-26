@@ -126,7 +126,16 @@ function nextAttempt(msg) {
 // verbatim (same module, same IDB pixel bus and models) — only the thread
 // changes. Chrome never reaches this: directHandlers() is null there and
 // inpaint keeps going through the offscreen document.
+//
+// The worker is CLASSIC (not module): ort.min.js is UMD, and its top-level
+// `var ort` only becomes a global via a classic script load. A module
+// worker kept `ort` module-scoped, so offscreen.js threw at import and the
+// worker never started (1018p bug — silent fallback, same hang). The
+// worker importScripts ort, dynamically imports the handlers, then posts
+// 'inpaint-ready'; no job is posted before that, and a missing ready
+// (10s) falls back to in-process inpaint instead of hanging.
 let inpaintWorker = null;
+let inpaintWorkerReady = null; // Promise<Worker> once 'inpaint-ready' arrives
 const inpaintPending = new Map(); // runId -> {resolve, reject}
 const INPAINT_WORKER_FALLBACK = 'inpaint worker unavailable — falling back to in-process';
 
@@ -137,6 +146,7 @@ function inpaintWorkerFallbackError() {
 function killInpaintWorker() {
   try { inpaintWorker?.terminate(); } catch {}
   inpaintWorker = null;
+  inpaintWorkerReady = null;
 }
 
 function failInpaintPending(errFactory) {
@@ -147,40 +157,65 @@ function failInpaintPending(errFactory) {
   }
 }
 
+function routeInpaintMessage(e) {
+  const d = e.data;
+  if (!d) return;
+  if (d.type === 'inpaint-progress') {
+    try { globalThis.__ctInpaintProgress?.(d.runId, d.frac); } catch {}
+    return;
+  }
+  if (d.runId == null) return;
+  const p = inpaintPending.get(d.runId);
+  if (!p) return;
+  inpaintPending.delete(d.runId);
+  if (d.ok) p.resolve({ ok: true, results: d.results, ms: d.ms });
+  else p.reject(inpaintWorkerFallbackError());
+}
+
 function ensureInpaintWorker() {
-  if (inpaintWorker) return inpaintWorker;
-  const w = new Worker(chrome.runtime.getURL('src/background/inpaint-worker.js'), { type: 'module' });
+  if (inpaintWorker) return inpaintWorkerReady;
+  const w = new Worker(chrome.runtime.getURL('src/background/inpaint-worker.js')); // classic worker
   inpaintWorker = w;
-  w.onmessage = (e) => {
-    const d = e.data;
-    if (!d) return;
-    if (d.type === 'inpaint-progress') {
-      try { globalThis.__ctInpaintProgress?.(d.runId, d.frac); } catch {}
-      return;
-    }
-    if (d.runId == null) return;
-    const p = inpaintPending.get(d.runId);
-    if (!p) return;
-    inpaintPending.delete(d.runId);
-    if (d.ok) p.resolve({ ok: true, results: d.results, ms: d.ms });
-    else p.reject(inpaintWorkerFallbackError());
-  };
-  w.onerror = () => {
-    if (inpaintWorker !== w) return; // stale worker (already replaced)
-    // Load/startup failure (bad import, missing file): fall back to
-    // in-process handlers for every pending call. A mid-run crash also
-    // lands here; falling back re-runs all patches from the still-staged
-    // originals, which is safe.
-    failInpaintPending(inpaintWorkerFallbackError);
-    killInpaintWorker();
-  };
-  return w;
+  inpaintWorkerReady = new Promise((resolve, reject) => {
+    let settled = false;
+    const to = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      killInpaintWorker();
+      reject(inpaintWorkerFallbackError());
+    }, 10000);
+    w.onmessage = (e) => {
+      if (settled) return;
+      if (e.data && e.data.type === 'inpaint-ready') {
+        settled = true;
+        clearTimeout(to);
+        w.onmessage = routeInpaintMessage;
+        w.onerror = () => {
+          if (inpaintWorker !== w) return; // stale worker (already replaced)
+          // Mid-run crash: fall back to in-process handlers — re-running
+          // all patches from the still-staged originals is safe.
+          failInpaintPending(inpaintWorkerFallbackError);
+          killInpaintWorker();
+        };
+        resolve(w);
+      }
+      // Any other pre-ready message is ignored (no job posts before ready).
+    };
+    w.onerror = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(to);
+      killInpaintWorker();
+      reject(inpaintWorkerFallbackError());
+    };
+  });
+  return inpaintWorkerReady;
 }
 
 async function runInpaintViaWorker(msg) {
   let w;
   try {
-    w = ensureInpaintWorker();
+    w = await ensureInpaintWorker();
   } catch (e) {
     throw inpaintWorkerFallbackError();
   }

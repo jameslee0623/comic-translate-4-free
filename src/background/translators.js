@@ -787,10 +787,20 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
       // Failover already tried Azure (and it failed): don't offer a
       // "retry with Azure" — it was just consumed.
       if (lastErr && azureConsumed) lastErr.azureRetryAvailable = false;
-    } else if ((settings.azureKey || '').trim() && backend !== 'azure') {
+    } else {
       // Not opted in: don't fail over automatically, but tag the error so
       // the UI can offer one-click "retry with Azure".
-      lastErr.azureRetryAvailable = true;
+      if ((settings.azureKey || '').trim() && backend !== 'azure') {
+        lastErr.azureRetryAvailable = true;
+      }
+      // A timeout-abort (not a user cancel) must surface as a timeout
+      // error, not a bare 'cancelled' — otherwise the run looks cancelled
+      // and shows no error message at all (Chrome regression in 1018o).
+      if (lastErr && lastErr.cancelled && !isUserCancelled?.()) {
+        const t = new Error(`translate timed out after ${deadlineMs / 1000}s — the translation backend may be stuck`);
+        t.azureRetryAvailable = lastErr.azureRetryAvailable;
+        lastErr = t;
+      }
     }
     if (lastErr) throw lastErr;
   }
