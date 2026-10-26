@@ -5,7 +5,7 @@ export const DEFAULT_SETTINGS = {
   sourceLang: 'auto', // 'auto' = detect from the OCR'd text; or 'ja' | 'en' | 'zh-CN' | 'zh-TW'
   targetLang: 'en',
   translationBackend: 'google', // 'google' | 'azure' | 'lmstudio' | 'local-llm'
-  backendFailover: false, // if the selected backend fails, try another (opt-in; never silently uses paid Azure)
+  backendFailover: true, // if the selected backend fails, try another (default on, 2026-10-26)
   azureKey: '',
   azureRegion: '',
   lmStudioUrl: 'http://127.0.0.1:1234', // LM Studio server (bare host:port; flavour adds its path)
