@@ -315,9 +315,9 @@ const handlers = {
     const results = [];
     // Long inpaints report progress: the Firefox background page sets
     // globalThis.__ctInpaintProgress (same module scope there — see
-    // background-ff.js/service-worker.js). The Chrome offscreen document has
-    // no pipeline to report to, so the hook stays unset and this is a no-op.
-    // Without it a multi-minute tiled inpaint looks exactly like a stall.
+    // background-ff.js/service-worker.js). The Chrome offscreen document sets
+    // it via offscreen-progress.js (forwarded to the service worker). Without
+    // it a multi-minute tiled inpaint looks exactly like a stall.
     const reportInpaint = (frac) => {
       try { if (globalThis.__ctInpaintProgress) globalThis.__ctInpaintProgress(runId, frac); } catch { /* never break inpaint */ }
     };

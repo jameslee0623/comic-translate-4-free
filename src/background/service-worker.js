@@ -71,10 +71,11 @@ function checkCancelled(runId) {
   if (isCancelled(runId)) throw Object.assign(new Error('cancelled'), { cancelled: true });
 }
 
-// Firefox runs the ML host in-process in this same page (background-ff.js),
-// so long tiled inpaints can report per-tile progress straight into the
-// run's progress bar. (On Chrome the handlers live in the offscreen document
-// and never see this hook.) Each run registers its own updater below.
+// Long tiled inpaints report per-tile progress straight into the run's
+// progress bar. Firefox runs the ML host in-process in this same page
+// (background-ff.js); Chrome's offscreen document forwards its reports here
+// via ML_INPAINT_PROGRESS (see offscreen-progress.js). Each run registers
+// its own updater below.
 globalThis.__ctInpaintProgress = (runId, frac) => {
   try {
     const r = runs.get(runId);
@@ -87,7 +88,9 @@ globalThis.__ctInpaintProgress = (runId, frac) => {
 // instead of a scary host error.
 async function callMlChecked(runId, msg) {
   try {
-    return await callMl(msg);
+    // tabId rides along so the alarm backup (ml-bridge.js) can tell the
+    // tab's pill the run failed even if this worker died mid-call.
+    return await callMl(msg, { tabId: runs.get(runId)?.tabId });
   } catch (e) {
     checkCancelled(runId);
     throw e;
@@ -883,9 +886,10 @@ async function runPipeline(tabId, opts = {}) {
       parMax = Math.max(parMax, 0.58 + 0.32 * (par.translate + par.mask + par.inpaint) / 3);
       setProgress(runId, branch, parMax);
     };
-    // Long tiled inpaints feed per-tile progress through this (Firefox only —
-    // the ML host shares this page). The pill keeps moving instead of looking
-    // stalled at one percentage for minutes.
+    // Long tiled inpaints feed per-tile progress through this (Firefox: the
+    // ML host shares this page; Chrome: forwarded from the offscreen doc).
+    // The pill keeps moving instead of looking stalled at one percentage
+    // for minutes.
     runs.get(runId).onInpaintProgress = (frac) => parProgress('inpaint', frac);
     const runTranslate = async () => {
       parProgress('translate', 0);
@@ -1416,6 +1420,17 @@ chrome.storage.onChanged.addListener((changes, area) => {
 refreshContextMenu().catch(() => {});
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Inpaint progress from the Chrome offscreen document (one-way, no reply).
+  // Routes into the run's progress bar, so the pill keeps moving during long
+  // inpaints instead of looking stalled. Each message is also a worker event,
+  // which resets the idle timer — healthy long inpaints keep the worker alive.
+  if (msg && msg.type === MSG.ML_INPAINT_PROGRESS) {
+    try {
+      const r = runs.get(msg.runId);
+      if (r && typeof r.onInpaintProgress === 'function') r.onInpaintProgress(msg.frac);
+    } catch { /* progress must never break the pipeline */ }
+    return false;
+  }
   // Pill "Allow <host>" button (content script). permissions.request() must be
   // called synchronously in the message turn — the click's user gesture only
   // survives one sync hop across sendMessage, so nothing may be awaited first
@@ -1451,7 +1466,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           if (!settings.allowAllSites && !isSiteAllowed(host, settings.siteWhitelist || [])) {
             throw new Error(`"${host}" is not in your site access list — allow it from the popup or Settings, or turn on "Allow all sites"`);
           }
-          // Awaited (not fire-and-forget): the worker stays alive for the whole run.
+          // Awaited (not fire-and-forget) so the popup can report the result.
+          // NOTE: awaiting does NOT keep the worker alive — Chrome may kill
+          // it idle (~30s) or at the 5-minute per-event cap mid-run. The ML
+          // alarm backup (ml-bridge.js) and inpaint progress keep-alive cover
+          // that; without them a killed worker meant a frozen pill, no error.
           // Any in-flight run for this tab is dropped first — the new request wins.
           await cancelRunsForTab(tab.id);
           const r = await runPipeline(tab.id);

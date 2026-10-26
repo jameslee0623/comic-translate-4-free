@@ -29,6 +29,7 @@ export const MSG = {
   ML_DOWNLOAD: 'ml/download',            // {fileId} -> {ok, bytes} (progress via MODEL_PROGRESS)
   ML_RESET: 'ml/reset',                  // {group} -> {ok} (drop loaded sessions)
   ML_CANCEL: 'ml/cancel',                // {runId} -> {ok} (abort in-flight ML work for a run)
+  ML_INPAINT_PROGRESS: 'ml/inpaint-progress', // offscreen -> SW (one-way) {runId, frac} (pill progress + worker keep-alive)
   // SW -> content (tabs.sendMessage)
   RUN_STARTED: 'ct/run-started',         // {runId} (marks the tab's current run; stale renders are ignored)
   RENDER: 'ct/render',                   // {runId, mode, imageDataUrl, width, height, blocks, timings, debug, srcUrl?}

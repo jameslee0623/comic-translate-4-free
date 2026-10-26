@@ -35,6 +35,7 @@ assert c['version'] == f['version'] == '$VERSION', (c['version'], f['version'])
 assert c['background']['service_worker'] == 'src/background/service-worker.js'
 assert f['background']['page'] == 'src/background/background.html'
 assert 'offscreen' in c['permissions'] and 'offscreen' not in f['permissions']
+assert 'alarms' in c['permissions'], 'Chrome manifest must declare alarms (ML timeout backup)'
 assert f['browser_specific_settings']['gecko']['id']
 print('manifests OK:', c['version'])
 EOF
@@ -42,7 +43,7 @@ for f in src/background/ml-bridge.js src/background/background.html src/backgrou
   test -f "$DIST/chrome/$f" || { echo "MISSING chrome/$f"; exit 1; }
   test -f "$DIST/firefox/$f" || { echo "MISSING firefox/$f"; exit 1; }
 done
-for f in src/background/service-worker.js src/background/translators.js src/background/ml-bridge.js src/background/ml-worker.js src/content/content.js src/ui/options.js src/ui/popup.js src/offscreen/offscreen.js; do
+for f in src/background/service-worker.js src/background/translators.js src/background/ml-bridge.js src/background/ml-worker.js src/content/content.js src/ui/options.js src/ui/popup.js src/offscreen/offscreen.js src/offscreen/offscreen-progress.js; do
   node --check "$DIST/chrome/$f" >/dev/null || { echo "SYNTAX FAIL chrome/$f"; exit 1; }
 done
 echo "files OK"

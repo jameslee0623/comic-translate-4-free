@@ -20,8 +20,14 @@ export async function mlHostAlive() {
       return !!(r && r.ok);
     } catch { return false; }
   }
+  // Bounded: a doc blocked on hung WASM can never answer a ping, and an
+  // unbounded sendMessage would hang ensure/restart with it. A blocked doc
+  // reads as dead, so the caller closes + recreates it instead of waiting.
   try {
-    const r = await chrome.runtime.sendMessage({ type: MSG.ML_PING });
+    const r = await Promise.race([
+      chrome.runtime.sendMessage({ type: MSG.ML_PING }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('ping timeout')), 3000)),
+    ]);
     return !!(r && r.ok);
   } catch { return false; }
 }
@@ -329,10 +335,35 @@ export function cancelMlForRun(runId) {
 
 // Call one ML_* handler. Mirrors the old callOffscreen contract: resolves
 // with the handler's payload, throws a human message on failure.
-export async function callMl(msg) {
+export async function callMl(msg, opts = {}) {
   const timeoutMs = ML_TIMEOUT_MS[msg.type] || ML_TIMEOUT_DEFAULT_MS;
   const attempt = nextAttempt(msg);
   const effMsg = attempt > 1 ? { ...msg, attempt } : msg;
+  // Alarm backup (Chrome only: chrome.alarms exists only with the "alarms"
+  // permission, which only the Chrome manifest declares — Firefox's
+  // persistent background page never loses its timers, so it needs none).
+  // The setTimeout below dies with the service worker, so a worker killed
+  // mid-call (idle ~30s, or the 5-minute per-event cap) would otherwise
+  // hang forever with no error. The alarm survives the worker's death and
+  // wakes a fresh worker, which recovers from the storage entry (see the
+  // onAlarm listener below). Alarms clamp to a 1-minute minimum, so for
+  // 30s timeouts the backup fires later than the timer — late is fine,
+  // never is not. Cancel calls need none (they are fast, and a dead worker
+  // means the run is dead anyway).
+  const alarmName = (typeof chrome !== 'undefined' && chrome.alarms && msg.runId && msg.type !== MSG.ML_CANCEL)
+    ? `ct-ml:${msg.runId}:${msg.type}:${Date.now()}`
+    : null;
+  const storageKey = alarmName ? `ct-ml-pending:${alarmName}` : null;
+  if (alarmName) {
+    const deadline = Date.now() + Math.max(timeoutMs, 60000);
+    try {
+      await chrome.storage.local.set({ [storageKey]: {
+        runId: msg.runId, tabId: opts.tabId != null ? opts.tabId : null,
+        type: msg.type, timeoutMs, deadline,
+      } });
+      await chrome.alarms.create(alarmName, { when: deadline });
+    } catch { /* best-effort: the setTimeout still covers the awake case */ }
+  }
   let timer = null;
   const timeoutP = new Promise((_, reject) => {
     timer = setTimeout(() => {
@@ -362,7 +393,37 @@ export async function callMl(msg) {
     throw e;
   } finally {
     clearTimeout(timer);
+    if (alarmName) {
+      try { await chrome.alarms.clear(alarmName); } catch {}
+      try { await chrome.storage.local.remove(storageKey); } catch {}
+    }
   }
+}
+
+// Alarm backup recovery (Chrome): fires when the worker was killed mid-ML-call
+// and its setTimeout died with it. This runs in a FRESH worker (in-memory run
+// state is gone), so the storage entry is the only source of truth: if the
+// call already settled, its entry was removed and this is a no-op. Otherwise
+// the tab's pill gets the same timeout error the timer would have produced,
+// and the ML host is restarted (close + recreate works even when the old doc
+// is blocked on WASM) so the next run starts clean.
+if (typeof chrome !== 'undefined' && chrome.alarms && chrome.alarms.onAlarm) {
+  chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (!alarm || !alarm.name || !alarm.name.startsWith('ct-ml:')) return;
+    const key = `ct-ml-pending:${alarm.name}`;
+    let entry = null;
+    try { entry = (await chrome.storage.local.get(key))[key] || null; } catch {}
+    if (!entry) return;
+    try { await chrome.storage.local.remove(key); } catch {}
+    const group = ML_GROUP_FOR_TYPE[entry.type] || 'ML';
+    const msg = `ML host timed out during ${group} after ${entry.timeoutMs / 1000}s — the ML thread was restarted automatically. Try again.`;
+    if (entry.tabId != null) {
+      try {
+        await chrome.tabs.sendMessage(entry.tabId, { type: MSG.RUN_PROGRESS, runId: entry.runId, stage: 'error', error: msg, direct: true });
+      } catch { /* tab closed — nothing to tell */ }
+    }
+    try { await restartMlHost(); } catch {}
+  });
 }
 
 // ML compute types that run on the Firefox worker (never in-process):
