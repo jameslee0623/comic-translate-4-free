@@ -687,9 +687,10 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
   const translated = new Array(blocks.length).fill('');
   if (!texts.length) return translated;
   const backend = settings.translationBackend || 'google';
-  const runBackend = async (b) => {
+  const translateStart = performance.now();
+  const runBackend = async (b, attemptDeadlineMs) => {
     if (b === 'azure') return await azure(texts, settings, signal);
-    if (b === 'lmstudio') return await lmStudio(texts, settings, signal, deadlineMs);
+    if (b === 'lmstudio') return await lmStudio(texts, settings, signal, attemptDeadlineMs ?? deadlineMs);
     if (b === 'local-llm') return await localLlm(texts, settings, signal);
     return await googleFree(texts, settings.sourceLang, settings.targetLang, signal);
   };
@@ -711,14 +712,23 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
       if (backend !== 'google') candidates.push('google');
       if (backend !== 'lmstudio') candidates.push('lmstudio');
       if (azureConfigured && backend !== 'azure') candidates.push('azure');
+      // Failover must fit inside the same overall budget: a slow middle
+      // backend (a running LM Studio server generating slowly) used to burn
+      // the whole deadline, so later backends never got a turn and the
+      // overall abort then poisoned their attempts too. Cap each LM Studio
+      // failover attempt at 30s and stop when the budget is gone, so Azure
+      // always gets its turn inside 90s.
+      const FAILOVER_LM_DEADLINE_MS = 30000;
       for (const fb of candidates) {
+        const remaining = deadlineMs - (performance.now() - translateStart);
+        if (remaining <= 0) break;
         try {
           // Skip LM Studio failover if it was the failing backend (avoid loop).
           // Skip backends that need config we don't have.
           if (fb === 'lmstudio' && backend === 'lmstudio') continue;
           // User-visible notice: failover must not happen silently.
           onProgress && onProgress({ failoverFrom: backend, failoverTo: fb });
-          results = await runBackend(fb);
+          results = await runBackend(fb, fb === 'lmstudio' ? Math.min(remaining, FAILOVER_LM_DEADLINE_MS) : undefined);
           lastErr = null;
           backendUsed = fb;
           if (fb === 'azure') azureConsumed = true;
@@ -729,6 +739,13 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
           lastErr = fe;
           if (fb === 'azure') azureConsumed = true;
         }
+      }
+      // Failover ran but Azure was never a candidate (no key): say so
+      // plainly, so the user isn't left wondering why it didn't switch.
+      // Settings are per-browser — a key entered in Chrome is not present
+      // in Firefox.
+      if (lastErr && !azureConfigured && backend !== 'azure') {
+        lastErr.message = `${lastErr.message} — Azure was not tried: no API key in this browser's settings`;
       }
       // Failover already tried Azure (and it failed): don't offer a
       // "retry with Azure" — it was just consumed.

@@ -15,7 +15,12 @@ import { toNCHW, padToMod } from '../../shared/image-ops.js';
 // a side are therefore processed as overlapping full-resolution tiles and
 // feather-blended back together: peak memory stays bounded by one tile while
 // the output stays full-resolution — no quality loss from downscaling.
-export const TILE_MAX = 1024;
+// TILE_MAX is 512, not 1024: a tile's WASM run is synchronous, and on
+// Firefox it blocks the main thread — while it runs, no timer can fire and
+// no progress updates, so a slow 1024 tile looked like a silent hang. At
+// 512 each tile costs about a quarter of the time, so the 90s timeout and
+// per-tile progress get chances to fire between tiles.
+export const TILE_MAX = 512;
 const TILE_OVERLAP = 128;
 
 // Tile origins/sizes covering [0, len): first tile starts at 0, last ends at

@@ -147,7 +147,7 @@ export async function callMl(msg) {
       // race and could complete late (stale pixelPut, double resource use).
       cancelMlRun(msg.runId);
       const group = ML_GROUP_FOR_TYPE[msg.type] || 'ML';
-      const err = new Error(`ML host timed out during ${group} after ${Math.round(timeoutMs / 60000)} min — the model may be stuck. Try again; if it repeats, restart the browser.`);
+      const err = new Error(`ML host timed out during ${group} after ${timeoutMs / 1000}s — the model may be stuck. Try again; if it repeats, restart the browser.`);
       err.mlTimeout = true;
       err.mlType = msg.type;
       reject(err);
