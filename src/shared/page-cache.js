@@ -243,6 +243,14 @@ export async function clearPageCache() {
 // Tier-2 = Tier-1 + ~t2~target~backend~model.
 export function baseImageKey(id) {
   const seg = String(id).split('~');
+  // Legacy v1 keys (v1~hash~WxH~src~target~backend~thr~models~BUILD) map onto
+  // the Tier-1 base (v2t1~hash~WxH~src~thr~models): without this, the v1
+  // backfill written by older builds counts as a second image for the same
+  // picture. Only the current 9-segment layout is normalized; anything else
+  // falls through to the generic path below.
+  if (seg[0] === 'v1' && seg.length >= 9) {
+    return ['v2t1', seg[1], seg[2], seg[3], seg[6], seg[7]].join('~');
+  }
   const t2 = seg.indexOf('t2');
   const end = (t2 >= 0 ? t2 : seg.length) - 1; // drop the BUILD segment
   return seg.slice(0, Math.max(end, 1)).join('~');

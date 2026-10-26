@@ -1184,14 +1184,10 @@ async function runPipeline(tabId, opts = {}) {
           targetLang: settings.targetLang,
           backend: settings.translationBackend,
         });
-        // Legacy v1 key: backfill for old clients during transition. Only
-        // write when Tier-1 wasn't already populated (not on every run).
-        // Will be removed once Tier 1 is populated.
-        if (!tier1Entry) {
-          await pageCachePut(await buildCacheKey(rgba, w, h, settings), {
-            imageDataUrl: finalDataUrl, width: w, height: h, blocks, mode,
-          });
-        }
+        // No legacy v1 write: the v1 backfill duplicated the image a third
+        // time and counted as a second image in stats (its key shape differs
+        // from Tier-1's, so the distinct-image collapse missed it). The v1
+        // READ fallback stays, so entries written by older builds still serve.
       }
     } catch (e) {
       console.warn('[ct] page-cache write failed:', String((e && e.message) || e).slice(0, 120));

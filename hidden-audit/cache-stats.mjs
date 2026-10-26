@@ -17,5 +17,14 @@ assert.equal(baseImageKey(t2('1018u', 'en', 'google')), baseImageKey(t2('1018t',
 assert.notEqual(baseImageKey(t1('1018u')), baseImageKey(t1('1018u').replace('aabbcc', 'ddeeff')));
 // Different target language is still the same image (Tier-2 collapses).
 assert.equal(baseImageKey(t2('1018u', 'en', 'google')), baseImageKey(t2('1018u', 'ja', 'azure')));
+// Legacy v1 backfill + Tier-1 + Tier-2 of one image -> ONE image (1018y:
+// the v1 key shape differs, so it used to count as a second image).
+const v1 = (build) => `v1~aabbcc~800x3200~ja~en~google~0.5~detector:d@1|ocr:o@2~${build}`;
+assert.equal(baseImageKey(v1('1018u')), baseImageKey(t1('1018u')));
+assert.equal(baseImageKey(v1('1018u')), baseImageKey(t2('1018u', 'en', 'google')));
+// Same image, v1 on an old build + Tier-1 on a new build -> still one.
+assert.equal(baseImageKey(v1('1018t')), baseImageKey(t1('1018u')));
+// A v1 entry for a different image still counts separately.
+assert.notEqual(baseImageKey(v1('1018u')), baseImageKey(t1('1018u').replace('aabbcc', 'ddeeff')));
 
 console.log('cache-stats: all checks passed');
