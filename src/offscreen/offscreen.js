@@ -13,7 +13,7 @@ import { pixelPut, pixelTake } from '../shared/pixel-bus.js';
 
 // Worker-safe: a Firefox inpaint worker imports this module, and a worker
 // may not have chrome.runtime. Fall back to a path relative to this script:
-// both offscreen.html and background/inpaint-worker.js sit one level under
+// both offscreen.html and background/ml-worker.js sit one level under
 // src/, so ../offscreen/vendor/ resolves to the same dir in both.
 try {
   ort.env.wasm.wasmPaths = chrome.runtime.getURL('src/offscreen/vendor/');

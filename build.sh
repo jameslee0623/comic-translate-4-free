@@ -42,7 +42,7 @@ for f in src/background/ml-bridge.js src/background/background.html src/backgrou
   test -f "$DIST/chrome/$f" || { echo "MISSING chrome/$f"; exit 1; }
   test -f "$DIST/firefox/$f" || { echo "MISSING firefox/$f"; exit 1; }
 done
-for f in src/background/service-worker.js src/background/translators.js src/background/ml-bridge.js src/background/inpaint-worker.js src/content/content.js src/ui/options.js src/ui/popup.js src/offscreen/offscreen.js; do
+for f in src/background/service-worker.js src/background/translators.js src/background/ml-bridge.js src/background/ml-worker.js src/content/content.js src/ui/options.js src/ui/popup.js src/offscreen/offscreen.js; do
   node --check "$DIST/chrome/$f" >/dev/null || { echo "SYNTAX FAIL chrome/$f"; exit 1; }
 done
 echo "files OK"

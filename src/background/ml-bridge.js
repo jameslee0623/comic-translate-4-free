@@ -1,9 +1,11 @@
 // ML host bridge: how the pipeline reaches the ONNX sessions.
 // - Chrome: an offscreen document hosts the sessions; calls go over
 //   chrome.runtime messaging (pixel bytes travel via the IDB pixel bus).
-// - Firefox: no offscreen API — the background page itself is the ML host,
-//   so calls run in-process through the handlers registered by
-//   background-ff.js (globalThis.__ctMlHandlers).
+// - Firefox: no offscreen API — ML runs on a dedicated worker (ml-worker.js)
+//   hosting the same handlers, so the background page (main thread) stays
+//   free to monitor and restart it. In-process handlers registered by
+//   background-ff.js (globalThis.__ctMlHandlers) remain only as a fallback
+//   when the worker itself cannot start.
 import { MSG } from '../shared/contracts.js';
 
 export function directHandlers() {
@@ -77,14 +79,10 @@ function mlHostError(type, raw) {
   const m = String((raw && raw.message) || raw || '');
   if (OOM_RE.test(m)) {
     const group = ML_GROUP_FOR_TYPE[type] || 'translation engine';
-    // Firefox runs the sessions in-process in the background page; Chrome
-    // gives them a dedicated offscreen process, so Firefox hits this sooner.
-    // Note: the ML host already tried freeing unused models and retrying —
-    // if this still fires, the browser is genuinely out of memory.
-    const where = directHandlers()
-      ? ' On Firefox the translation models share the background page\u2019s memory (Chrome runs them in a separate process), so this limit is hit sooner.'
-      : '';
-    return new Error(`Out of memory while running the ${group} — the browser could not free enough memory even after unloading unused models. Restart the browser and try again.${where}`);
+    // Both browsers run ML off the main thread now (Chrome offscreen
+    // document, Firefox worker), and a failure here restarts that thread —
+    // so the next run starts clean. No browser restart is needed.
+    return new Error(`Out of memory while running the ${group} — the ML thread was restarted automatically. Try again.`);
   }
   return new Error('ML host error: ' + m.slice(0, 160));
 }
@@ -116,86 +114,98 @@ function nextAttempt(msg) {
   return n;
 }
 
-// ---------------------------------------------------------------- Firefox inpaint worker
-// LaMa inpaint on its own thread (Firefox only). On Firefox the ML host
-// lives in the background page, so a tile's synchronous WASM run blocks the
-// page's main thread — and callMl's timeout lives on that same thread, so
-// it can never fire: silent hang, no message. In a worker, the page's timer
-// fires while the worker computes, so a stuck inpaint becomes a timeout
-// error instead of silence. The worker reuses the offscreen handlers
-// verbatim (same module, same IDB pixel bus and models) — only the thread
-// changes. Chrome never reaches this: directHandlers() is null there and
-// inpaint keeps going through the offscreen document.
+// ---------------------------------------------------------------- Firefox ML worker
+// ALL ML compute on Firefox runs on this worker (detect, OCR, inpaint,
+// ensure, cancel) — never on the background page. The background page is
+// the main thread: it must always stay free to monitor, time, and restart
+// the worker. Any ML type left in-process can block the page's own thread,
+// and then callMl's timeout (which lives on that same thread) can never
+// fire: silent hang, no message. In the worker, the page's timer fires
+// while the worker computes, so a stuck ML op becomes a timeout error and
+// the worker is terminated — the next run gets a fresh worker, no browser
+// restart. The worker reuses the offscreen handlers verbatim (same module,
+// same IDB pixel bus and models) — only the thread changes. Chrome never
+// reaches this: directHandlers() is null there and ML keeps going through
+// the offscreen document.
 //
 // The worker is CLASSIC (not module): ort.min.js is UMD, and its top-level
 // `var ort` only becomes a global via a classic script load. A module
 // worker kept `ort` module-scoped, so offscreen.js threw at import and the
 // worker never started (1018p bug — silent fallback, same hang). The
 // worker importScripts ort, dynamically imports the handlers, then posts
-// 'inpaint-ready'; no job is posted before that, and a missing ready
-// (10s) falls back to in-process inpaint instead of hanging.
-let inpaintWorker = null;
-let inpaintWorkerReady = null; // Promise<Worker> once 'inpaint-ready' arrives
-const inpaintPending = new Map(); // runId -> {resolve, reject}
-const INPAINT_WORKER_FALLBACK = 'inpaint worker unavailable — falling back to in-process';
+// 'ml-ready'; no job is posted before that, and a missing ready (5s)
+// falls back to in-process compute instead of hanging.
+//
+// Replies are keyed by callId (not runId): a run's cancel can overlap its
+// own compute call, and a runId-keyed map would drop one of them.
+// Progress (inpaint only) is routed by runId to __ctInpaintProgress.
+let mlWorker = null;
+let mlWorkerReady = null; // Promise<Worker> once 'ml-ready' arrives
+let mlCallSeq = 0;
+const mlPending = new Map(); // callId -> {resolve, reject, runId}
+const ML_WORKER_FALLBACK = 'ML worker unavailable — falling back to in-process';
 
-function inpaintWorkerFallbackError() {
-  return Object.assign(new Error(INPAINT_WORKER_FALLBACK), { inpaintWorkerFallback: true });
+function mlWorkerFallbackError() {
+  return Object.assign(new Error(ML_WORKER_FALLBACK), { mlWorkerFallback: true });
 }
 
-function killInpaintWorker() {
-  try { inpaintWorker?.terminate(); } catch {}
-  inpaintWorker = null;
-  inpaintWorkerReady = null;
+function killMlWorker() {
+  try { mlWorker?.terminate(); } catch {}
+  mlWorker = null;
+  mlWorkerReady = null;
 }
 
-function failInpaintPending(errFactory) {
-  const pend = [...inpaintPending.values()];
-  inpaintPending.clear();
+function failMlPending(errFactory) {
+  const pend = [...mlPending.values()];
+  mlPending.clear();
   for (const p of pend) {
     try { p.reject(errFactory()); } catch {}
   }
 }
 
-function routeInpaintMessage(e) {
+function routeMlMessage(e) {
   const d = e.data;
   if (!d) return;
   if (d.type === 'inpaint-progress') {
     try { globalThis.__ctInpaintProgress?.(d.runId, d.frac); } catch {}
     return;
   }
-  if (d.runId == null) return;
-  const p = inpaintPending.get(d.runId);
+  if (d.callId == null) return;
+  const p = mlPending.get(d.callId);
   if (!p) return;
-  inpaintPending.delete(d.runId);
-  if (d.ok) p.resolve({ ok: true, results: d.results, ms: d.ms });
-  else p.reject(inpaintWorkerFallbackError());
+  mlPending.delete(d.callId);
+  if (d.ok) p.resolve(d.res);
+  // A handler error is the handler's answer, not a worker failure: surface
+  // it — except out-of-memory, where the main thread's memory pool may
+  // still have room and a direct retry is worth one attempt.
+  else if (OOM_RE.test(String(d.error || ''))) p.reject(mlWorkerFallbackError());
+  else p.reject(new Error(d.error || 'ML worker failed'));
 }
 
-function ensureInpaintWorker() {
-  if (inpaintWorker) return inpaintWorkerReady;
-  const w = new Worker(chrome.runtime.getURL('src/background/inpaint-worker.js')); // classic worker
-  inpaintWorker = w;
-  inpaintWorkerReady = new Promise((resolve, reject) => {
+function ensureMlWorker() {
+  if (mlWorker) return mlWorkerReady;
+  const w = new Worker(chrome.runtime.getURL('src/background/ml-worker.js')); // classic worker
+  mlWorker = w;
+  mlWorkerReady = new Promise((resolve, reject) => {
     let settled = false;
     const to = setTimeout(() => {
       if (settled) return;
       settled = true;
-      killInpaintWorker();
-      reject(inpaintWorkerFallbackError());
-    }, 10000);
+      killMlWorker();
+      reject(mlWorkerFallbackError());
+    }, 5000);
     w.onmessage = (e) => {
       if (settled) return;
-      if (e.data && e.data.type === 'inpaint-ready') {
+      if (e.data && e.data.type === 'ml-ready') {
         settled = true;
         clearTimeout(to);
-        w.onmessage = routeInpaintMessage;
+        w.onmessage = routeMlMessage;
         w.onerror = () => {
-          if (inpaintWorker !== w) return; // stale worker (already replaced)
+          if (mlWorker !== w) return; // stale worker (already replaced)
           // Mid-run crash: fall back to in-process handlers — re-running
-          // all patches from the still-staged originals is safe.
-          failInpaintPending(inpaintWorkerFallbackError);
-          killInpaintWorker();
+          // from the still-staged originals is safe.
+          failMlPending(mlWorkerFallbackError);
+          killMlWorker();
         };
         resolve(w);
       }
@@ -205,46 +215,72 @@ function ensureInpaintWorker() {
       if (settled) return;
       settled = true;
       clearTimeout(to);
-      killInpaintWorker();
-      reject(inpaintWorkerFallbackError());
+      killMlWorker();
+      reject(mlWorkerFallbackError());
     };
   });
-  return inpaintWorkerReady;
+  return mlWorkerReady;
 }
 
-async function runInpaintViaWorker(msg) {
+async function runMlViaWorker(msg) {
   let w;
   try {
-    w = await ensureInpaintWorker();
+    w = await ensureMlWorker();
   } catch (e) {
-    throw inpaintWorkerFallbackError();
+    throw mlWorkerFallbackError();
   }
+  const callId = ++mlCallSeq;
   return await new Promise((resolve, reject) => {
-    inpaintPending.set(msg.runId, { resolve, reject });
+    mlPending.set(callId, { resolve, reject, runId: msg.runId });
     try {
-      w.postMessage(msg);
+      w.postMessage({ ...msg, callId });
     } catch (e) {
-      failInpaintPending(inpaintWorkerFallbackError);
-      killInpaintWorker();
+      failMlPending(mlWorkerFallbackError);
+      killMlWorker();
     }
   });
+}
+
+// Hard-restart the Chrome ML host: close the offscreen document and
+// recreate it, so a stuck host never poisons future runs. No-op on
+// Firefox (no offscreen document; worker termination covers it there).
+// Concurrent restarts share one promise; a creation already in flight is
+// awaited before closing so a fresh document isn't killed mid-start.
+// Failures are swallowed — the next callMlInner ensureMlHost() retries.
+let restartingPromise = null;
+export async function restartMlHost() {
+  if (directHandlers()) return;
+  if (typeof chrome.offscreen === 'undefined') return;
+  if (!restartingPromise) {
+    restartingPromise = (async () => {
+      try { await creatingPromise; } catch {}
+      try { await chrome.offscreen.closeDocument(); } catch {}
+      try { await ensureMlHost(); } catch (e) {
+        console.warn('[ct] ML host restart failed, next call will retry:', String((e && e.message) || e).slice(0, 120));
+      }
+    })().finally(() => { restartingPromise = null; });
+  }
+  return restartingPromise;
 }
 
 // Best-effort abort of a run's in-flight ML work. Used when callMl times out:
 // the inner op keeps running past the Promise.race, so without this a late
 // completion could still burn CPU / write pixel payloads for a dead run.
-// Fire-and-forget — the host itself may be hung, and we're already failing.
+// Timeout path: the host is stuck by definition, so it is restarted, not
+// just asked nicely — a cancel message would queue behind blocked WASM
+// forever. Firefox: terminate the worker (next run recreates it). Chrome:
+// close + recreate the offscreen document (next run gets a fresh host).
+// Either way no browser restart is needed.
 function cancelMlRun(runId) {
   if (!runId) return;
-  // Timeout path only (sole caller is callMl's timer): a stuck inpaint
-  // worker must be terminated — a cancel message would queue behind the
-  // blocked WASM run and never be processed. Pending runs on the shared
-  // worker fail with a message (rare; they can retry). Other ML types
-  // keep the graceful ML_CANCEL below.
-  if (inpaintWorker && inpaintPending.has(runId)) {
-    killInpaintWorker();
-    failInpaintPending(() => new Error('inpaint worker stopped'));
+  if (mlWorker && [...mlPending.values()].some(p => p.runId === runId)) {
+    // A stuck worker must die — a cancel message would queue behind the
+    // blocked WASM run and never be processed. Pending runs on the shared
+    // worker fail fast with a message (they can retry on a fresh worker).
+    killMlWorker();
+    failMlPending(() => new Error('ML worker stopped'));
   }
+  restartMlHost().catch(() => {});
   try {
     const direct = directHandlers();
     if (direct && direct[MSG.ML_CANCEL]) {
@@ -255,6 +291,40 @@ function cancelMlRun(runId) {
   try {
     chrome.runtime.sendMessage({ type: MSG.ML_CANCEL, runId }).catch(() => {});
   } catch { /* host unreachable */ }
+}
+
+// Cancel a run's in-flight ML work on user cancel (called from
+// abortRunResources). Broadcasts the cancel flag to every host that could
+// be running it — worker, in-process handlers, offscreen document —
+// because compute and cancel must reach the SAME handler instance
+// (the worker has its own cancelled-runs set; sending the flag only to
+// the main thread would not stop worker compute at all).
+// If this run is the worker's only pending caller, the worker is also
+// terminated so Cancel takes effect at once even when WASM is blocked;
+// its pending calls fail with a marked cancelled error. Otherwise
+// (other runs share the worker) only the graceful flag is sent, so their
+// work survives and the cancelled run ends at its next stage boundary
+// (the run catch treats a user-cancelled run as 'cancelled' regardless
+// of what the ML call later throws).
+export function cancelMlForRun(runId) {
+  if (!runId) return;
+  try {
+    if (mlWorker) {
+      try { mlWorker.postMessage({ type: MSG.ML_CANCEL, runId, callId: ++mlCallSeq }); } catch {}
+    }
+  } catch {}
+  try {
+    const direct = directHandlers();
+    if (direct && direct[MSG.ML_CANCEL]) direct[MSG.ML_CANCEL]({ runId });
+  } catch {}
+  try {
+    chrome.runtime.sendMessage({ type: MSG.ML_CANCEL, runId }).catch(() => {});
+  } catch {}
+  // Fast path: no other run shares the worker — terminate it now.
+  if (mlWorker && mlPending.size > 0 && [...mlPending.values()].every(p => p.runId === runId)) {
+    killMlWorker();
+    failMlPending(() => Object.assign(new Error('cancelled'), { cancelled: true }));
+  }
 }
 
 // Call one ML_* handler. Mirrors the old callOffscreen contract: resolves
@@ -270,7 +340,7 @@ export async function callMl(msg) {
       // race and could complete late (stale pixelPut, double resource use).
       cancelMlRun(msg.runId);
       const group = ML_GROUP_FOR_TYPE[msg.type] || 'ML';
-      const err = new Error(`ML host timed out during ${group} after ${timeoutMs / 1000}s — the model may be stuck. Try again; if it repeats, restart the browser.`);
+      const err = new Error(`ML host timed out during ${group} after ${timeoutMs / 1000}s — the ML thread was restarted automatically. Try again.`);
       err.mlTimeout = true;
       err.mlType = msg.type;
       reject(err);
@@ -278,24 +348,44 @@ export async function callMl(msg) {
   });
   try {
     return await Promise.race([callMlInner(effMsg), timeoutP]);
+  } catch (e) {
+    // Out-of-memory poisons the host's memory pool: restart it so the
+    // next run starts clean (timeouts restart via cancelMlRun above).
+    // Firefox: the worker's pool is exhausted, so terminate it too.
+    if (OOM_RE.test(String((e && e.message) || e))) {
+      if (mlWorker) {
+        killMlWorker();
+        failMlPending(() => new Error('ML worker stopped'));
+      }
+      restartMlHost().catch(() => {});
+    }
+    throw e;
   } finally {
     clearTimeout(timer);
   }
 }
 
+// ML compute types that run on the Firefox worker (never in-process):
+// detect, OCR, inpaint, model ensure, cancel. Ping/download/reset stay on
+// the direct/messaging path — they are fast management calls, not WASM
+// compute, and ping must work even when the worker is down.
+const ML_WORKER_TYPES = new Set([MSG.ML_DETECT, MSG.ML_OCR, MSG.ML_INPAINT, MSG.ML_ENSURE, MSG.ML_CANCEL]);
+
 async function callMlInner(msg) {
   const direct = directHandlers();
-  if (direct && msg.type === MSG.ML_INPAINT) {
-    // Firefox inpaint goes to the worker (see above). Any worker failure
-    // (startup, crash, error reply) falls back to the in-process handlers
+  if (direct && ML_WORKER_TYPES.has(msg.type)) {
+    // Firefox ML goes to the worker (see above). Worker failure
+    // (startup, crash, OOM reply) falls back to the in-process handlers
     // — except termination, which only happens on timeout/cancel, where
-    // falling back would defeat the timeout.
+    // falling back would defeat the timeout. The in-process fallback is
+    // emergency-only (worker mechanism broken): it can block the main
+    // thread, so it is never used for a timed-out or cancelled call.
     try {
-      const res = await runInpaintViaWorker(msg);
-      if (!res || res.ok === false) throw new Error('inpaint worker did not respond');
+      const res = await runMlViaWorker(msg);
+      if (!res || res.ok === false) throw new Error('ML worker did not respond');
       return res;
     } catch (e) {
-      if (e && e.inpaintWorkerFallback) {
+      if (e && e.mlWorkerFallback) {
         // Fall through to in-process handlers below.
       } else {
         throw mlHostError(msg.type, e);

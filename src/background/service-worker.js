@@ -13,7 +13,7 @@ import { pixelPut, pixelTake, pixelDrop } from '../shared/pixel-bus.js';
 import { generateMask } from '../shared/mask.js';
 import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL } from './translators.js';
 import { detectPageLang } from '../shared/lang-detect.js';
-import { mlHostAlive, ensureMlHost, callMl, makeCanvas, canvasToBlob, directHandlers, WEBP_TYPE, WEBP_QUALITY } from './ml-bridge.js';
+import { mlHostAlive, ensureMlHost, callMl, cancelMlForRun, makeCanvas, canvasToBlob, directHandlers, WEBP_TYPE, WEBP_QUALITY } from './ml-bridge.js';
 import {
   initPageCache, buildCacheKey, buildCacheKeyTier1, buildCacheKeyTier2,
   pageCacheGet, pageCachePut,
@@ -108,6 +108,11 @@ function abortRunResources(id, r) {
   // also rejects the pending promise so `await translateP` doesn't hang.
   try { r.killTranslateWorker?.(Object.assign(new Error('cancelled'), { cancelled: true })); } catch {}
   try { r.translateWorker?.terminate(); } catch {}
+  // Also stop in-flight ML work now instead of waiting for the stage to
+  // finish (up to 120s for inpaint). See ml-bridge cancelMlForRun: the
+  // flag is broadcast to every host, and the worker is terminated when
+  // no other run shares it.
+  try { cancelMlForRun(id); } catch {}
 }
 
 async function cancelRunsForTab(tabId) {
@@ -999,9 +1004,10 @@ async function runPipeline(tabId, opts = {}) {
     // the offscreen document on its own thread).
     let translateOut, inpaintOut;
     if (directHandlers()) {
-      // Firefox: translation runs on a Web Worker (own thread), mask → inpaint
-      // runs on the main thread. The worker's network I/O is not blocked when
-      // WASM inpaint hogs the main thread.
+      // Firefox: translation runs on a Web Worker (own thread) and ML runs
+      // on the ML worker — the main thread only orchestrates, so it stays
+      // free to monitor and restart both. (Mask is synchronous JS on the
+      // main thread, but it is bounded and fast, not WASM.)
       // timings.translate is the worker round-trip ONLY: t0t is set at
       // postMessage and translateEnd at the final reply, so mask/inpaint
       // (which run while the worker works) are NOT counted in it.
@@ -1166,7 +1172,10 @@ async function runPipeline(tabId, opts = {}) {
     result = { runId, ok: true };
   } catch (e) {
     let msg;
-    if (e && e.cancelled) {
+    // A user-cancelled run stays 'cancelled' even if the in-flight work
+    // later fails (e.g. ML times out after Cancel) — the user asked to
+    // stop, so a later error must not surface as a failure.
+    if ((e && e.cancelled) || isCancelled(runId)) {
       setProgress(runId, 'cancelled', 0);
       msg = 'cancelled';
     } else {
@@ -1180,7 +1189,7 @@ async function runPipeline(tabId, opts = {}) {
         await emitDebug(runId, tabId, settings, 'error', { title: 'Error', error: msg });
       } catch { /* ignore */ }
     }
-    result = { runId, ok: false, error: msg, cancelled: !!(e && e.cancelled),
+    result = { runId, ok: false, error: msg, cancelled: !!((e && e.cancelled) || isCancelled(runId)),
       ...(e && e.fallbackUrl ? { fallbackUrl: e.fallbackUrl } : {}) };
   } finally {
     runs.delete(runId);
