@@ -69,7 +69,7 @@ export async function ensureLmStudioHostAccess(url) {
 // 90s — matching the Firefox worker timeout and Chrome's translate
 // deadline, so a hung server can't hold the worker past its kill). Callers
 // thread their own deadline: the SW passes 90s on both browser paths.
-async function lmStudioFetch(url, opts, signal, label, deadlineMs = 90000) {
+async function lmStudioFetch(url, opts, signal, label, deadlineMs = 30000) {
   const deadline = Date.now() + deadlineMs;
   const backoffs = [1000, 2000, 4000];
   let lastErr = null;
@@ -679,7 +679,7 @@ async function localLlm(texts, settings, signal) {
   return googleFree(texts, settings.sourceLang, settings.targetLang, signal);
 }
 
-export async function translateBlocks(blocks, settings, onProgress, signal, deadlineMs = 90000) {
+export async function translateBlocks(blocks, settings, onProgress, signal, deadlineMs = 30000) {
   const idx = [], texts = [];
   blocks.forEach((b, i) => {
     if (b.text && b.text.trim()) { idx.push(i); texts.push(b.text); }
@@ -716,9 +716,9 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
       // backend (a running LM Studio server generating slowly) used to burn
       // the whole deadline, so later backends never got a turn and the
       // overall abort then poisoned their attempts too. Cap each LM Studio
-      // failover attempt at 30s and stop when the budget is gone, so Azure
-      // always gets its turn inside 90s.
-      const FAILOVER_LM_DEADLINE_MS = 30000;
+      // failover attempt at 15s and stop when the budget is gone, so Azure
+      // always gets its turn inside the 30s translate budget.
+      const FAILOVER_LM_DEADLINE_MS = 15000;
       for (const fb of candidates) {
         const remaining = deadlineMs - (performance.now() - translateStart);
         if (remaining <= 0) break;

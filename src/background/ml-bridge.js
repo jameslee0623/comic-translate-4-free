@@ -95,8 +95,8 @@ function mlHostError(type, raw) {
 // Cancel can't help because runPipeline's finally never runs.
 const ML_TIMEOUT_MS = {
   [MSG.ML_DETECT]: 30 * 1000,
-  [MSG.ML_OCR]: 90 * 1000,
-  [MSG.ML_INPAINT]: 90 * 1000,
+  [MSG.ML_OCR]: 60 * 1000,
+  [MSG.ML_INPAINT]: 120 * 1000,
 };
 const ML_TIMEOUT_DEFAULT_MS = 90 * 1000;
 

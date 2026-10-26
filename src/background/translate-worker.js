@@ -11,7 +11,7 @@ self.onmessage = async (e) => {
   // The deadlineMs arg only caps LM Studio; this signal caps Google/Azure
   // too. The message below derives from DEADLINE_MS so it can't drift
   // from the value again.
-  const DEADLINE_MS = 90000;
+  const DEADLINE_MS = 30000;
   const ctrl = new AbortController();
   const deadlineId = setTimeout(() => ctrl.abort(), DEADLINE_MS);
   try {
