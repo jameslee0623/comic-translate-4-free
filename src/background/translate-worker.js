@@ -11,7 +11,7 @@ self.onmessage = async (e) => {
   // Chrome path's abortController. The 170s deadlineMs arg only caps LM
   // Studio; this signal caps Google/Azure too.
   const ctrl = new AbortController();
-  const deadlineId = setTimeout(() => ctrl.abort(), 170000);
+  const deadlineId = setTimeout(() => ctrl.abort(), 90000);
   try {
     // Forward failover notices so the SW can show a pill.
     const onProgress = (p) => {
@@ -19,7 +19,7 @@ self.onmessage = async (e) => {
         self.postMessage({ type: 'failover-notice', failoverFrom: p.failoverFrom, failoverTo: p.failoverTo });
       }
     };
-    const translated = await translateBlocks(blocks, settings, onProgress, ctrl.signal, 170000);
+    const translated = await translateBlocks(blocks, settings, onProgress, ctrl.signal, 90000);
     clearTimeout(deadlineId);
     self.postMessage({ ok: true, translated, backendUsed: blocks[0]?.backendUsed });
   } catch (err) {

@@ -94,11 +94,11 @@ function mlHostError(type, raw) {
 // never resolves, the run entry leaks, pixel payloads accumulate, and
 // Cancel can't help because runPipeline's finally never runs.
 const ML_TIMEOUT_MS = {
-  [MSG.ML_DETECT]: 5 * 60 * 1000,
-  [MSG.ML_OCR]: 10 * 60 * 1000,
-  [MSG.ML_INPAINT]: 15 * 60 * 1000,
+  [MSG.ML_DETECT]: 30 * 1000,
+  [MSG.ML_OCR]: 90 * 1000,
+  [MSG.ML_INPAINT]: 90 * 1000,
 };
-const ML_TIMEOUT_DEFAULT_MS = 5 * 60 * 1000;
+const ML_TIMEOUT_DEFAULT_MS = 90 * 1000;
 
 // Attempt tracking per (runId, type, key): if a callMl times out and the
 // caller retries the same ML op, the retry must not reuse the timed-out

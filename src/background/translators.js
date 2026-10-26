@@ -69,7 +69,7 @@ export async function ensureLmStudioHostAccess(url) {
 // 170s — under the 180s Firefox worker timeout and Chrome's translate
 // deadline, so a hung server can't hold the worker past its kill). Callers
 // thread their own deadline: the SW passes 170s on both browser paths.
-async function lmStudioFetch(url, opts, signal, label, deadlineMs = 170000) {
+async function lmStudioFetch(url, opts, signal, label, deadlineMs = 90000) {
   const deadline = Date.now() + deadlineMs;
   const backoffs = [1000, 2000, 4000];
   let lastErr = null;
@@ -679,7 +679,7 @@ async function localLlm(texts, settings, signal) {
   return googleFree(texts, settings.sourceLang, settings.targetLang, signal);
 }
 
-export async function translateBlocks(blocks, settings, onProgress, signal, deadlineMs = 170000) {
+export async function translateBlocks(blocks, settings, onProgress, signal, deadlineMs = 90000) {
   const idx = [], texts = [];
   blocks.forEach((b, i) => {
     if (b.text && b.text.trim()) { idx.push(i); texts.push(b.text); }

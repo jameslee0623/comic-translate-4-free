@@ -568,7 +568,7 @@ async function renderFromTier1(tabId, runId, tier1Entry, tier2Key, settings, tim
       }).catch(() => {});
     }
   };
-  const translated = await translateBlocks(blocks, effSettings, failoverNotice, abortController.signal, 170000);
+  const translated = await translateBlocks(blocks, effSettings, failoverNotice, abortController.signal, 90000);
   checkCancelled(runId);
   blocks.forEach((b, i) => { b.translation = translated[i]; });
   const translateMs = Math.round(performance.now() - t0);
@@ -875,7 +875,7 @@ async function runPipeline(tabId, opts = {}) {
       // Chrome parity with the Firefox 180s worker timeout: a hung backend
       // must not hang the run forever. The abortController lets translateBlocks
       // stop early when the timeout fires.
-      const TRANSLATE_TIMEOUT_MS = 180000;
+      const TRANSLATE_TIMEOUT_MS = 90000;
       let timeoutId = null;
       const timeoutP = new Promise((_, reject) => {
         timeoutId = setTimeout(() => {
@@ -895,7 +895,7 @@ async function runPipeline(tabId, opts = {}) {
           }
         };
         translated = await Promise.race([
-          translateBlocks(blocks, effSettings, failoverNotice, abortController.signal, 170000),
+          translateBlocks(blocks, effSettings, failoverNotice, abortController.signal, 90000),
           timeoutP,
         ]);
       } finally {
@@ -1009,7 +1009,7 @@ async function runPipeline(tabId, opts = {}) {
           translateTimeout = null;
           tWorker.terminate();
           reject(new Error('translate worker timeout'));
-        }, 180000);
+        }, 90000);
         tWorker.onmessage = (e) => {
           // Failover notices arrive before the final ok/error — show a pill
           // but don't settle the promise.
