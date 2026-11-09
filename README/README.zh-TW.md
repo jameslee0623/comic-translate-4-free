@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-語言： [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
+語言： [English](../README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
 
 用你的語言讀漫畫！
 comic-translate-4-free 會在你瀏覽時自動翻譯漫畫和連環畫。它能辨識日語、英語、簡體/繁體中文（自動偵測），並翻譯成 114 種語言，在原地取代原始圖片。
@@ -9,30 +9,30 @@ comic-translate-4-free 會在你瀏覽時自動翻譯漫畫和連環畫。它能
 
 | 之前（日語） | 之後（繁體中文） |
 | --- | --- |
-| ![原版日語漫畫頁面](docs/images/wikipe-tan-original.jpg) | ![翻譯成繁體中文](docs/images/wikipe-tan-zh-TW.jpg) |
+| ![原版日語漫畫頁面](../docs/images/wikipe-tan-original.jpg) | ![翻譯成繁體中文](../docs/images/wikipe-tan-zh-TW.jpg) |
 
 <details>
 <summary>See translations in 14 more languages</summary>
 
 | Hindi | Korean | Simplified Chinese |
 | --- | --- | --- |
-| ![Hindi](docs/images/wikipe-tan-hi.jpg) | ![Korean](docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](docs/images/wikipe-tan-zh-CN.jpg) |
+| ![Hindi](../docs/images/wikipe-tan-hi.jpg) | ![Korean](../docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](../docs/images/wikipe-tan-zh-CN.jpg) |
 
 | Traditional Chinese | Spanish | Arabic |
 | --- | --- | --- |
-| ![Traditional Chinese](docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](docs/images/wikipe-tan-es.jpg) | ![Arabic](docs/images/wikipe-tan-ar.jpg) |
+| ![Traditional Chinese](../docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](../docs/images/wikipe-tan-es.jpg) | ![Arabic](../docs/images/wikipe-tan-ar.jpg) |
 
 | French | Bengali | Portuguese |
 | --- | --- | --- |
-| ![French](docs/images/wikipe-tan-fr.jpg) | ![Bengali](docs/images/wikipe-tan-bn.jpg) | ![Portuguese](docs/images/wikipe-tan-pt.jpg) |
+| ![French](../docs/images/wikipe-tan-fr.jpg) | ![Bengali](../docs/images/wikipe-tan-bn.jpg) | ![Portuguese](../docs/images/wikipe-tan-pt.jpg) |
 
 | Russian | Vietnamese | Indonesian |
 | --- | --- | --- |
-| ![Russian](docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](docs/images/wikipe-tan-vi.jpg) | ![Indonesian](docs/images/wikipe-tan-id.jpg) |
+| ![Russian](../docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](../docs/images/wikipe-tan-vi.jpg) | ![Indonesian](../docs/images/wikipe-tan-id.jpg) |
 
 | Urdu | German |
 | --- | --- |
-| ![Urdu](docs/images/wikipe-tan-ur.jpg) | ![German](docs/images/wikipe-tan-de.jpg) |
+| ![Urdu](../docs/images/wikipe-tan-ur.jpg) | ![German](../docs/images/wikipe-tan-de.jpg) |
 
 </details>
 
@@ -69,7 +69,7 @@ Firefox:
 
 安裝後，開啟設定頁面，點擊一次下載所有模型（約 350 MB：偵測器、OCR、修補器）。它們會快取在瀏覽器中，並按位元組大小驗證。
 
-![在設定頁面下載模型](docs/images/options-models.png)
+![在設定頁面下載模型](../docs/images/options-models.png)
 
 ---
 
@@ -77,7 +77,7 @@ Firefox:
 
 1. 先允許該網站 — 點擊擴充功能圖示，按允許此網站（或啟用允許所有網站）。翻譯只在你授予權限的地方執行。
 
-   ![在彈出視窗中授權網站](docs/images/popup.png)
+   ![在彈出視窗中授權網站](../docs/images/popup.png)
 
 2. 重新載入漫畫頁面 — 頁面載入時會自動開始翻譯。右上角的氣泡會顯示即時進度（Capturing → Detecting → OCR → …）。
 3. 完成 — 頁面圖片會在原地取代為翻譯後的版本。
@@ -85,7 +85,7 @@ Firefox:
 小提示：
 - 在任意圖片上按右鍵 → 傳送到 comic-translate-4-free，只翻譯那張圖片。
 
-  ![按右鍵傳送圖片](docs/images/right-click.png)
+  ![按右鍵傳送圖片](../docs/images/right-click.png)
 
 - 如果網站封鎖下載（HTTP 403），擴充功能會自動透過背景分頁重試。
 - 在設定中選擇你的翻譯引擎：Google（免費，不需金鑰）、Azure Translator（在下方申請金鑰 — 每月 200 萬字元免費）或 LM Studio（本機伺服器）。
@@ -129,6 +129,6 @@ Firefox:
 
 本專案受 [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) 啟發 — 氣泡/文字偵測器和漫畫微調的 LaMa 修補器是它的 ONNX 匯出，推論邏輯也是從它移植而來。（OCR 使用 genshiai-daichi 的 [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr)。）
 
-捆綁的程式庫、移植的程式碼和執行時下載的模型及其授權列在 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) 中。
+捆綁的程式庫、移植的程式碼和執行時下載的模型及其授權列在 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) 中。
 
-MIT 授權 — 見 [LICENSE](LICENSE)。
+MIT 授權 — 見 [LICENSE](../LICENSE)。

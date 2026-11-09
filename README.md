@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-Language: [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
+Language: [English](README.md) · [हिन्दी](README/README.hi.md) · [日本語](README/README.ja.md) · [한국어](README/README.ko.md) · [简体中文](README/README.zh-CN.md) · [繁體中文](README/README.zh-TW.md) · [Español](README/README.es.md) · [العربية](README/README.ar.md) · [Français](README/README.fr.md) · [বাংলা](README/README.bn.md) · [Português](README/README.pt.md) · [Русский](README/README.ru.md) · [Tiếng Việt](README/README.vi.md) · [Bahasa Indonesia](README/README.id.md) · [اردو](README/README.ur.md) · [Deutsch](README/README.de.md) · [Română](README/README.ro.md)
 
 Read manga in your language — right in the browser.
 

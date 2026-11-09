@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-言語： [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
+言語： [English](../README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
 
 あなたの言語でマンガを読もう！
 comic-translate-4-free はブラウジング中にマンガやコミックを自動で翻訳します。日本語、英語、簡体字/繁体字中国語を読み取り（自動検出）、114言語に翻訳し、画像をその場で置き換えます。
@@ -9,30 +9,30 @@ comic-translate-4-free はブラウジング中にマンガやコミックを自
 
 | ビフォア（日本語） | アフター（英語） |
 | --- | --- |
-| ![元の日本語マンガページ](docs/images/wikipe-tan-original.jpg) | ![英語に翻訳されたもの](docs/images/wikipe-tan-en.jpg) |
+| ![元の日本語マンガページ](../docs/images/wikipe-tan-original.jpg) | ![英語に翻訳されたもの](../docs/images/wikipe-tan-en.jpg) |
 
 <details>
 <summary>他の 14 言語への翻訳を見る</summary>
 
 | ヒンディー語 | 韓国語 | 簡体字中国語 |
 | --- | --- | --- |
-| ![ヒンディー語](docs/images/wikipe-tan-hi.jpg) | ![韓国語](docs/images/wikipe-tan-ko.jpg) | ![簡体字中国語](docs/images/wikipe-tan-zh-CN.jpg) |
+| ![ヒンディー語](../docs/images/wikipe-tan-hi.jpg) | ![韓国語](../docs/images/wikipe-tan-ko.jpg) | ![簡体字中国語](../docs/images/wikipe-tan-zh-CN.jpg) |
 
 | 繁体字中国語 | スペイン語 | アラビア語 |
 | --- | --- | --- |
-| ![繁体字中国語](docs/images/wikipe-tan-zh-TW.jpg) | ![スペイン語](docs/images/wikipe-tan-es.jpg) | ![アラビア語](docs/images/wikipe-tan-ar.jpg) |
+| ![繁体字中国語](../docs/images/wikipe-tan-zh-TW.jpg) | ![スペイン語](../docs/images/wikipe-tan-es.jpg) | ![アラビア語](../docs/images/wikipe-tan-ar.jpg) |
 
 | フランス語 | ベンガル語 | ポルトガル語 |
 | --- | --- | --- |
-| ![フランス語](docs/images/wikipe-tan-fr.jpg) | ![ベンガル語](docs/images/wikipe-tan-bn.jpg) | ![ポルトガル語](docs/images/wikipe-tan-pt.jpg) |
+| ![フランス語](../docs/images/wikipe-tan-fr.jpg) | ![ベンガル語](../docs/images/wikipe-tan-bn.jpg) | ![ポルトガル語](../docs/images/wikipe-tan-pt.jpg) |
 
 | ロシア語 | ベトナム語 | インドネシア語 |
 | --- | --- | --- |
-| ![ロシア語](docs/images/wikipe-tan-ru.jpg) | ![ベトナム語](docs/images/wikipe-tan-vi.jpg) | ![インドネシア語](docs/images/wikipe-tan-id.jpg) |
+| ![ロシア語](../docs/images/wikipe-tan-ru.jpg) | ![ベトナム語](../docs/images/wikipe-tan-vi.jpg) | ![インドネシア語](../docs/images/wikipe-tan-id.jpg) |
 
 | ウルドゥー語 | ドイツ語 |
 | --- | --- |
-| ![ウルドゥー語](docs/images/wikipe-tan-ur.jpg) | ![ドイツ語](docs/images/wikipe-tan-de.jpg) |
+| ![ウルドゥー語](../docs/images/wikipe-tan-ur.jpg) | ![ドイツ語](../docs/images/wikipe-tan-de.jpg) |
 
 </details>
 
@@ -69,7 +69,7 @@ Firefox:
 
 インストール後、設定ページを開いて「すべてのモデルをダウンロード」を一度クリックしてください（約 350 MB：検出器、OCR、インペインター）。ブラウザにキャッシュされ、バイトサイズで検証されます。
 
-![設定ページからモデルをダウンロード](docs/images/options-models.png)
+![設定ページからモデルをダウンロード](../docs/images/options-models.png)
 
 ---
 
@@ -77,7 +77,7 @@ Firefox:
 
 1. まずサイトを許可する — 拡張機能のアイコンをクリックし、このサイトを許可を押します（またはすべてのサイトを許可を有効にします）。翻訳は、許可を与えた場所でのみ動作します。
 
-   ![ポップアップからサイトを許可](docs/images/popup.png)
+   ![ポップアップからサイトを許可](../docs/images/popup.png)
 
 2. マンガのページを再読み込みする — ページが読み込まれると自動で翻訳が始まります。右上のピルがライブの進捗を表示します（Capturing → Detecting → OCR → …）。
 3. 完了 — ページの画像がその場で翻訳版に置き換わります。
@@ -85,7 +85,7 @@ Firefox:
 ヒント：
 - 任意の画像を右クリック → comic-translate-4-free に送信で、その画像だけを翻訳します。
 
-  ![画像を右クリックして送信](docs/images/right-click.png)
+  ![画像を右クリックして送信](../docs/images/right-click.png)
 
 - サイトがダウンロードをブロックする場合（HTTP 403）、拡張機能はバックグラウンドタブ経由で自動的に再試行します。
 - 設定で翻訳エンジンを選んでください：Google（無料、キー不要）、Azure Translator（下記でキーを申請 — 月 200 万文字まで無料）、または LM Studio（ローカルサーバー）。
@@ -129,6 +129,6 @@ Azure Translator を翻訳エンジンとして使用するには：
 
 このプロジェクトは [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) に着想を得ています — 吹き出し/テキスト検出器とマンガで学習した LaMa インペインターはその ONNX エクスポートであり、推論ロジックはそこから移植されています。（OCR は genshiai-daichi の [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) を使用しています。）
 
-バンドルされたライブラリ、移植されたコード、実行時にダウンロードされるモデルは、ライセンスとともに [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) に記載されています。
+バンドルされたライブラリ、移植されたコード、実行時にダウンロードされるモデルは、ライセンスとともに [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) に記載されています。
 
-MIT ライセンス — [LICENSE](LICENSE) を参照。
+MIT ライセンス — [LICENSE](../LICENSE) を参照。

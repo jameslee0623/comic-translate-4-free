@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-언어: [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
+언어: [English](../README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
 
 당신의 언어로 만화를 읽으세요!
 comic-translate-4-free는 브라우징하는 동안 만화와 코믹을 자동으로 번역합니다. 일본어, 영어, 간체/번체 중국어를 읽고(자동 감지), 114개 언어로 번역하며, 이미지를 그 자리에서 대체합니다.
@@ -9,30 +9,30 @@ comic-translate-4-free는 브라우징하는 동안 만화와 코믹을 자동�
 
 | 전 (일본어) | 후 (한국어) |
 | --- | --- |
-| ![원본 일본어 만화 페이지](docs/images/wikipe-tan-original.jpg) | ![한국어로 번역된 결과](docs/images/wikipe-tan-ko.jpg) |
+| ![원본 일본어 만화 페이지](../docs/images/wikipe-tan-original.jpg) | ![한국어로 번역된 결과](../docs/images/wikipe-tan-ko.jpg) |
 
 <details>
 <summary>14개 언어로의 번역 결과 더 보기</summary>
 
 | 힌디어 | 한국어 | 중국어(간체) |
 | --- | --- | --- |
-| ![힌디어](docs/images/wikipe-tan-hi.jpg) | ![한국어](docs/images/wikipe-tan-ko.jpg) | ![중국어(간체)](docs/images/wikipe-tan-zh-CN.jpg) |
+| ![힌디어](../docs/images/wikipe-tan-hi.jpg) | ![한국어](../docs/images/wikipe-tan-ko.jpg) | ![중국어(간체)](../docs/images/wikipe-tan-zh-CN.jpg) |
 
 | 중국어(번체) | 스페인어 | 아랍어 |
 | --- | --- | --- |
-| ![중국어(번체)](docs/images/wikipe-tan-zh-TW.jpg) | ![스페인어](docs/images/wikipe-tan-es.jpg) | ![아랍어](docs/images/wikipe-tan-ar.jpg) |
+| ![중국어(번체)](../docs/images/wikipe-tan-zh-TW.jpg) | ![스페인어](../docs/images/wikipe-tan-es.jpg) | ![아랍어](../docs/images/wikipe-tan-ar.jpg) |
 
 | 프랑스어 | 벵골어 | 포르투갈어 |
 | --- | --- | --- |
-| ![프랑스어](docs/images/wikipe-tan-fr.jpg) | ![벵골어](docs/images/wikipe-tan-bn.jpg) | ![포르투갈어](docs/images/wikipe-tan-pt.jpg) |
+| ![프랑스어](../docs/images/wikipe-tan-fr.jpg) | ![벵골어](../docs/images/wikipe-tan-bn.jpg) | ![포르투갈어](../docs/images/wikipe-tan-pt.jpg) |
 
 | 러시아어 | 베트남어 | 인도네시아어 |
 | --- | --- | --- |
-| ![러시아어](docs/images/wikipe-tan-ru.jpg) | ![베트남어](docs/images/wikipe-tan-vi.jpg) | ![인도네시아어](docs/images/wikipe-tan-id.jpg) |
+| ![러시아어](../docs/images/wikipe-tan-ru.jpg) | ![베트남어](../docs/images/wikipe-tan-vi.jpg) | ![인도네시아어](../docs/images/wikipe-tan-id.jpg) |
 
 | 우르두어 | 독일어 |
 | --- | --- |
-| ![우르두어](docs/images/wikipe-tan-ur.jpg) | ![독일어](docs/images/wikipe-tan-de.jpg) |
+| ![우르두어](../docs/images/wikipe-tan-ur.jpg) | ![독일어](../docs/images/wikipe-tan-de.jpg) |
 
 </details>
 
@@ -69,7 +69,7 @@ Firefox:
 
 설치 후 설정 페이지를 열고 모든 모델 다운로드를 한 번 클릭하세요(약 350MB: 감지기, OCR, 인페인터). 브라우저에 캐시되고 바이트 크기로 검증됩니다.
 
-![설정 페이지에서 모델 다운로드](docs/images/options-models.png)
+![설정 페이지에서 모델 다운로드](../docs/images/options-models.png)
 
 ---
 
@@ -77,7 +77,7 @@ Firefox:
 
 1. 먼저 사이트를 허용하세요 — 확장 프로그램 아이콘을 클릭하고 이 사이트 허용을 누르세요(또는 모든 사이트 허용을 활성화하세요). 번역은 권한을 부여한 곳에서만 실행됩니다.
 
-   ![팝업에서 사이트 허용](docs/images/popup.png)
+   ![팝업에서 사이트 허용](../docs/images/popup.png)
 
 2. 만화 페이지를 새로고침하세요 — 페이지가 로드되면 자동으로 번역이 시작됩니다. 오른쪽 상단의 표시가 실시간 진행 상황을 보여줍니다(Capturing → Detecting → OCR → …).
 3. 완료 — 페이지의 이미지가 그 자리에서 번역된 버전으로 대체됩니다.
@@ -85,7 +85,7 @@ Firefox:
 팁:
 - 모든 이미지를 마우스 오른쪽 버튼으로 클릭 → comic-translate-4-free로 보내기를 선택해 해당 이미지만 번역하세요.
 
-  ![이미지 우클릭으로 전송](docs/images/right-click.png)
+  ![이미지 우클릭으로 전송](../docs/images/right-click.png)
 
 - 사이트가 다운로드를 차단하면(HTTP 403), 확장 프로그램이 백그라운드 탭을 통해 자동으로 다시 시도합니다.
 - 설정에서 번역 엔진을 선택하세요: Google(무료, 키 불필요), Azure Translator(아래에서 키 신청 — 월 200만 자 무료) 또는 LM Studio(로컬 서버).
@@ -129,6 +129,6 @@ Azure Translator를 번역 엔진으로 사용하려면:
 
 이 프로젝트는 [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate)에서 영감을 받았습니다 — 말풍선/텍스트 감지기와 만화로 학습한 LaMa 인페인터는 해당 프로젝트의 ONNX 내보내기이며, 추론 로직은 거기서 가져온 것입니다. (OCR은 genshiai-daichi의 [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr)를 사용합니다.)
 
-번들된 라이브러리, 이식된 코드, 런타임에 다운로드되는 모델은 라이선스와 함께 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)에 나열되어 있습니다.
+번들된 라이브러리, 이식된 코드, 런타임에 다운로드되는 모델은 라이선스와 함께 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)에 나열되어 있습니다.
 
-MIT 라이선스 — [LICENSE](LICENSE)를 참조하세요.
+MIT 라이선스 — [LICENSE](../LICENSE)를 참조하세요.

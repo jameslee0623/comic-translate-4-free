@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-Sprache: [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
+Sprache: [English](../README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
 
 Lies Manga in deiner Sprache!
 comic-translate-4-free übersetzt Manga und Comics automatisch. Es liest Japanisch, Englisch, Vereinfachtes/Traditionelles Chinesisch (Auto-Erkennung) und übersetzt in 114 Sprachen, ersetzt das Bild an Ort und Stelle.
@@ -9,30 +9,30 @@ comic-translate-4-free übersetzt Manga und Comics automatisch. Es liest Japanis
 
 | Vorher (Japanisch) | Nachher (Deutsch) |
 | --- | --- |
-| ![Japanische Manga-Originalseite](docs/images/wikipe-tan-original.jpg) | ![Ins Deutsche übersetzt](docs/images/wikipe-tan-de.jpg) |
+| ![Japanische Manga-Originalseite](../docs/images/wikipe-tan-original.jpg) | ![Ins Deutsche übersetzt](../docs/images/wikipe-tan-de.jpg) |
 
 <details>
 <summary>See translations in 14 more languages</summary>
 
 | Hindi | Korean | Simplified Chinese |
 | --- | --- | --- |
-| ![Hindi](docs/images/wikipe-tan-hi.jpg) | ![Korean](docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](docs/images/wikipe-tan-zh-CN.jpg) |
+| ![Hindi](../docs/images/wikipe-tan-hi.jpg) | ![Korean](../docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](../docs/images/wikipe-tan-zh-CN.jpg) |
 
 | Traditional Chinese | Spanish | Arabic |
 | --- | --- | --- |
-| ![Traditional Chinese](docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](docs/images/wikipe-tan-es.jpg) | ![Arabic](docs/images/wikipe-tan-ar.jpg) |
+| ![Traditional Chinese](../docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](../docs/images/wikipe-tan-es.jpg) | ![Arabic](../docs/images/wikipe-tan-ar.jpg) |
 
 | French | Bengali | Portuguese |
 | --- | --- | --- |
-| ![French](docs/images/wikipe-tan-fr.jpg) | ![Bengali](docs/images/wikipe-tan-bn.jpg) | ![Portuguese](docs/images/wikipe-tan-pt.jpg) |
+| ![French](../docs/images/wikipe-tan-fr.jpg) | ![Bengali](../docs/images/wikipe-tan-bn.jpg) | ![Portuguese](../docs/images/wikipe-tan-pt.jpg) |
 
 | Russian | Vietnamese | Indonesian |
 | --- | --- | --- |
-| ![Russian](docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](docs/images/wikipe-tan-vi.jpg) | ![Indonesian](docs/images/wikipe-tan-id.jpg) |
+| ![Russian](../docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](../docs/images/wikipe-tan-vi.jpg) | ![Indonesian](../docs/images/wikipe-tan-id.jpg) |
 
 | Urdu | German |
 | --- | --- |
-| ![Urdu](docs/images/wikipe-tan-ur.jpg) | ![German](docs/images/wikipe-tan-de.jpg) |
+| ![Urdu](../docs/images/wikipe-tan-ur.jpg) | ![German](../docs/images/wikipe-tan-de.jpg) |
 
 </details>
 
@@ -69,7 +69,7 @@ Firefox:
 
 Öffne nach der Installation die Einstellungen und klicke einmal auf Alle Modelle herunterladen (~350 MB: Detektor, OCR, Inpainter). Sie werden im Browser zwischengespeichert und anhand der Byte-Größe geprüft.
 
-![Die Modelle von der Einstellungsseite herunterladen](docs/images/options-models.png)
+![Die Modelle von der Einstellungsseite herunterladen](../docs/images/options-models.png)
 
 ---
 
@@ -77,7 +77,7 @@ Firefox:
 
 1. Erlaube zuerst die Website — klicke auf das Erweiterungssymbol und drücke Diese Website zulassen (oder aktiviere Alle Websites zulassen). Die Übersetzung läuft nur dort, wo du die Erlaubnis erteilt hast.
 
-   ![Die Website über das Popup freigeben](docs/images/popup.png)
+   ![Die Website über das Popup freigeben](../docs/images/popup.png)
 
 2. Lade die Mangaseite neu — sie beginnt automatisch zu übersetzen, sobald die Seite lädt. Eine Pille oben rechts zeigt den Live-Fortschritt (Capturing → Detecting → OCR → …).
 3. Fertig — das Bild der Seite wird an Ort und Stelle durch die übersetzte Version ersetzt.
@@ -85,7 +85,7 @@ Firefox:
 Tipps:
 - Rechtsklick auf ein beliebiges Bild → An comic-translate-4-free senden, um nur dieses Bild zu übersetzen.
 
-  ![Rechtsklick, um ein Bild zu senden](docs/images/right-click.png)
+  ![Rechtsklick, um ein Bild zu senden](../docs/images/right-click.png)
 
 - Wenn eine Website Downloads blockiert (HTTP 403), versucht es die Erweiterung automatisch über einen Hintergrund-Tab erneut.
 - Wähle deine Übersetzungs-Engine in den Einstellungen: Google (kostenlos, kein Schlüssel), Azure Translator (Schlüssel unten beantragen — 2 Mio. Zeichen/Monat kostenlos) oder LM Studio (lokaler Server).
@@ -129,6 +129,6 @@ Wenn dir diese Erweiterung nützlich ist, erwäge, ihre Entwicklung zu unterstü
 
 Dieses Projekt ist inspiriert von [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) — der Blasen-/Textdetektor und der manga-trainierte LaMa-Inpainter sind dessen ONNX-Exporte, und die Inferenzlogik ist daraus portiert. (OCR verwendet [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) von genshiai-daichi.)
 
-Gebündelte Bibliotheken, portierter Code und zur Laufzeit heruntergeladene Modelle sind mit ihren Lizenzen in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) aufgeführt.
+Gebündelte Bibliotheken, portierter Code und zur Laufzeit heruntergeladene Modelle sind mit ihren Lizenzen in [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) aufgeführt.
 
-MIT-Lizenz — siehe [LICENSE](LICENSE).
+MIT-Lizenz — siehe [LICENSE](../LICENSE).

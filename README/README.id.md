@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-Bahasa: [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
+Bahasa: [English](../README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
 
 Baca manga dalam bahasamu!
 comic-translate-4-free menerjemahkan manga dan komik otomatis saat menjelajah. Membaca Jepang, Inggris, Tionghoa Sederhana/Tradisional (deteksi otomatis), dan menerjemahkan ke 114 bahasa, mengganti gambar di tempatnya.
@@ -9,30 +9,30 @@ comic-translate-4-free menerjemahkan manga dan komik otomatis saat menjelajah. M
 
 | Sebelum (Jepang) | Sesudah (Indonesia) |
 | --- | --- |
-| ![Original Japanese manga page](docs/images/wikipe-tan-original.jpg) | ![Translated to Indonesian](docs/images/wikipe-tan-id.jpg) |
+| ![Original Japanese manga page](../docs/images/wikipe-tan-original.jpg) | ![Translated to Indonesian](../docs/images/wikipe-tan-id.jpg) |
 
 <details>
 <summary>Lihat terjemahan dalam 14 bahasa lainnya</summary>
 
 | Hindi | Korean | Simplified Chinese |
 | --- | --- | --- |
-| ![Hindi](docs/images/wikipe-tan-hi.jpg) | ![Korean](docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](docs/images/wikipe-tan-zh-CN.jpg) |
+| ![Hindi](../docs/images/wikipe-tan-hi.jpg) | ![Korean](../docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](../docs/images/wikipe-tan-zh-CN.jpg) |
 
 | Traditional Chinese | Spanish | Arabic |
 | --- | --- | --- |
-| ![Traditional Chinese](docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](docs/images/wikipe-tan-es.jpg) | ![Arabic](docs/images/wikipe-tan-ar.jpg) |
+| ![Traditional Chinese](../docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](../docs/images/wikipe-tan-es.jpg) | ![Arabic](../docs/images/wikipe-tan-ar.jpg) |
 
 | French | Bengali | Portuguese |
 | --- | --- | --- |
-| ![French](docs/images/wikipe-tan-fr.jpg) | ![Bengali](docs/images/wikipe-tan-bn.jpg) | ![Portuguese](docs/images/wikipe-tan-pt.jpg) |
+| ![French](../docs/images/wikipe-tan-fr.jpg) | ![Bengali](../docs/images/wikipe-tan-bn.jpg) | ![Portuguese](../docs/images/wikipe-tan-pt.jpg) |
 
 | Russian | Vietnamese | Indonesian |
 | --- | --- | --- |
-| ![Russian](docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](docs/images/wikipe-tan-vi.jpg) | ![Indonesian](docs/images/wikipe-tan-id.jpg) |
+| ![Russian](../docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](../docs/images/wikipe-tan-vi.jpg) | ![Indonesian](../docs/images/wikipe-tan-id.jpg) |
 
 | Urdu | German |
 | --- | --- |
-| ![Urdu](docs/images/wikipe-tan-ur.jpg) | ![German](docs/images/wikipe-tan-de.jpg) |
+| ![Urdu](../docs/images/wikipe-tan-ur.jpg) | ![German](../docs/images/wikipe-tan-de.jpg) |
 
 </details>
 
@@ -69,7 +69,7 @@ Firefox:
 
 Setelah menginstal, buka halaman Pengaturan dan klik Unduh semua model sekali (~350 MB: detektor, OCR, inpainter). Model-model itu di-cache di browser dan diverifikasi berdasarkan ukuran byte.
 
-![Downloading the models from the Settings page](docs/images/options-models.png)
+![Downloading the models from the Settings page](../docs/images/options-models.png)
 
 ---
 
@@ -77,7 +77,7 @@ Setelah menginstal, buka halaman Pengaturan dan klik Unduh semua model sekali (~
 
 1. Izinkan situsnya terlebih dahulu — klik ikon ekstensi dan tekan Izinkan situs ini (atau aktifkan Izinkan semua situs). Terjemahan hanya berjalan di tempat Anda memberikan izin.
 
-   ![Allow the site from the popup](docs/images/popup.png)
+   ![Allow the site from the popup](../docs/images/popup.png)
 
 2. Muat ulang halaman manga — terjemahan dimulai secara otomatis saat halaman dimuat. Sebuah pil di kanan atas menunjukkan progres langsung (Capturing → Detecting → OCR → …).
 3. Selesai — gambar halaman diganti di tempatnya dengan versi terjemahan.
@@ -85,7 +85,7 @@ Setelah menginstal, buka halaman Pengaturan dan klik Unduh semua model sekali (~
 Tips:
 - Klik kanan pada gambar apa pun → Kirim ke comic-translate-4-free untuk menerjemahkan hanya gambar itu.
 
-  ![Right-click to send an image](docs/images/right-click.png)
+  ![Right-click to send an image](../docs/images/right-click.png)
 
 - Jika sebuah situs memblokir unduhan (HTTP 403), ekstensi akan otomatis mencoba lagi melalui tab latar belakang.
 - Pilih mesin terjemahan Anda di Pengaturan: Google (gratis, tanpa kunci), Azure Translator (ajukan kunci di bawah — 2 jt karakter/bulan gratis), atau LM Studio (server lokal).
@@ -129,6 +129,6 @@ Jika ekstensi ini berguna bagi Anda, pertimbangkan untuk mendukung pengembangann
 
 Proyek ini terinspirasi oleh [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) — detektor gelembung/teks dan inpainter LaMa yang dilatih manga adalah ekspor ONNX-nya, dan logika inferensinya diporting darinya. (OCR menggunakan [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) oleh genshiai-daichi.)
 
-Pustaka yang dibundel, kode yang diporting, dan model yang diunduh saat runtime dicantumkan beserta lisensinya di [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Pustaka yang dibundel, kode yang diporting, dan model yang diunduh saat runtime dicantumkan beserta lisensinya di [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-Lisensi MIT — lihat [LICENSE](LICENSE).
+Lisensi MIT — lihat [LICENSE](../LICENSE).

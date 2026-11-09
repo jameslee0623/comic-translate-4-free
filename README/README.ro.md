@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-Limba: [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
+Limba: [English](../README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
 
 Citește manga în limba ta!
 comic-translate-4-free traduce automat manga și benzi desenate în timp ce navighezi. Citește japoneză, engleză, chineză simplificată/tradițională (detectare automată) și traduce în 114 limbi, înlocuind imaginea chiar acolo.
@@ -9,30 +9,30 @@ comic-translate-4-free traduce automat manga și benzi desenate în timp ce navi
 
 | Înainte (japoneză) | După (engleză) |
 | --- | --- |
-| ![Pagina originală de manga în japoneză](docs/images/wikipe-tan-original.jpg) | ![Tradusă în engleză](docs/images/wikipe-tan-en.jpg) |
+| ![Pagina originală de manga în japoneză](../docs/images/wikipe-tan-original.jpg) | ![Tradusă în engleză](../docs/images/wikipe-tan-en.jpg) |
 
 <details>
 <summary>Vezi traducerile în alte 14 limbi</summary>
 
 | Hindi | Korean | Simplified Chinese |
 | --- | --- | --- |
-| ![Hindi](docs/images/wikipe-tan-hi.jpg) | ![Korean](docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](docs/images/wikipe-tan-zh-CN.jpg) |
+| ![Hindi](../docs/images/wikipe-tan-hi.jpg) | ![Korean](../docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](../docs/images/wikipe-tan-zh-CN.jpg) |
 
 | Traditional Chinese | Spanish | Arabic |
 | --- | --- | --- |
-| ![Traditional Chinese](docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](docs/images/wikipe-tan-es.jpg) | ![Arabic](docs/images/wikipe-tan-ar.jpg) |
+| ![Traditional Chinese](../docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](../docs/images/wikipe-tan-es.jpg) | ![Arabic](../docs/images/wikipe-tan-ar.jpg) |
 
 | French | Bengali | Portuguese |
 | --- | --- | --- |
-| ![French](docs/images/wikipe-tan-fr.jpg) | ![Bengali](docs/images/wikipe-tan-bn.jpg) | ![Portuguese](docs/images/wikipe-tan-pt.jpg) |
+| ![French](../docs/images/wikipe-tan-fr.jpg) | ![Bengali](../docs/images/wikipe-tan-bn.jpg) | ![Portuguese](../docs/images/wikipe-tan-pt.jpg) |
 
 | Russian | Vietnamese | Indonesian |
 | --- | --- | --- |
-| ![Russian](docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](docs/images/wikipe-tan-vi.jpg) | ![Indonesian](docs/images/wikipe-tan-id.jpg) |
+| ![Russian](../docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](../docs/images/wikipe-tan-vi.jpg) | ![Indonesian](../docs/images/wikipe-tan-id.jpg) |
 
 | Urdu | German |
 | --- | --- |
-| ![Urdu](docs/images/wikipe-tan-ur.jpg) | ![German](docs/images/wikipe-tan-de.jpg) |
+| ![Urdu](../docs/images/wikipe-tan-ur.jpg) | ![German](../docs/images/wikipe-tan-de.jpg) |
 
 </details>
 
@@ -69,7 +69,7 @@ Firefox:
 
 După instalare, deschide pagina Setări și apasă o dată Descarcă toate modelele (~350 MB: detector, OCR, inpainter). Sunt stocate în cache în browser și verificate după dimensiunea în octeți.
 
-![Downloading the models from the Settings page](docs/images/options-models.png)
+![Downloading the models from the Settings page](../docs/images/options-models.png)
 
 ---
 
@@ -77,7 +77,7 @@ După instalare, deschide pagina Setări și apasă o dată Descarcă toate mode
 
 1. Permite mai întâi site-ul — apasă pe pictograma extensiei și apasă Permite acest site (sau activează Permite toate site-urile). Traducerea rulează doar unde ai acordat permisiunea.
 
-   ![Allow the site from the popup](docs/images/popup.png)
+   ![Allow the site from the popup](../docs/images/popup.png)
 
 2. Reîncarcă pagina de manga — începe să traducă automat când se încarcă pagina. O bulină în colțul din dreapta sus arată progresul live (Capturing → Detecting → OCR → …).
 3. Gata — imaginea paginii este înlocuită chiar acolo cu versiunea tradusă.
@@ -85,7 +85,7 @@ După instalare, deschide pagina Setări și apasă o dată Descarcă toate mode
 Sfaturi:
 - Clic dreapta pe orice imagine → Trimite la comic-translate-4-free pentru a traduce doar acea imagine.
 
-  ![Right-click to send an image](docs/images/right-click.png)
+  ![Right-click to send an image](../docs/images/right-click.png)
 
 - Dacă un site blochează descărcările (HTTP 403), extensia încearcă din nou automat printr-o filă de fundal.
 - Alege motorul de traducere în Setări: Google (gratuit, fără cheie), Azure Translator (cere chei mai jos — 2 milioane de caractere/lună gratuit), sau LM Studio (server local).
@@ -129,6 +129,6 @@ Dacă această extensie îți este utilă, ia în considerare sprijinirea dezvol
 
 Acest proiect este inspirat de [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) — detectorul de bule/text și inpainterul LaMa antrenat pe manga sunt exporturile sale ONNX, iar logica de inferență este portată de acolo. (OCR-ul folosește [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) de genshiai-daichi.)
 
-Bibliotecile incluse, codul portat și modelele descărcate la rulare sunt listate cu licențele lor în [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Bibliotecile incluse, codul portat și modelele descărcate la rulare sunt listate cu licențele lor în [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-Licența MIT — vezi [LICENSE](LICENSE).
+Licența MIT — vezi [LICENSE](../LICENSE).

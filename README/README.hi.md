@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-भाषा: [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
+भाषा: [English](../README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
 
 अपनी भाषा में मंगा पढ़ें!
 comic-translate-4-free ब्राउज़ करते समय मंगा और कॉमिक का स्वचालित रूप से अनुवाद करता है। यह जापानी, अंग्रेज़ी, सरलीकृत/पारंपरिक चीनी पढ़ता है (ऑटो-डिटेक्ट), और 114 भाषाओं में अनुवाद करता है, छवि की जगह ले लेता है।
@@ -9,30 +9,30 @@ comic-translate-4-free ब्राउज़ करते समय मंगा
 
 | पहले (जापानी) | बाद में (हिन्दी) |
 | --- | --- |
-| ![मूल जापानी मांगा पेज](docs/images/wikipe-tan-original.jpg) | ![हिन्दी में अनूदित](docs/images/wikipe-tan-hi.jpg) |
+| ![मूल जापानी मांगा पेज](../docs/images/wikipe-tan-original.jpg) | ![हिन्दी में अनूदित](../docs/images/wikipe-tan-hi.jpg) |
 
 <details>
 <summary>14 और भाषाओं में अनुवाद देखें</summary>
 
 | हिन्दी | कोरियाई | सरलीकृत चीनी |
 | --- | --- | --- |
-| ![हिन्दी](docs/images/wikipe-tan-hi.jpg) | ![कोरियाई](docs/images/wikipe-tan-ko.jpg) | ![सरलीकृत चीनी](docs/images/wikipe-tan-zh-CN.jpg) |
+| ![हिन्दी](../docs/images/wikipe-tan-hi.jpg) | ![कोरियाई](../docs/images/wikipe-tan-ko.jpg) | ![सरलीकृत चीनी](../docs/images/wikipe-tan-zh-CN.jpg) |
 
 | पारंपरिक चीनी | स्पैनिश | अरबी |
 | --- | --- | --- |
-| ![पारंपरिक चीनी](docs/images/wikipe-tan-zh-TW.jpg) | ![स्पैनिश](docs/images/wikipe-tan-es.jpg) | ![अरबी](docs/images/wikipe-tan-ar.jpg) |
+| ![पारंपरिक चीनी](../docs/images/wikipe-tan-zh-TW.jpg) | ![स्पैनिश](../docs/images/wikipe-tan-es.jpg) | ![अरबी](../docs/images/wikipe-tan-ar.jpg) |
 
 | फ्रांसीसी | बांग्ला | पुर्तगाली |
 | --- | --- | --- |
-| ![फ्रांसीसी](docs/images/wikipe-tan-fr.jpg) | ![बांग्ला](docs/images/wikipe-tan-bn.jpg) | ![पुर्तगाली](docs/images/wikipe-tan-pt.jpg) |
+| ![फ्रांसीसी](../docs/images/wikipe-tan-fr.jpg) | ![बांग्ला](../docs/images/wikipe-tan-bn.jpg) | ![पुर्तगाली](../docs/images/wikipe-tan-pt.jpg) |
 
 | रूसी | वियतनामी | इंडोनेशियाई |
 | --- | --- | --- |
-| ![रूसी](docs/images/wikipe-tan-ru.jpg) | ![वियतनामी](docs/images/wikipe-tan-vi.jpg) | ![इंडोनेशियाई](docs/images/wikipe-tan-id.jpg) |
+| ![रूसी](../docs/images/wikipe-tan-ru.jpg) | ![वियतनामी](../docs/images/wikipe-tan-vi.jpg) | ![इंडोनेशियाई](../docs/images/wikipe-tan-id.jpg) |
 
 | उर्दू | जर्मन |
 | --- | --- |
-| ![उर्दू](docs/images/wikipe-tan-ur.jpg) | ![जर्मन](docs/images/wikipe-tan-de.jpg) |
+| ![उर्दू](../docs/images/wikipe-tan-ur.jpg) | ![जर्मन](../docs/images/wikipe-tan-de.jpg) |
 
 </details>
 
@@ -69,7 +69,7 @@ Firefox:
 
 इंस्टॉल करने के बाद, सेटिंग्स पेज खोलें और एक बार सभी मॉडल डाउनलोड करें पर क्लिक करें (~350 MB: डिटेक्टर, OCR, इनपेंटर)। वे ब्राउज़र में कैश होते हैं और बाइट आकार से सत्यापित होते हैं।
 
-![Settings पेज से मॉडल डाउनलोड](docs/images/options-models.png)
+![Settings पेज से मॉडल डाउनलोड](../docs/images/options-models.png)
 
 ---
 
@@ -77,7 +77,7 @@ Firefox:
 
 1. पहले साइट को अनुमति दें — एक्सटेंशन आइकन पर क्लिक करें और इस साइट को अनुमति दें दबाएँ (या सभी साइटों को अनुमति दें चालू करें)। अनुवाद केवल वहीं चलता है जहाँ आपने अनुमति दी है।
 
-   ![पॉपअप से साइट की अनुमति दें](docs/images/popup.png)
+   ![पॉपअप से साइट की अनुमति दें](../docs/images/popup.png)
 
 2. मंगा पेज को रीलोड करें — पेज लोड होते ही यह स्वचालित रूप से अनुवाद शुरू कर देता है। ऊपर-दाईं ओर एक पिल लाइव प्रगति दिखाती है (Capturing → Detecting → OCR → …)।
 3. हो गया — पेज की तस्वीर वहीं अनुवादित संस्करण से बदल जाती है।
@@ -85,7 +85,7 @@ Firefox:
 सुझाव:
 - किसी भी छवि पर राइट-क्लिक करें → सिर्फ़ उस तस्वीर का अनुवाद करने के लिए Send to comic-translate-4-free।
 
-  ![तस्वीर भेजने के लिए राइट-क्लिक करें](docs/images/right-click.png)
+  ![तस्वीर भेजने के लिए राइट-क्लिक करें](../docs/images/right-click.png)
 
 - यदि कोई साइट डाउनलोड ब्लॉक करती है (HTTP 403), एक्सटेंशन बैकग्राउंड टैब के माध्यम से स्वचालित रूप से पुनः प्रयास करता है।
 - सेटिंग्स में अपना अनुवाद इंजन चुनें: Google (मुफ़्त, कोई कुंजी नहीं), Azure Translator (नीचे कुंजियों के लिए आवेदन करें — 2M वर्ण/माह मुफ़्त), या LM Studio (स्थानीय सर्वर)।
@@ -129,6 +129,6 @@ Azure Translator को अनुवाद इंजन के रूप मे�
 
 यह परियोजना [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) से प्रेरित है — बबल/टेक्स्ट डिटेक्टर और मंगा-प्रशिक्षित LaMa इनपेंटर इसके ONNX एक्सपोर्ट हैं, और इनफरेंस लॉजिक इससे पोर्ट किया गया है। (OCR genshiai-daichi का [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) उपयोग करता है।)
 
-बंडल की गई लाइब्रेरी, पोर्ट किया गया कोड और रनटाइम में डाउनलोड किए गए मॉडल अपने लाइसेंस के साथ [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) में सूचीबद्ध हैं।
+बंडल की गई लाइब्रेरी, पोर्ट किया गया कोड और रनटाइम में डाउनलोड किए गए मॉडल अपने लाइसेंस के साथ [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) में सूचीबद्ध हैं।
 
-MIT लाइसेंस — [LICENSE](LICENSE) देखें।
+MIT लाइसेंस — [LICENSE](../LICENSE) देखें।

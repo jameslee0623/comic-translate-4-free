@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-اللغة: [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
+اللغة: [English](../README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
 
 اقرأ المانغا بلغتك!
 comic-translate-4-free يترجم المانغا والقصص المصورة تلقائيًا أثناء التصفح. يقرأ اليابانية والإنجليزية والصينية المبسطة/التقليدية (الكشف التلقائي)، ويترجم إلى 114 لغة، ويحل محل الصورة في مكانها.
@@ -9,30 +9,30 @@ comic-translate-4-free يترجم المانغا والقصص المصورة ت�
 
 | قبل (اليابانية) | بعد (العربية) |
 | --- | --- |
-| ![صفحة مانغا يابانية أصلية](docs/images/wikipe-tan-original.jpg) | ![after](docs/images/wikipe-tan-ar.jpg) |
+| ![صفحة مانغا يابانية أصلية](../docs/images/wikipe-tan-original.jpg) | ![after](../docs/images/wikipe-tan-ar.jpg) |
 
 <details>
 <summary>See translations in 14 more languages</summary>
 
 | Hindi | Korean | Simplified Chinese |
 | --- | --- | --- |
-| ![Hindi](docs/images/wikipe-tan-hi.jpg) | ![Korean](docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](docs/images/wikipe-tan-zh-CN.jpg) |
+| ![Hindi](../docs/images/wikipe-tan-hi.jpg) | ![Korean](../docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](../docs/images/wikipe-tan-zh-CN.jpg) |
 
 | Traditional Chinese | Spanish | Arabic |
 | --- | --- | --- |
-| ![Traditional Chinese](docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](docs/images/wikipe-tan-es.jpg) | ![Arabic](docs/images/wikipe-tan-ar.jpg) |
+| ![Traditional Chinese](../docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](../docs/images/wikipe-tan-es.jpg) | ![Arabic](../docs/images/wikipe-tan-ar.jpg) |
 
 | French | Bengali | Portuguese |
 | --- | --- | --- |
-| ![French](docs/images/wikipe-tan-fr.jpg) | ![Bengali](docs/images/wikipe-tan-bn.jpg) | ![Portuguese](docs/images/wikipe-tan-pt.jpg) |
+| ![French](../docs/images/wikipe-tan-fr.jpg) | ![Bengali](../docs/images/wikipe-tan-bn.jpg) | ![Portuguese](../docs/images/wikipe-tan-pt.jpg) |
 
 | Russian | Vietnamese | Indonesian |
 | --- | --- | --- |
-| ![Russian](docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](docs/images/wikipe-tan-vi.jpg) | ![Indonesian](docs/images/wikipe-tan-id.jpg) |
+| ![Russian](../docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](../docs/images/wikipe-tan-vi.jpg) | ![Indonesian](../docs/images/wikipe-tan-id.jpg) |
 
 | Urdu | German |
 | --- | --- |
-| ![Urdu](docs/images/wikipe-tan-ur.jpg) | ![German](docs/images/wikipe-tan-de.jpg) |
+| ![Urdu](../docs/images/wikipe-tan-ur.jpg) | ![German](../docs/images/wikipe-tan-de.jpg) |
 
 </details>
 
@@ -69,7 +69,7 @@ Firefox:
 
 بعد التثبيت، افتح صفحة الإعدادات وانقر على تنزيل كل النماذج مرة واحدة (~350 ميغابايت: الكاشف، OCR، أداة inpainting). يتم تخزينها مؤقتًا في المتصفح والتحقق منها حسب حجم البايت.
 
-![تنزيل النماذج من صفحة الإعدادات](docs/images/options-models.png)
+![تنزيل النماذج من صفحة الإعدادات](../docs/images/options-models.png)
 
 ---
 
@@ -77,7 +77,7 @@ Firefox:
 
 1. اسمح للموقع أولًا — انقر على أيقونة الإضافة واضغط السماح لهذا الموقع (أو فعّل السماح لكل المواقع). الترجمة تعمل فقط حيث منحت الإذن.
 
-   ![السماح للموقع من النافذة المنبثقة](docs/images/popup.png)
+   ![السماح للموقع من النافذة المنبثقة](../docs/images/popup.png)
 
 2. أعد تحميل صفحة المانغا — تبدأ الترجمة تلقائيًا عند تحميل الصفحة. تظهر فقاعة في أعلى اليمين تقدمًا مباشرًا (Capturing → Detecting → OCR → …).
 3. تم — يتم استبدال صورة الصفحة في مكانها بالنسخة المترجمة.
@@ -85,7 +85,7 @@ Firefox:
 نصائح:
 - انقر بزر الماوس الأيمن على أي صورة ← إرسال إلى comic-translate-4-free لترجمة تلك الصورة فقط.
 
-  ![النقر بزر الفأرة الأيمن لإرسال صورة](docs/images/right-click.png)
+  ![النقر بزر الفأرة الأيمن لإرسال صورة](../docs/images/right-click.png)
 
 - إذا حظر موقع ما التنزيلات (HTTP 403)، تعيد الإضافة المحاولة تلقائيًا عبر علامة تبويب في الخلفية.
 - اختر محرك الترجمة في الإعدادات: Google (مجاني، بدون مفتاح)، أو Azure Translator (اطلب المفاتيح أدناه — 2 مليون حرف/شهر مجانًا)، أو LM Studio (خادم محلي).
@@ -129,6 +129,6 @@ Firefox:
 
 هذا المشروع مستوحى من [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) — كاشف الفقاعات/النص ومُزيل النص LaMa المُدرَّب على المانغا هما تصديرات ONNX الخاصة به، ومنطق الاستدلال منقول منه. (يستخدم OCR نموذج [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) من genshiai-daichi.)
 
-المكتبات المضمّنة والكود المنقول والنماذج التي تُنزَّل أثناء التشغيل مدرجة مع تراخيصها في [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+المكتبات المضمّنة والكود المنقول والنماذج التي تُنزَّل أثناء التشغيل مدرجة مع تراخيصها في [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-رخصة MIT — انظر [LICENSE](LICENSE).
+رخصة MIT — انظر [LICENSE](../LICENSE).

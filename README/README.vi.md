@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-Ngôn ngữ: [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
+Ngôn ngữ: [English](../README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
 
 Đọc manga bằng ngôn ngữ của bạn!
 comic-translate-4-free tự động dịch manga và truyện tranh khi bạn duyệt web. Nó đọc tiếng Nhật, tiếng Anh, tiếng Trung giản thể/phồn thể (tự động phát hiện), và dịch sang 114 ngôn ngữ, thay thế hình ảnh ngay tại chỗ.
@@ -9,30 +9,30 @@ comic-translate-4-free tự động dịch manga và truyện tranh khi bạn du
 
 | Trước (tiếng Nhật) | Sau (Tiếng Việt) |
 | --- | --- |
-| ![Original Japanese manga page](docs/images/wikipe-tan-original.jpg) | ![after](docs/images/wikipe-tan-vi.jpg) |
+| ![Original Japanese manga page](../docs/images/wikipe-tan-original.jpg) | ![after](../docs/images/wikipe-tan-vi.jpg) |
 
 <details>
 <summary>See translations in 14 more languages</summary>
 
 | Hindi | Korean | Simplified Chinese |
 | --- | --- | --- |
-| ![Hindi](docs/images/wikipe-tan-hi.jpg) | ![Korean](docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](docs/images/wikipe-tan-zh-CN.jpg) |
+| ![Hindi](../docs/images/wikipe-tan-hi.jpg) | ![Korean](../docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](../docs/images/wikipe-tan-zh-CN.jpg) |
 
 | Traditional Chinese | Spanish | Arabic |
 | --- | --- | --- |
-| ![Traditional Chinese](docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](docs/images/wikipe-tan-es.jpg) | ![Arabic](docs/images/wikipe-tan-ar.jpg) |
+| ![Traditional Chinese](../docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](../docs/images/wikipe-tan-es.jpg) | ![Arabic](../docs/images/wikipe-tan-ar.jpg) |
 
 | French | Bengali | Portuguese |
 | --- | --- | --- |
-| ![French](docs/images/wikipe-tan-fr.jpg) | ![Bengali](docs/images/wikipe-tan-bn.jpg) | ![Portuguese](docs/images/wikipe-tan-pt.jpg) |
+| ![French](../docs/images/wikipe-tan-fr.jpg) | ![Bengali](../docs/images/wikipe-tan-bn.jpg) | ![Portuguese](../docs/images/wikipe-tan-pt.jpg) |
 
 | Russian | Vietnamese | Indonesian |
 | --- | --- | --- |
-| ![Russian](docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](docs/images/wikipe-tan-vi.jpg) | ![Indonesian](docs/images/wikipe-tan-id.jpg) |
+| ![Russian](../docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](../docs/images/wikipe-tan-vi.jpg) | ![Indonesian](../docs/images/wikipe-tan-id.jpg) |
 
 | Urdu | German |
 | --- | --- |
-| ![Urdu](docs/images/wikipe-tan-ur.jpg) | ![German](docs/images/wikipe-tan-de.jpg) |
+| ![Urdu](../docs/images/wikipe-tan-ur.jpg) | ![German](../docs/images/wikipe-tan-de.jpg) |
 
 </details>
 
@@ -69,7 +69,7 @@ Firefox:
 
 Sau khi cài đặt, mở trang Cài đặt và nhấp một lần vào Tải xuống tất cả mô hình (~350 MB: trình phát hiện, OCR, inpainter). Chúng được lưu trong bộ nhớ đệm của trình duyệt và được xác minh theo kích thước byte.
 
-![Tải các mô hình từ trang Cài đặt](docs/images/options-models.png)
+![Tải các mô hình từ trang Cài đặt](../docs/images/options-models.png)
 
 ---
 
@@ -77,7 +77,7 @@ Sau khi cài đặt, mở trang Cài đặt và nhấp một lần vào Tải xu
 
 1. Cho phép trang web trước — nhấp vào biểu tượng tiện ích mở rộng và nhấn Cho phép trang này (hoặc bật Cho phép mọi trang web). Dịch chỉ chạy ở nơi bạn đã cấp quyền.
 
-   ![Cấp quyền cho trang web từ cửa sổ bật lên](docs/images/popup.png)
+   ![Cấp quyền cho trang web từ cửa sổ bật lên](../docs/images/popup.png)
 
 2. Tải lại trang manga — nó bắt đầu dịch tự động khi trang tải. Một viên thuốc ở góc trên bên phải hiển thị tiến trình trực tiếp (Capturing → Detecting → OCR → …).
 3. Xong — hình ảnh của trang được thay thế ngay tại chỗ bằng bản dịch.
@@ -85,7 +85,7 @@ Sau khi cài đặt, mở trang Cài đặt và nhấp một lần vào Tải xu
 Mẹo:
 - Nhấp chuột phải vào bất kỳ hình ảnh nào → Gửi đến comic-translate-4-free để chỉ dịch hình ảnh đó.
 
-  ![Nhấp chuột phải để gửi một ảnh](docs/images/right-click.png)
+  ![Nhấp chuột phải để gửi một ảnh](../docs/images/right-click.png)
 
 - Nếu một trang web chặn tải xuống (HTTP 403), tiện ích mở rộng sẽ tự động thử lại qua một tab nền.
 - Chọn công cụ dịch của bạn trong Cài đặt: Google (miễn phí, không cần khóa), Azure Translator (đăng ký khóa bên dưới — 2 triệu ký tự/tháng miễn phí), hoặc LM Studio (máy chủ cục bộ).
@@ -129,6 +129,6 @@ Nếu tiện ích mở rộng này hữu ích với bạn, hãy cân nhắc hỗ
 
 Dự án này lấy cảm hứng từ [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) — trình phát hiện bong bóng/văn bản và trình inpainting LaMa được huấn luyện trên manga là các bản xuất ONNX của nó, và logic suy luận được chuyển từ đó. (OCR sử dụng [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) của genshiai-daichi.)
 
-Các thư viện đi kèm, mã đã chuyển và các mô hình tải xuống trong thời gian chạy được liệt kê cùng với giấy phép của chúng trong [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Các thư viện đi kèm, mã đã chuyển và các mô hình tải xuống trong thời gian chạy được liệt kê cùng với giấy phép của chúng trong [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-Giấy phép MIT — xem [LICENSE](LICENSE).
+Giấy phép MIT — xem [LICENSE](../LICENSE).

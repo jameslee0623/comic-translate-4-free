@@ -1,6 +1,6 @@
 # comic-translate-4-free
 
-Язык: [English](README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
+Язык: [English](../README.md) · [हिन्दी](README.hi.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [Español](README.es.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [বাংলা](README.bn.md) · [Português](README.pt.md) · [Русский](README.ru.md) · [Tiếng Việt](README.vi.md) · [Bahasa Indonesia](README.id.md) · [اردو](README.ur.md) · [Deutsch](README.de.md) · [Română](README.ro.md)
 
 Читайте мангу на своём языке!
 comic-translate-4-free автоматически переводит мангу и комиксы при просмотре. Читает японский, английский, упрощённый/традиционный китайский (автоопределение) и переводит на 114 языков, заменяя изображение на месте.
@@ -9,30 +9,30 @@ comic-translate-4-free автоматически переводит мангу 
 
 | До (японский) | После (русский) |
 | --- | --- |
-| ![Original Japanese manga page](docs/images/wikipe-tan-original.jpg) | ![Translated to Russian](docs/images/wikipe-tan-ru.jpg) |
+| ![Original Japanese manga page](../docs/images/wikipe-tan-original.jpg) | ![Translated to Russian](../docs/images/wikipe-tan-ru.jpg) |
 
 <details>
 <summary>См. переводы ещё на 14 языках</summary>
 
 | Hindi | Korean | Simplified Chinese |
 | --- | --- | --- |
-| ![Hindi](docs/images/wikipe-tan-hi.jpg) | ![Korean](docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](docs/images/wikipe-tan-zh-CN.jpg) |
+| ![Hindi](../docs/images/wikipe-tan-hi.jpg) | ![Korean](../docs/images/wikipe-tan-ko.jpg) | ![Simplified Chinese](../docs/images/wikipe-tan-zh-CN.jpg) |
 
 | Traditional Chinese | Spanish | Arabic |
 | --- | --- | --- |
-| ![Traditional Chinese](docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](docs/images/wikipe-tan-es.jpg) | ![Arabic](docs/images/wikipe-tan-ar.jpg) |
+| ![Traditional Chinese](../docs/images/wikipe-tan-zh-TW.jpg) | ![Spanish](../docs/images/wikipe-tan-es.jpg) | ![Arabic](../docs/images/wikipe-tan-ar.jpg) |
 
 | French | Bengali | Portuguese |
 | --- | --- | --- |
-| ![French](docs/images/wikipe-tan-fr.jpg) | ![Bengali](docs/images/wikipe-tan-bn.jpg) | ![Portuguese](docs/images/wikipe-tan-pt.jpg) |
+| ![French](../docs/images/wikipe-tan-fr.jpg) | ![Bengali](../docs/images/wikipe-tan-bn.jpg) | ![Portuguese](../docs/images/wikipe-tan-pt.jpg) |
 
 | Russian | Vietnamese | Indonesian |
 | --- | --- | --- |
-| ![Russian](docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](docs/images/wikipe-tan-vi.jpg) | ![Indonesian](docs/images/wikipe-tan-id.jpg) |
+| ![Russian](../docs/images/wikipe-tan-ru.jpg) | ![Vietnamese](../docs/images/wikipe-tan-vi.jpg) | ![Indonesian](../docs/images/wikipe-tan-id.jpg) |
 
 | Urdu | German |
 | --- | --- |
-| ![Urdu](docs/images/wikipe-tan-ur.jpg) | ![German](docs/images/wikipe-tan-de.jpg) |
+| ![Urdu](../docs/images/wikipe-tan-ur.jpg) | ![German](../docs/images/wikipe-tan-de.jpg) |
 
 </details>
 
@@ -69,7 +69,7 @@ Firefox:
 
 После установки откройте страницу настроек и один раз нажмите Скачать все модели (~350 МБ: детектор, OCR, инпейнтер). Они кэшируются в браузере и проверяются по размеру в байтах.
 
-![Downloading the models from the Settings page](docs/images/options-models.png)
+![Downloading the models from the Settings page](../docs/images/options-models.png)
 
 ---
 
@@ -77,7 +77,7 @@ Firefox:
 
 1. Сначала разрешите сайт — нажмите на значок расширения и нажмите Разрешить этот сайт (или включите Разрешить все сайты). Перевод работает только там, где вы дали разрешение.
 
-   ![Allow the site from the popup](docs/images/popup.png)
+   ![Allow the site from the popup](../docs/images/popup.png)
 
 2. Перезагрузите страницу манги — перевод начнётся автоматически при загрузке страницы. Пилюля в правом верхнем углу показывает прогресс в реальном времени (Capturing → Detecting → OCR → …).
 3. Готово — картинка страницы заменяется на месте переведённой версией.
@@ -85,7 +85,7 @@ Firefox:
 Советы:
 - Щёлкните правой кнопкой мыши по любому изображению → Отправить в comic-translate-4-free, чтобы перевести только эту картинку.
 
-  ![Right-click to send an image](docs/images/right-click.png)
+  ![Right-click to send an image](../docs/images/right-click.png)
 
 - Если сайт блокирует загрузки (HTTP 403), расширение автоматически повторяет попытку через фоновую вкладку.
 - Выберите движок перевода в настройках: Google (бесплатно, без ключа), Azure Translator (запросите ключи ниже — 2 млн символов/месяц бесплатно) или LM Studio (локальный сервер).
@@ -129,6 +129,6 @@ Firefox:
 
 Этот проект вдохновлён [ogkalu2/comic-translate](https://github.com/ogkalu2/comic-translate) — детектор облачков/текста и обученный на манге инпейнтер LaMa являются его ONNX-экспортами, а логика вывода портирована из него. (OCR использует [Baberu](https://huggingface.co/genshiai-daichi/baberu-ocr) от genshiai-daichi.)
 
-Включённые библиотеки, портированный код и модели, загружаемые во время работы, перечислены вместе с их лицензиями в [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Включённые библиотеки, портированный код и модели, загружаемые во время работы, перечислены вместе с их лицензиями в [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-Лицензия MIT — см. [LICENSE](LICENSE).
+Лицензия MIT — см. [LICENSE](../LICENSE).
