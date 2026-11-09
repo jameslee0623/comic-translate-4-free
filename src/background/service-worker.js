@@ -297,7 +297,10 @@ async function fetchImagePixels(url, referrer) {
     let res;
     try { res = await fetch(url, init); }
     catch (e) { lastErr = e; break; }
-    if (res.ok) return bitmapToRGBA(await createImageBitmap(await res.blob()));
+    if (res.ok) {
+      const blob = await res.blob();
+      return { ...bitmapToRGBA(await createImageBitmap(blob)), bytes: blob.size };
+    }
     lastErr = new Error('image download failed: HTTP ' + res.status);
     if (res.status !== 403) break;
   }
@@ -336,6 +339,12 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   }
   if (!manualSrc) tooSmall(info.w || 0, info.h || 0);
   const failures = [];
+  // Capture diagnostic: one entry per tier attempted ({tier, ms, ok, bytes?, error?}).
+  // Returned to the caller, which logs it — the log then names the path
+  // (page-canvas = local, page/worker-fetch = network download) and how
+  // long each attempt took, so a slow capture can be read as internet or
+  // local without a debug-mode run.
+  const attempts = [];
   // Tier 1a: pixels straight from the page. Skipped when the page already
   // shows our translated render (info.translated): the canvas would hand back
   // the translated pixels, so the pipeline would translate the translation
@@ -343,6 +352,7 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   // the ORIGINAL url the content script reported, so pixels and cache key
   // stay correct and revisits hit the cache.
   if (!info.translated) {
+    const a0 = performance.now();
     try {
       const p = await chrome.tabs.sendMessage(tabId,
         manualSrc ? { type: 'ct/get-image-pixels', srcUrl: manualSrc } : { type: 'ct/get-image-pixels' });
@@ -350,12 +360,16 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
         const { rgba, w, h } = await dataUrlToRGBA(p.dataUrl);
         // A blank (all-black) capture fed to the detector yields 2 bogus
         // full-page boxes, so validate the pixels before accepting them.
-        if (meanBrightness(rgba) >= 0.004) return { rgba, w, h, mode: 'replace', tier: 'page-canvas' };
+        if (meanBrightness(rgba) >= 0.004) {
+          attempts.push({ tier: 'page-canvas', ms: Math.round(performance.now() - a0), ok: true });
+          return { rgba, w, h, mode: 'replace', tier: 'page-canvas', attempts };
+        }
         failures.push('page canvas returned blank pixels');
       } else {
         failures.push('page canvas: ' + String((p && p.error) || 'no pixels').slice(0, 100));
       }
     } catch (e) { failures.push('page canvas: ' + String((e && e.message) || e).slice(0, 100)); }
+    attempts.push({ tier: 'page-canvas', ms: Math.round(performance.now() - a0), ok: false, error: failures[failures.length - 1] });
   } else {
     failures.push('page canvas skipped (already showing the translated render)');
   }
@@ -366,23 +380,30 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   // what the page itself sends; this tier is indistinguishable from the page
   // loading the image itself. The extension's host permissions let the
   // content script read the cross-origin response bytes.
+  const b0 = performance.now();
   try {
     const f = await chrome.tabs.sendMessage(tabId, { type: 'ct/fetch-image-bytes', srcUrl: info.src });
     if (f && f.ok && typeof f.dataUrl === 'string' && f.dataUrl.startsWith('data:')) {
       const { rgba, w, h } = await dataUrlToRGBA(f.dataUrl);
       if (!manualSrc) tooSmall(w, h);
-      return { rgba, w, h, mode: 'replace', tier: 'page-fetch' };
+      const b64 = f.dataUrl.split(',')[1] || '';
+      attempts.push({ tier: 'page-fetch', ms: Math.round(performance.now() - b0), ok: true, bytes: Math.round(b64.length * 3 / 4) });
+      return { rgba, w, h, mode: 'replace', tier: 'page-fetch', attempts };
     }
     failures.push('page download: ' + String((f && f.error) || 'no bytes').slice(0, 100));
   } catch (e) { failures.push('page download: ' + String((e && e.message) || e).slice(0, 100)); }
+  attempts.push({ tier: 'page-fetch', ms: Math.round(performance.now() - b0), ok: false, error: failures[failures.length - 1] });
   // Tier 1c: background fetch of the image URL (for an already-translated
   // page this is the ORIGINAL url, so the pixels — and the cache key — are
   // the originals, not the render).
+  const c0 = performance.now();
   try {
-    const { rgba, w, h } = await fetchImagePixels(info.src, tabUrl);
+    const { rgba, w, h, bytes } = await fetchImagePixels(info.src, tabUrl);
     if (!manualSrc) tooSmall(w, h);
-    return { rgba, w, h, mode: 'replace', tier: 'worker-fetch' };
+    attempts.push({ tier: 'worker-fetch', ms: Math.round(performance.now() - c0), ok: true, bytes });
+    return { rgba, w, h, mode: 'replace', tier: 'worker-fetch', attempts };
   } catch (e) { failures.push('download: ' + String((e && e.message) || e).slice(0, 120)); }
+  attempts.push({ tier: 'worker-fetch', ms: Math.round(performance.now() - c0), ok: false, error: failures[failures.length - 1] });
   let imgHost = '';
   try { imgHost = new URL(info.src).hostname; } catch { /* keep it empty */ }
   // Name the base domain, not the exact host: on sites with random per-visit
@@ -984,7 +1005,7 @@ async function runPipeline(tabId, opts = {}) {
     // ---- 1. capture: the page's own picture (min-size gated), else viewport
     setProgress(runId, 'capture', 0.02);
     let t0 = performance.now();
-    let rgba, w, h, mode, tier;
+    let rgba, w, h, mode, tier, attempts;
     if (opts.preCaptured) {
       // 403 fallback: pixels were read from a background tab where the image
       // is same-origin. Skip the download tiers entirely; the rest of the
@@ -994,9 +1015,23 @@ async function runPipeline(tabId, opts = {}) {
       mode = 'replace';
       tier = 'fallback-tab';
     } else {
-      ({ rgba, w, h, mode, tier } = await getPipelineImage(tabId, settings, tabUrl, { srcUrl: manualSrc }));
+      ({ rgba, w, h, mode, tier, attempts } = await getPipelineImage(tabId, settings, tabUrl, { srcUrl: manualSrc }));
     }
     timings.capture = Math.round(performance.now() - t0);
+    // Capture diagnostic: which tier ran, how long each attempt took, and
+    // how big the download was — the log then answers "internet or local?"
+    // on its own, no debug mode needed. page-canvas is local (the picture
+    // was already in the page); page/worker-fetch download it, so a slow
+    // fetch with a big byte count is the server or the connection.
+    const capAttempts = attempts || [];
+    for (const a of capAttempts) {
+      diagPush('capture attempt ' + a.tier + ' ' + (a.ok ? 'ok' : 'failed') + ' ms ' + a.ms +
+        (a.bytes != null ? ' bytes ' + a.bytes : '') +
+        (a.error ? ' error ' + String(a.error).slice(0, 120) : ''));
+    }
+    const capWin = capAttempts.find(a => a.ok);
+    diagPush('capture tier ' + tier + ' ms ' + timings.capture + ' image ' + w + 'x' + h +
+      (capWin && capWin.bytes != null ? ' bytes ' + capWin.bytes : ''));
     // Single source of truth for dimensions: normalize ALL capture tiers to
     // renderScale dims HERE, once. Tier 1a (page canvas) already downscales,
     // but tiers 1b/1c (fetches) return full-res — without this, detector
