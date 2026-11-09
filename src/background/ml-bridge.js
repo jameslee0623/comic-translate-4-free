@@ -847,16 +847,16 @@ export async function runPooledInpaint(opts) {
 // spec); if hangs prove deterministic, a session stick is a one-line
 // follow-up, not assumed here.
 //
-// Watchdog window, two-phase (1.4.0 m3): 120 s with no progress AND no
+// Watchdog window, two-phase (1.4.0 m3): 30 s with no progress AND no
 // reply from send (the load window — a fresh GPU worker pays full model
-// load with no progress until the first patch completes), then 60 s of
+// load with no progress until the first patch completes), then 30 s of
 // inactivity after the first progress event. Justification: a GPU tile
 // should complete in seconds (Chrome GPU inpaint is 24s total for 11
 // tiles, about 2s per tile; even a huge 512 tile on GPU is well under
-// 60s), so 60s with no tile completing and no reply after progress
+// 30s), so 30s with no tile completing and no reply after progress
 // started is hang evidence, not slowness. No total cap is imposed: a
 // slow-but-progressing GPU run (progress arriving regularly) is allowed
-// to exceed 120s total, because killing it would be a false positive,
+// to exceed 30s total, because killing it would be a false positive,
 // and the WASM retry still has its own 120s callMl timeout. A false
 // positive costs time (load window + WASM retry), never correctness:
 // the run still completes on WASM. The watchdog is inactivity-only, so
@@ -876,16 +876,20 @@ export async function runPooledInpaint(opts) {
 // Slot code below mirrors the pool slots on purpose (same ready,
 // routing, and termination shape) but is kept separate so pool
 // behavior cannot regress from GPU changes, and vice versa.
-export const GPU_WATCHDOG_INACTIVITY_MS = 60 * 1000;
+export const GPU_WATCHDOG_INACTIVITY_MS = 30 * 1000;
 // 1.4.0 (m3): first-progress window. A fresh GPU worker pays full model
 // load (206 MB IDB read + session creation) with no progress until the
-// first patch completes, so arming the 60 s inactivity window at send
-// could kill a progressing-but-silent cold run. The load window is 120 s
-// (matching the inpaint callMl timeout): a load hang is still caught,
-// at 120 s, not never — and once progress arrives, the window drops to
-// the 60 s inactivity window. loadWindowMs is an opts override so the
-// Node harness can use short windows; production always uses 120 s.
-export const GPU_LOAD_WINDOW_MS = 120 * 1000;
+// first patch completes, so arming the inactivity window at send
+// could kill a progressing-but-silent cold run. Both windows are 30 s
+// (James, 2026-11-09: the WASM safety net should kick in faster — the
+// 120 s load window cost a whole run 2 minutes on a hung GPU): a cold
+// load is ~6 s, so 30 s is 5x margin, and the slowest single GPU patch
+// is ~1 s, so 30 s of silence after progress is a hang, not slowness.
+// A load hang is still caught, at 30 s, not never — and once progress
+// arrives, the window stays at the 30 s inactivity window.
+// loadWindowMs is an opts override so the Node harness can use short
+// windows; production always uses 30 s.
+export const GPU_LOAD_WINDOW_MS = 30 * 1000;
 const GPU_READY_TIMEOUT_MS = 5 * 1000;
 
 function gpuHangError(watchdogMs) {
@@ -1065,7 +1069,7 @@ export async function runGpuInpaint(opts) {
 // — only the spawned worker realm has ['inpaint'].
 //
 // Watchdog: background-side (this module, SW thread), two-phase like
-// Firefox GPU1 (1.4.0 m3): 120 s load window from send, then 60 s of no
+// Firefox GPU1 (1.4.0 m3): 30 s load window from send, then 30 s of no
 // progress AND no reply after the first progress event. Progress
 // arrives one-way from the doc via ML_INPAINT_PROGRESS (offscreen-
 // progress.js, throttled 500ms + final 1.0); the SW's progress branch
