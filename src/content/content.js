@@ -563,6 +563,8 @@
 
   // ------------------------------------------------------------ overlay DOM
   let overlay = null, debugPanel = null, debugBody = null, dbgBtn = null, debugStatus = null;  const stageTabs = {};   // stage -> payload
+  let lastRunTimes = null; // {totalMs, seqMs, breakdown} from the latest render — shown in the diaglog tab
+  let currentDebugTab = null; // stage currently shown in the debug panel
   const stageOrder = ['capture', 'detect', 'blocks', 'ocr', 'mask', 'inpaint', 'translate', 'render', 'diaglog'];
   let currentRunId = null;
   let latestRunId = null;   // run the service worker last started for this tab
@@ -683,6 +685,7 @@
     if (overlay) overlay.remove();
     overlay = null; debugPanel = null; debugBody = null; debugStatus = null;
     for (const k of Object.keys(stageTabs)) delete stageTabs[k];
+    lastRunTimes = null; currentDebugTab = null;
   }
 
   function esc(s) {
@@ -691,19 +694,24 @@
 
   function renderDebugTab(stage) {
     const p = stageTabs[stage];
+    currentDebugTab = stage;
     if (!p) { debugBody.innerHTML = `<p style="color:#888">no data for "${esc(stage)}" yet</p>`; return; }
+    // The total + per-stage times live in the diaglog tab (moved from the
+    // render tab): they come from the render message, not the log payload,
+    // so the diaglog tab reads them from lastRunTimes.
+    const times = stage === 'diaglog' ? lastRunTimes : p;
     let html = `<h3 style="margin:0 0 8px">${esc(p.title || stage)}`;
     if (stage === 'diaglog' && p.log) html += ` <button id="ct-copy-log" style="margin-left:8px;padding:4px 8px;background:#222;border:1px solid #444;color:#ccc;border-radius:4px;cursor:pointer;font:11px sans-serif;vertical-align:middle">Copy</button>`;
     html += `</h3>`;
-    if (p.log) html += `<pre style="white-space:pre-wrap;word-break:break-all;color:#ddd;font:11px monospace;max-height:60vh;overflow:auto;border:1px solid #444;padding:8px">${esc(p.log)}</pre>`;
-    if (p.totalMs != null) {
-      html += `<p style="color:#eee;font-size:14px;margin:0 0 4px">total: <b>${p.totalMs}ms</b>`;
-      if (p.seqMs != null && p.seqMs > p.totalMs) {
-        html += ` <span style="color:#8f8;font-size:12px">(parallelism saved ${p.seqMs - p.totalMs}ms vs sequential ${p.seqMs}ms)</span>`;
+    if (times && times.totalMs != null) {
+      html += `<p style="color:#eee;font-size:14px;margin:0 0 4px">total: <b>${times.totalMs}ms</b>`;
+      if (times.seqMs != null && times.seqMs > times.totalMs) {
+        html += ` <span style="color:#8f8;font-size:12px">(parallelism saved ${times.seqMs - times.totalMs}ms vs sequential ${times.seqMs}ms)</span>`;
       }
       html += `</p>`;
-      if (p.breakdown) html += `<p style="color:#888;margin:0 0 8px">${esc(p.breakdown)}</p>`;
+      if (times.breakdown) html += `<p style="color:#888;margin:0 0 8px">${esc(times.breakdown)}</p>`;
     }
+    if (p.log) html += `<pre style="white-space:pre-wrap;word-break:break-all;color:#ddd;font:11px monospace;max-height:60vh;overflow:auto;border:1px solid #444;padding:8px">${esc(p.log)}</pre>`;
     if (p.ms != null) html += `<p style="color:#888">${p.ms} ms</p>`;
     if (p.error) html += `<p style="color:#f66">${esc(p.error)}</p>`;
     if (p.image) html += `<img src="${p.image}" style="max-width:100%;border:1px solid #444">`;
@@ -751,16 +759,23 @@
         ).join('') + '</table>';
     }
     debugBody.innerHTML = html;
-    // Copy button (diaglog tab only): copies the full log text.
+    // Copy button (diaglog tab only): copies the times (total + per-stage)
+    // above the log text.
     const copyBtn = debugBody.querySelector('#ct-copy-log');
     if (copyBtn) {
       copyBtn.onclick = async () => {
         const done = (t) => { copyBtn.textContent = t; setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500); };
-        try { await navigator.clipboard.writeText(p.log); done('Copied'); }
+        let text = p.log || '';
+        if (lastRunTimes) {
+          const saved = lastRunTimes.seqMs != null && lastRunTimes.seqMs > lastRunTimes.totalMs
+            ? ` (parallelism saved ${lastRunTimes.seqMs - lastRunTimes.totalMs}ms vs sequential ${lastRunTimes.seqMs}ms)` : '';
+          text = `total: ${lastRunTimes.totalMs}ms${saved}\n${lastRunTimes.breakdown}\n\n${text}`;
+        }
+        try { await navigator.clipboard.writeText(text); done('Copied'); }
         catch {
           try {
             const ta = document.createElement('textarea');
-            ta.value = p.log; document.body.appendChild(ta); ta.select();
+            ta.value = text; document.body.appendChild(ta); ta.select();
             document.execCommand('copy'); ta.remove();
             done('Copied');
           } catch { done('Copy failed'); }
@@ -865,6 +880,7 @@
       // URL image). Keeps memory bounded across runs.
       if (currentRunId !== msg.runId) {
         for (const k of Object.keys(stageTabs)) delete stageTabs[k];
+        lastRunTimes = null;
       }
       currentRunId = msg.runId;
       stageTabs[msg.stage] = msg.payload;
@@ -960,6 +976,9 @@
             title: 'Render',
             ms: allTimings.render,
             rows: renderInfo.map(r => ({ text: r.text, translation: `${r.size}px (auto ${r.auto}px)${r.vertical ? ' vertical' : ''}` })),
+          };
+          // Total + per-stage times live in the diaglog tab now, not here.
+          lastRunTimes = {
             totalMs,
             seqMs,
             breakdown: Object.entries(allTimings).filter(([k]) => k !== 'total').map(([k, v]) => `${k} ${v}ms`).join(' · '),
