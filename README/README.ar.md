@@ -131,4 +131,4 @@ Firefox:
 
 المكتبات المضمّنة والكود المنقول والنماذج التي تُنزَّل أثناء التشغيل مدرجة مع تراخيصها في [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-رخصة MIT — انظر [LICENSE](../LICENSE).
+PolyForm Noncommercial License 1.0.0 — انظر [LICENSE](../LICENSE).

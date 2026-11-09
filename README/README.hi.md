@@ -131,4 +131,4 @@ Azure Translator को अनुवाद इंजन के रूप मे�
 
 बंडल की गई लाइब्रेरी, पोर्ट किया गया कोड और रनटाइम में डाउनलोड किए गए मॉडल अपने लाइसेंस के साथ [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) में सूचीबद्ध हैं।
 
-MIT लाइसेंस — [LICENSE](../LICENSE) देखें।
+PolyForm Noncommercial License 1.0.0 — [LICENSE](../LICENSE) देखें।

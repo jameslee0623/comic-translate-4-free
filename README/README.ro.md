@@ -131,4 +131,4 @@ Acest proiect este inspirat de [ogkalu2/comic-translate](https://github.com/ogka
 
 Bibliotecile incluse, codul portat și modelele descărcate la rulare sunt listate cu licențele lor în [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-Licența MIT — vezi [LICENSE](../LICENSE).
+PolyForm Noncommercial License 1.0.0 — vezi [LICENSE](../LICENSE).

@@ -131,4 +131,4 @@ Proyek ini terinspirasi oleh [ogkalu2/comic-translate](https://github.com/ogkalu
 
 Pustaka yang dibundel, kode yang diporting, dan model yang diunduh saat runtime dicantumkan beserta lisensinya di [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-Lisensi MIT — lihat [LICENSE](../LICENSE).
+PolyForm Noncommercial License 1.0.0 — lihat [LICENSE](../LICENSE).

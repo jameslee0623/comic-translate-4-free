@@ -131,4 +131,4 @@ Firefox:
 
 捆綁的程式庫、移植的程式碼和執行時下載的模型及其授權列在 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) 中。
 
-MIT 授權 — 見 [LICENSE](../LICENSE)。
+PolyForm Noncommercial License 1.0.0 — 見 [LICENSE](../LICENSE)。

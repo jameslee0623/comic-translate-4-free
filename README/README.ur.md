@@ -131,4 +131,4 @@ Azure Translator کو ترجمہ انجن کے طور پر استعمال کرن
 
 بنڈل شدہ لائبریریاں، پورٹ کیا گیا کوڈ اور رن ٹائم میں ڈاؤن لوڈ کیے گئے ماڈل اپنے لائسنس کے ساتھ [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) میں درج ہیں۔
 
-MIT لائسنس — [LICENSE](../LICENSE) دیکھیں۔
+PolyForm Noncommercial License 1.0.0 — [LICENSE](../LICENSE) دیکھیں۔

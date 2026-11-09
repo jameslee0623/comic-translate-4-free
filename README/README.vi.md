@@ -131,4 +131,4 @@ Dự án này lấy cảm hứng từ [ogkalu2/comic-translate](https://github.c
 
 Các thư viện đi kèm, mã đã chuyển và các mô hình tải xuống trong thời gian chạy được liệt kê cùng với giấy phép của chúng trong [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-Giấy phép MIT — xem [LICENSE](../LICENSE).
+PolyForm Noncommercial License 1.0.0 — xem [LICENSE](../LICENSE).

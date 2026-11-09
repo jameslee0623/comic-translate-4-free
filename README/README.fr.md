@@ -131,4 +131,4 @@ Ce projet s'inspire de [ogkalu2/comic-translate](https://github.com/ogkalu2/comi
 
 Les bibliothèques incluses, le code porté et les modèles téléchargés à l'exécution sont listés avec leurs licences dans [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-Licence MIT — voir [LICENSE](../LICENSE).
+PolyForm Noncommercial License 1.0.0 — voir [LICENSE](../LICENSE).

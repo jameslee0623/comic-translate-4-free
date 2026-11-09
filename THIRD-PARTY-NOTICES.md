@@ -3,7 +3,10 @@
 This file lists the third-party software used by the comic-translate-4-free
 extension: libraries bundled with it, code it was ported from, and ML models
 it downloads at runtime. The extension's own code is separate from these
-components.
+components: it is licensed under the PolyForm Noncommercial License 1.0.0
+(see LICENSE in the repository root). Versions up to 2.1.2 (Chrome) and
+1.5.2 (Firefox) were released under the MIT License; that grant stands
+for those versions.
 
 ## 1. Bundled libraries (shipped inside the extension package)
 

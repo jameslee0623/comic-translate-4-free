@@ -131,4 +131,4 @@ Firefox:
 
 捆绑的库、移植的代码和运行时下载的模型及其许可证列在 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) 中。
 
-MIT 许可证 — 见 [LICENSE](../LICENSE)。
+PolyForm Noncommercial License 1.0.0 — 见 [LICENSE](../LICENSE)。

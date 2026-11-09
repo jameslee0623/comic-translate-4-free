@@ -43,7 +43,7 @@ service you choose.
 - Dark-themed popup and settings, per-site access controls
 - Debug mode shows every pipeline stage for troubleshooting
 
-**Free and open source**
+**Free for noncommercial use**
 
-MIT licensed. No account, no subscription, no tracking.
+Licensed under the PolyForm Noncommercial License 1.0.0. No account, no subscription, no tracking.
 https://github.com/jameslee0623/comic-translate-4-free

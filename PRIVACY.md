@@ -81,5 +81,5 @@ change constitutes acceptance of the updated policy.
 
 ## Contact
 
-comic-translate-4-free is open source (MIT). For questions about this policy,
+comic-translate-4-free is licensed under the PolyForm Noncommercial License 1.0.0. For questions about this policy,
 open an issue at https://github.com/jameslee0623/comic-translate-4-free.

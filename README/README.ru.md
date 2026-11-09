@@ -131,4 +131,4 @@ Firefox:
 
 Включённые библиотеки, портированный код и модели, загружаемые во время работы, перечислены вместе с их лицензиями в [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md).
 
-Лицензия MIT — см. [LICENSE](../LICENSE).
+PolyForm Noncommercial License 1.0.0 — см. [LICENSE](../LICENSE).

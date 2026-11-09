@@ -131,4 +131,4 @@ Azure Translator を翻訳エンジンとして使用するには：
 
 バンドルされたライブラリ、移植されたコード、実行時にダウンロードされるモデルは、ライセンスとともに [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) に記載されています。
 
-MIT ライセンス — [LICENSE](../LICENSE) を参照。
+PolyForm Noncommercial License 1.0.0 — [LICENSE](../LICENSE) を参照。

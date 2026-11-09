@@ -131,4 +131,4 @@ Azure Translator কে অনুবাদ ইঞ্জিন হিসাবে
 
 বান্ডল করা লাইব্রেরি, পোর্ট করা কোড এবং রানটাইমে ডাউনলোড করা মডেলগুলি তাদের লাইসেন্স সহ [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)-তে তালিকাভুক্ত আছে।
 
-MIT লাইসেন্স — [LICENSE](../LICENSE) দেখুন।
+PolyForm Noncommercial License 1.0.0 — [LICENSE](../LICENSE) দেখুন।

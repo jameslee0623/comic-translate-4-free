@@ -131,4 +131,4 @@ Azure Translator를 번역 엔진으로 사용하려면:
 
 번들된 라이브러리, 이식된 코드, 런타임에 다운로드되는 모델은 라이선스와 함께 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)에 나열되어 있습니다.
 
-MIT 라이선스 — [LICENSE](../LICENSE)를 참조하세요.
+PolyForm Noncommercial License 1.0.0 — [LICENSE](../LICENSE)를 참조하세요.
