@@ -251,6 +251,35 @@ let benchStartedAt = 0;
 // next trigger after a run retries, so a wedged bench gets a fresh
 // attempt on every run instead of blocking the bench forever.
 const BENCH_STALE_MS = 3 * 60 * 1000;
+// 2.1.21 (approach B): the doc starts the bench itself when idle.
+// The SW trigger may never reach a discarded doc, so the doc watches
+// its own idle time: 10s after the last message, if no complete save
+// exists and no bench is running, it starts the bench. Any new message
+// (except a keepalive ping) resets the timer, so the bench never
+// competes with a run. Each approach logs its own outcome, so one run
+// shows which worked and which failed.
+let benchSelfStartTimer = null;
+function scheduleBenchSelfStart() {
+  try { if (benchSelfStartTimer) clearTimeout(benchSelfStartTimer); } catch {}
+  benchSelfStartTimer = setTimeout(() => {
+    try { maybeBenchSelfStart(); } catch {}
+  }, 10000);
+}
+async function maybeBenchSelfStart() {
+  try {
+    if (benchRunning) { benchLog('threads bench self-start: already running, skipping'); return; }
+    const m = await readMeasuredThreads();
+    const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
+    if (m && m.method === 'full-chain' && m.hardwareConcurrency === cores && Number.isInteger(m.threads)) {
+      benchLog('threads bench self-start: already measured ' + m.threads + ' threads, skipping');
+      return;
+    }
+    benchLog('threads bench self-start: idle 10s, starting');
+    runThreadBenchmark().catch(() => {});
+  } catch (e) {
+    try { benchLog('threads bench self-start error: ' + String((e && e.message) || e)); } catch {}
+  }
+}
 async function runThreadBenchmark() {
   if (benchRunning) {
     if (Date.now() - benchStartedAt > BENCH_STALE_MS) {
@@ -953,6 +982,16 @@ const handlers = {
     return { ok: true };
   },
 
+  // ML_BENCH_KEEPALIVE — Chrome 2.1.21 (approach C): the SW pings the
+  // doc every 15s for 2 min after a run to keep it alive while the bench
+  // runs. The doc logs each ping and does NOT cancel the bench for it
+  // (the listener exempts this type from benchCancel), and the ping does
+  // NOT reset the self-start idle timer (the listener exempts it from
+  // scheduleBenchSelfStart too), so the ping never blocks approach B.
+  [MSG.ML_BENCH_KEEPALIVE]() {
+    try { benchLog('threads bench keepalive ping received'); } catch {}
+    return { ok: true };
+  },
   // ML_BENCH_THREADS — Chrome 2.0.13: the SW sends this once after a
   // successful run. Fire-and-forget: returns at once; the benchmark runs
   // on its own (runThreadBenchmark) and saves the winner. A failure
@@ -1443,7 +1482,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   // 2.0.21: a new run interrupts the idle-time benchmark — the bench
   // yields the CPU to real work and retries after the next run. Any
   // message here except the bench trigger itself means real work.
-  if (msg.type !== MSG.ML_BENCH_THREADS) benchCancel();
+  // 2.1.21: the keepalive ping is exempt from benchCancel (it must not
+  // kill the bench it is keeping alive) and from scheduleBenchSelfStart
+  // (it must not reset the idle timer, or approach B could never fire).
+  if (msg.type !== MSG.ML_BENCH_THREADS && msg.type !== MSG.ML_BENCH_KEEPALIVE) benchCancel();
+  if (msg.type !== MSG.ML_BENCH_KEEPALIVE) scheduleBenchSelfStart();
   (async () => {
     try {
       sendResponse(await fn(msg));

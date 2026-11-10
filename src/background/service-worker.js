@@ -1962,6 +1962,36 @@ async function runPipeline(tabId, opts = {}) {
     } catch (e) {
       try { benchTracePush('threads bench trigger: outer error: ' + String((e && e.message) || e)); } catch {}
     }
+    // 2.1.21 (approach C): keep the doc alive while the bench runs. The
+    // doc may be discarded once the run ends, killing a bench in flight.
+    // The SW pings the doc every 15s for 2 minutes after a run; the doc
+    // logs each ping and does NOT cancel the bench for it. If the bench
+    // saves 'done', the pings stop early. Each ping logs its outcome, so
+    // one run shows whether the pings reached the doc. Fire-and-forget:
+    // the run does not wait for the pings.
+    (function startBenchKeepalivePings() {
+      let count = 0;
+      const maxPings = 8; // 8 x 15s = 2 minutes
+      benchTracePush('threads bench keepalive: pings starting (15s x 8)');
+      const tick = async () => {
+        try {
+          const saved = await chrome.storage.local.get('benchStatus');
+          const st = saved && saved.benchStatus;
+          if (st && st.state === 'done') { benchTracePush('threads bench keepalive: bench done, stopping pings'); return; }
+        } catch {}
+        if (count >= maxPings) { benchTracePush('threads bench keepalive: 2 min up, stopping pings'); return; }
+        count++;
+        try {
+          await ensureMlHost();
+          const reply = await chrome.runtime.sendMessage({ type: MSG.ML_BENCH_KEEPALIVE });
+          benchTracePush('threads bench keepalive ping ' + count + ': ok reply=' + JSON.stringify(reply || null));
+        } catch (e) {
+          benchTracePush('threads bench keepalive ping ' + count + ': failed: ' + String((e && e.message) || e));
+        }
+        setTimeout(tick, 15000);
+      };
+      setTimeout(tick, 15000);
+    })();
   } else {
     benchTracePush('threads bench trigger: run not ok (ok=' + (result && result.ok) + '), skipping');
   }
