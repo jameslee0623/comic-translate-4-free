@@ -225,11 +225,29 @@ function benchKeepAliveStop() {
 // while a benchmark is already running, and when a result for this core
 // count already exists.
 let benchRunning = false;
+let benchStartedAt = 0;
+// 2.1.17: a bench that never finishes wedges benchRunning forever, so
+// every later trigger is a no-op and the status stays 'none'. A bench
+// measures at most [3,4,5] then early-stops (~30-90s on the M4), so a
+// bench running longer than 3 minutes is stuck (a hung storage call or
+// a throttled doc) — treat it as stale, reset, and start fresh. The
+// next trigger after a run retries, so a wedged bench gets a fresh
+// attempt on every run instead of blocking the bench forever.
+const BENCH_STALE_MS = 3 * 60 * 1000;
 async function runThreadBenchmark() {
-  if (benchRunning) return;
+  if (benchRunning) {
+    if (Date.now() - benchStartedAt > BENCH_STALE_MS) {
+      benchLog('threads bench stale (running >3m) — resetting and starting fresh');
+      benchRunning = false;
+      benchCancelled = false;
+    } else {
+      return;
+    }
+  }
   if (typeof document === 'undefined') return; // offscreen-document realm only
   if (typeof SharedArrayBuffer === 'undefined') { benchLog('threads bench skipped: no SharedArrayBuffer'); return; }
   benchRunning = true;
+  benchStartedAt = Date.now();
   benchCancelled = false;
   // 2.1.14: hold the doc awake from the very start of the bench, before
   // any await. The keepalive was opened only once measuring began, so a
@@ -383,6 +401,7 @@ async function runThreadBenchmark() {
   } finally {
     benchKeepAliveStop(); // 2.0.24: release the measurement-only hold (also on cancel)
     benchRunning = false;
+    benchStartedAt = 0;
     benchCancelled = false;
   }
 }
