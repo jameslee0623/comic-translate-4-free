@@ -1566,6 +1566,16 @@ async function runPipeline(tabId, opts = {}) {
       }
       const totalInpaintMs = Math.round(performance.now() - t0i);
       if (patches.length) diagPush('inpaint split path ' + inpaintPath + ' ms prep ' + prepMs + ' load ' + splitLoadMs + ' gpu ' + inpaintMs + ' paste ' + pasteMs + ' call ' + callMs + ' total ' + totalInpaintMs + (splitReadyMs != null ? ' readyMs ' + splitReadyMs : '') + (splitTileMax ? ' tileMax ' + splitTileMax : ''));
+      // DIAG (2.1.9): split the call-vs-GPU gap. host = the SW's host
+      // check (ping) before the send; doc = the offscreen handler from
+      // entry to reply (includes the worker call); worker = the GPU
+      // worker's patch loop; load = model load. transit = call - host -
+      // doc = the SW<->doc message hops both ways. Doc overhead (handler
+      // work outside the worker) is doc - load - worker. GPU path only.
+      if (patches.length && inpaintPath === 'gpu' && r && r.hostMs != null) {
+        const transitMs = callMs - (r.hostMs || 0) - (r.docMs || 0);
+        diagPush('inpaint gpu timing host ' + (r.hostMs || 0) + ' doc ' + (r.docMs || 0) + ' worker ' + inpaintMs + ' load ' + splitLoadMs + ' call ' + callMs + ' transit ' + transitMs);
+      }
       parProgress('inpaint', 1);
       await emitDebug(runId, tabId, settings, 'inpaint', {
         title: `Inpaint — ${patches.length} patches`,

@@ -786,9 +786,13 @@ const handlers = {
   // either way. Any other error is a GPU run failure and the SW
   // downgrades (once) to WASM.
   async [MSG.ML_GPU_INPAINT]({ patches, runId }) {
+    // DIAG (2.1.9): doc-side time for the inpaint timing diagnostic —
+    // the SW's call time minus hostMs, docMs, worker ms and loadMs is
+    // the SW<->doc message transit both ways.
+    const docT0 = performance.now();
     if (typeof document === 'undefined') throw new Error('GPU_SKIPPED: ml/gpu-inpaint is offscreen-document-only');
     if (typeof navigator === 'undefined' || !navigator.gpu) throw new Error('GPU_SKIPPED: no navigator.gpu in the offscreen document realm, using WASM path');
-    if (!patches || !patches.length) return { ok: true, results: [], ms: 0, totalTiles: 0 };
+    if (!patches || !patches.length) return { ok: true, results: [], ms: 0, totalTiles: 0, docMs: Math.round(performance.now() - docT0) };
     throwIfCancelled(runId);
     const { worker, readyMs } = await getChromeGpuWorker();
     throwIfCancelled(runId);
@@ -803,7 +807,7 @@ const handlers = {
       }
     });
     armChromeGpuIdleTimer();
-    return { ok: true, results: (res && res.results) || [], ms: (res && res.ms) || 0, totalTiles: (res && res.totalTiles) || 0, readyMs, loadMs: (res && res.loadMs) || 0, patchStats: (res && res.patchStats) || [], tileMax: (res && res.tileMax) || 0 };
+    return { ok: true, results: (res && res.results) || [], ms: (res && res.ms) || 0, totalTiles: (res && res.totalTiles) || 0, readyMs, loadMs: (res && res.loadMs) || 0, patchStats: (res && res.patchStats) || [], tileMax: (res && res.tileMax) || 0, docMs: Math.round(performance.now() - docT0) };
   },
 
   async [MSG.ML_DETECT]({ key, width, height, threshold, runId, noStrip }) {

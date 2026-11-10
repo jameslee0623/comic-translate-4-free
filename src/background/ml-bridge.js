@@ -1175,7 +1175,12 @@ export async function runChromeGpuInpaint(opts) {
     try { onProgress(frac); } catch {}
   });
   try {
+    // DIAG (2.1.9): time the host check separately — the call-vs-GPU
+    // gap (0ms to ~2s across runs) sits somewhere in ensureHost +
+    // messaging, and this splits the host ping out of it.
+    const hostT0 = performance.now();
     await ensureHost();
+    const hostMs = Math.round(performance.now() - hostT0);
     if (isCancelled()) throw gpuCancelledError();
     const res = await new Promise((resolve, reject) => {
       cancelReject = reject;
@@ -1199,7 +1204,7 @@ export async function runChromeGpuInpaint(opts) {
       }, (e) => reject(e));
     });
     clearWatchdog();
-    return { results: (res && res.results) || [], ms: (res && res.ms) || 0, totalTiles: (res && res.totalTiles) || 0, readyMs: (res && res.readyMs), loadMs: (res && res.loadMs) || 0, patchStats: (res && res.patchStats) || [], tileMax: (res && res.tileMax) || 0 };
+    return { results: (res && res.results) || [], ms: (res && res.ms) || 0, totalTiles: (res && res.totalTiles) || 0, readyMs: (res && res.readyMs), loadMs: (res && res.loadMs) || 0, patchStats: (res && res.patchStats) || [], tileMax: (res && res.tileMax) || 0, hostMs, docMs: (res && res.docMs) || 0 };
   } finally {
     clearWatchdog();
     if (activeChromeGpuJobs.get(runId) === job) activeChromeGpuJobs.delete(runId);
