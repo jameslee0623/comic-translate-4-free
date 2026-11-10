@@ -14,7 +14,7 @@ import { pixelPut, pixelTake, pixelDrop, pixelPruneRun } from '../shared/pixel-b
 import { generateMask } from '../shared/mask.js';
 import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL, BACKEND_SHORT_LABEL } from './translators.js';
 import { detectPageLang } from '../shared/lang-detect.js';
-import { mlHostAlive, ensureMlHost, callMl, cancelMlForRun, runPooledInpaint, cancelPooledInpaint, largestPatchAreaShare, runGpuInpaint, cancelGpuInpaint, runChromeGpuInpaint, cancelChromeGpuInpaint, notifyChromeGpuProgress, makeCanvas, canvasToBlob, directHandlers, WEBP_TYPE, WEBP_QUALITY, setMlAlarmRecoveryHook } from './ml-bridge.js';
+import { mlHostAlive, ensureMlHost, callMl, cancelMlForRun, runGpuInpaint, cancelGpuInpaint, runChromeGpuInpaint, cancelChromeGpuInpaint, notifyChromeGpuProgress, makeCanvas, canvasToBlob, directHandlers, WEBP_TYPE, WEBP_QUALITY, setMlAlarmRecoveryHook } from './ml-bridge.js';
 import {
   initPageCache, buildCacheKey, buildCacheKeyTier1, buildCacheKeyTier2,
   pageCacheGet, pageCachePut,
@@ -221,9 +221,6 @@ function abortRunResources(id, r) {
   // flag is broadcast to every host, and the worker is terminated when
   // no other run shares it.
   try { cancelMlForRun(id); } catch {}
-  // POOL1: pool workers are separate Worker instances, not covered by
-  // cancelMlForRun's shared-worker broadcast — terminate them too.
-  try { cancelPooledInpaint(id); } catch {}
   // GPU1: the GPU worker is likewise a separate Worker instance, not
   // covered by cancelMlForRun's shared-worker broadcast — terminate
   // it too (reclaims GPU buffers; cancel never falls back to WASM).
@@ -1430,7 +1427,7 @@ async function runPipeline(tabId, opts = {}) {
         // skipped, so a missing navigator.gpu is visible, not silent.
         const callT0 = performance.now();
         if (directHandlers() && !gpuDowngradedThisRun && !(typeof navigator !== 'undefined' && navigator.gpu)) {
-          diagPush('inpaint gpu skipped: no navigator.gpu, using WASM/pool path');
+          diagPush('inpaint gpu skipped: no navigator.gpu, using WASM path');
         }
         if (directHandlers() && !gpuDowngradedThisRun && typeof navigator !== 'undefined' && navigator.gpu) {
           try {
@@ -1488,39 +1485,12 @@ async function runPipeline(tabId, opts = {}) {
               diagPush('inpaint gpu WASM retry done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0));
             }
           }
-        } else if (directHandlers() && patches.length >= 2) {
-        // POOL1 (Firefox only): two dedicated ML workers, one per patch
-        // group, each running the existing sequential handler loop over
-        // its subset. Chrome keeps the single path (offscreen document).
-        // 1.4.0 (m8): balance gate — skip pool when the largest patch
-        // holds >60% of total area. It cannot be split and will dominate
-        // either way, so pool only adds 2x model load for no gain.
-        // 1.4.0 (M2): ANY pool failure (creation OR group) falls back
-        // to single. Published users must not be pool-breakage
-        // detectors. The single retry replaces the whole pool result,
-        // never merges partial pool output. Cancelled runs never fall back.
-          const poolShare = largestPatchAreaShare(wirePatches);
-          if (poolShare > 0.6) {
-            diagPush('inpaint pool skipped: largest patch holds ' + Math.round(poolShare * 100) + '% of area, using single');
-            r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
-          } else {
-            try {
-              r = await runPooledInpaint({
-                runId, patches: wirePatches,
-                onProgress: (frac) => parProgress('inpaint', frac),
-                diag: diagPush,
-                isCancelled: () => runs.get(runId)?.cancelled === true,
-              });
-              inpaintPath = 'pool';
-              diagPush('inpaint pool done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0));
-            } catch (e) {
-              checkCancelled(runId);
-              inpaintPath = 'pool-failed-single';
-              diagPush('inpaint pool ' + (e && e.poolCreationFailed ? 'creation failed' : 'group failed') + ', falling back to single: ' + String((e && e.message) || e).slice(0, 120));
-              r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
-            }
-          }
         } else {
+          // Single WASM inpaint (2.1.27): the Firefox 2-worker pool
+          // (POOL1) was removed — it never beat single (83.5s pool vs
+          // 80.5s single on the standard page, 2026-11-04), and on this
+          // Mac it never ran anyway (Firefox has GPU, GPU fails, then
+          // single WASM). One big patch sets the floor no split can beat.
           r = await callMlChecked(runId, {
             type: MSG.ML_INPAINT, runId,
             patches: wirePatches,
@@ -2425,7 +2395,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // 1.4.0 (m4): Chrome service workers now run this too, with a guard:
 // orphans with a pending ct-ml alarm entry are skipped (the alarm backup
 // will fail those, single error), while orphans with NO ct-ml entry
-// (GPU/pool runs, which bypass callMl and create no alarm entries, and
+// (GPU runs, which bypass callMl and create no alarm entries, and
 // runs past ML) are failed here — previously they were lost with a
 // stuck pill and no error. Firefox behaviour is unchanged (all orphans
 // failed here); m1 idempotence prevents the alarm double-fail there.

@@ -520,306 +520,6 @@ async function callMlInner(msg) {
   return res;
 }
 
-// ---------------------------------------------------------------- Firefox inpaint pool (POOL1)
-// Firefox WASM threads are OFF (MEASURE1: SharedArrayBuffer no,
-// crossOriginIsolated false, numThreads 1; SAB is impossible in a Firefox
-// extension, Mozilla bug 1673477). The only multi-core route left is
-// several Dedicated Workers, each running single-threaded WASM on its
-// own core. This pool is CPU-only and WASM-only: providers stay ['wasm'],
-// no WebGPU, no GPU code, and numThreads handling is untouched (each
-// worker's WASM is single-threaded because SAB is off, so there is no
-// thread budget to split).
-//
-// Why separate workers, not two concurrent calls to the shared worker:
-// the shared worker (ensureMlWorker above) runs ONE handler module with
-// ONE singleton inpainter session, ONE cancelledRuns set, and ONE
-// progress stream per runId. Two concurrent ML_INPAINT calls into it
-// would share that session (concurrent session.run calls are not proven
-// safe here) and their progress fractions would collide on the same
-// runId. A pool worker is a fresh ml-worker.js instance: its own module,
-// its own inpainter, its own cancelledRuns, its own progress stream.
-// Pixel keys are per-patch and disjoint across groups, and IDB is shared
-// safely, so groups never clobber each other.
-//
-// Pool calls deliberately bypass callMl/callMlInner and the shared
-// worker: the shared worker's timeout path (cancelMlRun) kills the shared
-// worker and fails ALL its pending calls, which would be wrong for one
-// pool group. Each pool group gets its own 120s timer that terminates
-// only that group's worker. FIX1 orphan recovery still covers a dead
-// background page (persisted run record); the pool alarm backup does
-// not cover pool calls, because pool calls never create ct-ml alarm
-// entries — the per-group timer covers the background-alive case and
-// orphan recovery covers the background-dead case.
-// Pure helpers (splitPatchesByArea, aggregateGroupProgress) are exported
-// so the Node harness imports the exact production code, not a copy.
-
-// Greedy balanced split by patch area (LPT scheduling): largest patch
-// first, each patch to the currently-lightest group. Area is the cost
-// proxy (LaMa time scales with tile pixels; tile counts follow area).
-// Returns only non-empty groups, patches in original order within each
-// group. Patch-level balance is coarse on few-patch pages (a single
-// huge patch cannot be split) — that limit is reported, not hidden.
-export function splitPatchesByArea(patches, k = 2) {
-  if (!patches || !patches.length) return [];
-  const n = Math.max(1, Math.min(k || 2, patches.length));
-  const groups = Array.from({ length: n }, () => ({ patches: [], area: 0 }));
-  const sorted = [...patches].sort((a, b) => ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0)));
-  for (const p of sorted) {
-    let gi = 0;
-    for (let i = 1; i < groups.length; i++) if (groups[i].area < groups[gi].area) gi = i;
-    groups[gi].patches.push(p);
-    groups[gi].area += (p.width || 0) * (p.height || 0);
-  }
-  const order = new Map(patches.map((p, i) => [p, i]));
-  for (const g of groups) g.patches.sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
-  return groups.filter(g => g.patches.length > 0);
-}
-
-// 1.4.0 (m8): share of total patch area held by the largest patch.
-// The service worker skips the pool when this exceeds 0.6: the largest
-// patch cannot be split and will dominate either way, so pool only
-// adds 2x model load for no gain. Pure, exported for the Node harness.
-export function largestPatchAreaShare(patches) {
-  if (!patches || !patches.length) return 0;
-  let total = 0;
-  let largest = 0;
-  for (const p of patches) {
-    const a = (p.width || 0) * (p.height || 0);
-    total += a;
-    if (a > largest) largest = a;
-  }
-  return total > 0 ? largest / total : 0;
-}
-
-// Weighted progress: each group's fraction (0..1 within its subset)
-// weighted by its share of total patch area. Group fractions are
-// monotonic (sequential handler loop), weights are positive, so the
-// aggregate is monotonic and reaches exactly 1 when all groups finish.
-export function aggregateGroupProgress(fracs, weights) {
-  let s = 0;
-  for (let i = 0; i < fracs.length; i++) s += (weights[i] || 0) * (fracs[i] || 0);
-  return Math.max(0, Math.min(1, s));
-}
-
-function poolCreationError(cause) {
-  return Object.assign(new Error('inpaint pool creation failed: ' + String((cause && cause.message) || cause || '')), { poolCreationFailed: true });
-}
-function poolCancelledError() {
-  return Object.assign(new Error('cancelled'), { cancelled: true });
-}
-function poolTimeoutError(timeoutMs) {
-  const err = new Error(`ML host timed out during inpainter after ${timeoutMs / 1000}s — the ML thread was restarted automatically. Try again.`);
-  err.mlTimeout = true;
-  err.mlType = MSG.ML_INPAINT;
-  return err;
-}
-
-function createPoolSlot(createWorker, readyTimeoutMs) {
-  const worker = createWorker();
-  const slot = { worker, pending: new Map(), seq: 0, dead: false, terminated: false, onProgress: null, readyPromise: null, _rejectReady: null };
-  // 1.4.0 (m10 follow-up): a slot's readyPromise must never reject
-  // unhandled. If pool creation throws before the Promise.all await
-  // (e.g. a later Worker constructor throws), finally closes the pool
-  // and terminatePoolSlot rejects this slot's still-pending
-  // readyPromise — with no awaiter attached, that is an unhandled
-  // rejection in the background. A no-op catch branch marks it handled;
-  // awaiting the original readyPromise still throws for its awaiter.
-  // (Same guard in createGpuSlot below, for the same reason.)
-  slot.readyPromise = new Promise((resolve, reject) => {
-    slot._rejectReady = reject;
-    const to = setTimeout(() => {
-      slot.dead = true;
-      try { worker.terminate(); } catch {}
-      reject(new Error('pool worker did not become ready'));
-    }, readyTimeoutMs);
-    worker.onmessage = (e) => {
-      const d = e && e.data;
-      if (!d) return;
-      if (d.type === 'ml-ready') {
-        clearTimeout(to);
-        worker.onmessage = (ev) => routePoolSlotMessage(slot, ev);
-        worker.onerror = (ev) => {
-          slot.dead = true;
-          rejectPoolSlotPending(slot, new Error('ML worker failed: ' + String((ev && ev.message) || ev || '')));
-        };
-        resolve();
-      }
-    };
-    worker.onerror = (ev) => {
-      clearTimeout(to);
-      slot.dead = true;
-      reject(new Error('pool worker failed to start: ' + String((ev && ev.message) || ev || '')));
-    };
-  });
-  slot.readyPromise.catch(() => {}); // 1.4.0 (m10): never an unhandled rejection (see comment above).
-  return slot;
-}
-
-function rejectPoolSlotPending(slot, err) {
-  const pend = [...slot.pending.values()];
-  slot.pending.clear();
-  for (const p of pend) {
-    try { p.reject(err); } catch {}
-  }
-}
-
-function routePoolSlotMessage(slot, e) {
-  const d = e && e.data;
-  if (!d) return;
-  if (d.type === 'inpaint-progress') {
-    try { slot.onProgress?.(d.frac); } catch {}
-    return;
-  }
-  if (d.callId == null) return;
-  const p = slot.pending.get(d.callId);
-  if (!p) return;
-  slot.pending.delete(d.callId);
-  if (d.ok) p.resolve(d.res);
-  else p.reject(new Error(d.error || 'ML worker failed'));
-}
-
-function terminatePoolSlot(slot, err) {
-  if (slot.terminated) return;
-  slot.terminated = true;
-  slot.dead = true;
-  try { slot._rejectReady?.(err || new Error('pool worker terminated')); } catch {}
-  rejectPoolSlotPending(slot, err || new Error('pool worker terminated'));
-  slot.onProgress = null;
-  try { slot.worker.terminate(); } catch {}
-}
-
-function terminatePoolSlots(slots, err) {
-  for (const s of slots || []) {
-    try { terminatePoolSlot(s, err); } catch {}
-  }
-}
-
-// Active pools by runId, so user cancel (from the service worker's abort
-// path) can kill a pool from outside the awaiting runPooledInpaint call.
-const activePools = new Map();
-export function cancelPooledInpaint(runId) {
-  const pool = activePools.get(runId);
-  if (!pool) return;
-  try { pool.close(poolCancelledError()); } catch {}
-}
-
-// Run one ML_INPAINT group on one pool worker with its own timeout.
-// The timer terminates ONLY this group's worker (never the shared
-// worker); termination rejects the pending call with the timeout error.
-async function callPoolSlotWithTimeout(slot, msg, onProgress, timeoutMs) {
-  if (slot.dead || slot.terminated) throw new Error('pool worker is dead');
-  const timer = setTimeout(() => terminatePoolSlot(slot, poolTimeoutError(timeoutMs)), timeoutMs);
-  try {
-    return await new Promise((resolve, reject) => {
-      const callId = ++slot.seq;
-      slot.pending.set(callId, { resolve, reject });
-      slot.onProgress = onProgress;
-      try {
-        slot.worker.postMessage({ ...msg, callId });
-      } catch (e) {
-        slot.pending.delete(callId);
-        reject(e);
-      }
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-// Firefox-first inpaint pool. opts: {runId, patches, k=2,
-// onProgress(frac 0..1), diag(line), isCancelled(), createWorker,
-// timeoutMs=120000, readyTimeoutMs=5000}. Returns {results, ms, totalTiles}
-// in the same shape as a single ML_INPAINT call, so the caller's merge
-// code is unchanged. Group failure retries once on a FRESH worker
-// (terminated workers never run a retry: their heap may be poisoned);
-// a second failure fails the run cleanly. Pool creation failure throws
-// with poolCreationFailed (caller falls back to the single call).
-// Cancel: cancelPooledInpaint(runId) closes the pool; in-flight groups
-// reject as cancelled and never retry (closed check below prevents
-// post-close worker creation and late writes).
-export async function runPooledInpaint(opts) {
-  const {
-    runId, patches,
-    k = 2,
-    onProgress = () => {},
-    diag = () => {},
-    isCancelled = () => false,
-    createWorker = () => new Worker(chrome.runtime.getURL('src/background/ml-worker.js')),
-    timeoutMs = 120 * 1000,
-    readyTimeoutMs = 5000,
-  } = opts || {};
-  const groups = splitPatchesByArea(patches || [], k);
-  if (!groups.length) return { results: [], ms: 0, totalTiles: 0 };
-  const totalArea = groups.reduce((a, g) => a + g.area, 0);
-  const weights = totalArea > 0 ? groups.map(g => g.area / totalArea) : groups.map(() => 1 / groups.length);
-  diag('inpaint pool groups K=' + groups.length + ' ' + groups.map((g, i) =>
-    `group${i} patches [${g.patches.map(p => p.id).join(',')}] area ${g.area}`).join(' '));
-  const pool = {
-    slots: [],
-    closed: false,
-    close(err) {
-      if (this.closed) return;
-      this.closed = true;
-      terminatePoolSlots(this.slots, err);
-    },
-  };
-  activePools.set(runId, pool);
-  try {
-    try {
-      // 1.4.0 (m10): append each slot immediately, so a mid-creation
-      // throw still leaves already-created slots in pool.slots for
-      // finally to terminate (the old map assignment never completed,
-      // so pool.slots stayed empty and created workers leaked).
-      pool.slots = [];
-      for (let i = 0; i < groups.length; i++) pool.slots.push(createPoolSlot(createWorker, readyTimeoutMs));
-      await Promise.all(pool.slots.map(s => s.readyPromise));
-    } catch (e) {
-      throw poolCreationError(e);
-    }
-    const fracs = groups.map(() => 0);
-    const report = () => {
-      try { onProgress(aggregateGroupProgress(fracs, weights)); } catch {}
-    };
-    const runAttempt = async (gi, attempt) => {
-      if (pool.closed) throw new Error('pool worker terminated');
-      if (isCancelled()) throw poolCancelledError();
-      const slot = pool.slots[gi];
-      const subset = groups[gi].patches.map(({ id, key, maskKey, width, height }) => ({ id, key, maskKey, width, height }));
-      return await callPoolSlotWithTimeout(slot,
-        { type: MSG.ML_INPAINT, runId, attempt, patches: subset },
-        (f) => { fracs[gi] = f; report(); },
-        timeoutMs);
-    };
-    const runGroup = async (gi) => {
-      try {
-        return await runAttempt(gi, 1);
-      } catch (e) {
-        if (pool.closed || isCancelled() || (e && e.cancelled)) throw e;
-        diag('inpaint pool group ' + gi + ' failed, retrying once: ' + String((e && e.message) || e).slice(0, 120));
-        try {
-          const old = pool.slots[gi];
-          try { terminatePoolSlot(old); } catch {}
-          const replacement = createPoolSlot(createWorker, readyTimeoutMs);
-          pool.slots[gi] = replacement;
-          await replacement.readyPromise;
-        } catch (re) {
-          throw e;
-        }
-        return await runAttempt(gi, 2);
-      }
-    };
-    const groupResults = await Promise.all(groups.map((_, gi) => runGroup(gi)));
-    const allResults = groupResults.flatMap(r => r.results || []);
-    const ms = Math.max(0, ...groupResults.map(r => r.ms || 0));
-    const totalTiles = groupResults.reduce((a, r) => a + (r.totalTiles || 0), 0);
-    diag('inpaint pool done groups ms [' + groupResults.map(r => r.ms || 0).join(',') + '] totalTiles ' + totalTiles);
-    return { results: allResults, ms, totalTiles };
-  } finally {
-    activePools.delete(runId);
-    try { pool.close(); } catch {}
-  }
-}
-
 // ---------------------------------------------------------------- Firefox GPU inpaint (GPU1, LaMa only)
 // The missing piece from 1.3.6 was a hang watchdog: a GPU stall throws
 // nothing, so error-only fallback can never catch it. This section is
@@ -864,7 +564,7 @@ export async function runPooledInpaint(opts) {
 // pattern (progress stops at 71%, then silence) as well as a
 // no-progress-from-start hang.
 //
-// Alarm note: GPU calls bypass callMl (like pool calls), so they
+// Alarm note: GPU calls bypass callMl, so they
 // create no ct-ml alarm entries. The watchdog covers the
 // background-alive case; FIX1 orphan recovery covers the
 // background-dead case. Firefox only reaches this section: the
@@ -873,9 +573,7 @@ export async function runPooledInpaint(opts) {
 // watchdog and downgrade, forwarded through the offscreen document,
 // which is the only context that can spawn the GPU worker there.
 //
-// Slot code below mirrors the pool slots on purpose (same ready,
-// routing, and termination shape) but is kept separate so pool
-// behavior cannot regress from GPU changes, and vice versa.
+// Slot code below follows the ready, routing, and termination shape.
 export const GPU_WATCHDOG_INACTIVITY_MS = 30 * 1000;
 // 1.4.0 (m3): first-progress window. A fresh GPU worker pays full model
 // load (206 MB IDB read + session creation) with no progress until the
@@ -912,7 +610,7 @@ export function cancelGpuInpaint(runId) {
 function createGpuSlot(createWorker, readyTimeoutMs) {
   const worker = createWorker();
   const slot = { worker, pending: new Map(), seq: 0, dead: false, terminated: false, onProgress: null, readyPromise: null, _rejectReady: null };
-  // 1.4.0 (m10): same no-op-catch guard as createPoolSlot — a
+  // 1.4.0 (m10): no-op-catch guard — a
   // terminateGpuSlot before the readyPromise is awaited must never
   // surface as an unhandled rejection. (The catch branch is added
   // after the promise is assigned, below.)
@@ -1087,7 +785,7 @@ export async function runGpuInpaint(opts) {
 // the ML_CANCEL broadcast to the doc does the same thing (belt and
 // suspenders, idempotent).
 //
-// Alarm note: like pool and Firefox GPU calls, Chrome GPU calls bypass
+// Alarm note: like Firefox GPU calls, Chrome GPU calls bypass
 // callMl, so they create no ct-ml alarm entries. The watchdog covers
 // the SW-alive case. The SW-dead case is NOT covered by the callMl
 // alarm backup for GPU calls (no entry exists to fire); progress
