@@ -1198,7 +1198,7 @@ async function runPipeline(tabId, opts = {}) {
               type: MSG.ML_POOL_OCR, runId, sourceLang: settings.sourceLang,
               crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
             });
-            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?') + ' threads ' + (r.threads ? r.threads[0] + '+' + r.threads[1] : '?') + ' groupMs ' + (r.groupMs ? r.groupMs[0] + '+' + r.groupMs[1] : '?') + ' src ' + (r.threadsSource || '?'));
+            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?') + ' threads ' + (r.threads ? r.threads[0] + '+' + r.threads[1] : '?') + ' groupMs ' + (r.groupMs ? r.groupMs[0] + '+' + r.groupMs[1] : '?') + ' src ' + (r.threadsSource || '?') + ' bench ' + (r.bench || '?'));
           } catch (e) {
             checkCancelled(runId);
             diagPush('ocr pool failed, falling back to single: ' + String((e && e.message) || e));

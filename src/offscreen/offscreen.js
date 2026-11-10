@@ -106,6 +106,23 @@ threadsReady();
 
 // Chrome 2.0.13: one benchmark line to the panel log (via the SW, which
 // owns diagPush) plus the offscreen doc console. Fire-and-forget.
+// 2.1.14: persist the bench's state to storage so the next run can report
+// it even if the SW restarts (benchLog lines are lost on SW restart, so a
+// missing bench line never proved the bench did not run). The pool's done
+// line carries it, so one run shows whether the bench ran, which counts it
+// measured, and why it stopped.
+async function saveBenchStatus(state, extra = {}) {
+  try {
+    await chrome.storage.local.set({ benchStatus: { state, ...extra, updatedAt: new Date().toISOString() } });
+  } catch {}
+}
+async function readBenchStatus() {
+  try {
+    const saved = await chrome.storage.local.get('benchStatus');
+    return (saved && saved.benchStatus) || null;
+  } catch { return null; }
+}
+
 function benchLog(line) {
   try { console.log('[ct-threads] ' + line); } catch {}
   try {
@@ -214,6 +231,12 @@ async function runThreadBenchmark() {
   if (typeof SharedArrayBuffer === 'undefined') { benchLog('threads bench skipped: no SharedArrayBuffer'); return; }
   benchRunning = true;
   benchCancelled = false;
+  // 2.1.14: hold the doc awake from the very start of the bench, before
+  // any await. The keepalive was opened only once measuring began, so a
+  // doc discarded in the gap (read storage, then measure) killed the
+  // bench silently and nothing was ever saved. benchKeepAliveStop in the
+  // finally still releases it.
+  benchKeepAliveStart();
   try {
     const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
     // 2.0.26: new bench spread (James's design, from CPU research
@@ -290,7 +313,7 @@ async function runThreadBenchmark() {
     const remaining = counts.filter((n) => !timings[n]);
     if (remaining.length) {
       benchLog('threads bench started, testing ' + remaining.join(', ') + ' threads' + (results.length ? ' (resuming, ' + results.length + ' already measured)' : ''));
-      benchKeepAliveStart(); // 2.0.24: hold the doc awake only while measuring
+      try { await saveBenchStatus('running', { testing: remaining, measured: results.map((r) => r.threads) }); } catch {}
     } else {
       benchLog('threads bench resuming, all counts already measured — picking the winner');
     }
@@ -319,6 +342,7 @@ async function runThreadBenchmark() {
           const prev = await readMeasuredThreads().catch(() => null);
           const keep = (prev && Number.isInteger(prev.threads)) ? { threads: prev.threads } : {};
           await saveMeasuredThreads({ ...keep, method: 'full-chain', timings, hardwareConcurrency: cores, measuredAt: new Date().toISOString(), partial: true });
+          await saveBenchStatus('running', { measured: results.map((x) => x.threads) });
         } catch {}
         // 2.0.26: stop when this count is >10% slower than the best
         // measured so far (the best includes this count, so a new
@@ -337,8 +361,8 @@ async function runThreadBenchmark() {
         benchLog('threads bench ' + n + ' threads: failed');
       }
     }
-    if (benchCancelled) { benchLog('threads bench cancelled: interrupted by a new run, keeping ' + cores + ' threads — progress saved, resumes next run'); return; }
-    if (!results.length) { benchLog('threads bench: no count succeeded, keeping ' + cores + ' threads'); return; }
+    if (benchCancelled) { benchLog('threads bench cancelled: interrupted by a new run, keeping ' + cores + ' threads — progress saved, resumes next run'); try { await saveBenchStatus('cancelled', { measured: results.map((x) => x.threads) }); } catch {} return; }
+    if (!results.length) { benchLog('threads bench: no count succeeded, keeping ' + cores + ' threads'); try { await saveBenchStatus('failed', { measured: [] }); } catch {} return; }
     const missing = counts.filter((n) => !timings[n]);
     // 2.0.26: an early stop is a decision, not a failure — the
     // untested counts were skipped on purpose, so pick the winner
@@ -346,12 +370,14 @@ async function runThreadBenchmark() {
     // bench will not resume the skipped counts on the next trigger.
     if (!stoppedEarly && missing.length) {
       benchLog('threads bench: ' + missing.join(', ') + ' threads not measured yet — will retry next run');
+      try { await saveBenchStatus('incomplete', { measured: results.map((x) => x.threads), missing }); } catch {}
       return;
     }
     const minTotal = Math.min(...results.map((r) => r.totalMs));
     const best = results.filter((r) => r.totalMs <= minTotal * 1.05).sort((a, b) => a.threads - b.threads)[0];
     try {
       await saveMeasuredThreads({ threads: best.threads, method: 'full-chain', timings, hardwareConcurrency: cores, measuredAt: new Date().toISOString() });
+      await saveBenchStatus('done', { best: best.threads, measured: results.map((x) => x.threads) });
     } catch {}
     benchLog('threads bench best ' + best.threads + ' threads (was ' + cores + '), total ' + Math.round(best.totalMs) + 'ms/crop — used from the next run');
   } finally {
@@ -972,6 +998,19 @@ const handlers = {
       if (!Number.isInteger(threads) || threads < 1) threads = 1;
       threadsSource = 'fallback:' + threads;
     }
+    // 2.1.14: carry the bench's persisted status so the SW log shows
+    // whether the bench ran and why it stopped (benchLog lines are lost
+    // on SW restart, so this is the durable signal).
+    let benchStatusText = 'none';
+    try {
+      const b = await readBenchStatus();
+      if (b && b.state) {
+        benchStatusText = b.state
+          + (b.best != null ? ' best ' + b.best : '')
+          + (b.measured && b.measured.length ? ' measured ' + b.measured.join(',') : '')
+          + (b.missing && b.missing.length ? ' missing ' + b.missing.join(',') : '');
+      }
+    } catch {}
     const groups = balanceOcrCrops(crops);
     const GROUP_TIMEOUT_MS = 120 * 1000;
     const runGroup = (slot, group) => {
@@ -1021,6 +1060,7 @@ const handlers = {
       threads: [(groupResults[0].threads || 0), (groupResults[1].threads || 0)],
       groupMs: [(groupResults[0].ms || 0), (groupResults[1].ms || 0)],
       threadsSource,
+      bench: benchStatusText,
     };
   },
 
