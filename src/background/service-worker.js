@@ -1220,7 +1220,12 @@ async function runPipeline(tabId, opts = {}) {
         // to single OCR for the run; a real user cancel never falls back.
         // The pool returns the ML_OCR shape, so the merge below is the
         // same for both paths. Needs >= 2 crops to split.
-        if (!directHandlers() && crops.length >= 2) {
+        // 2.1.25: 'single' mode (Options > Debug > OCR pool threads)
+        // skips the pool and runs single OCR, so one page can be compared
+        // pool-vs-single. Single uses the measured best thread count
+        // (4 on the M4) via threadsReady().
+        const poolMode = (settings && typeof settings.poolThreads === 'string' && settings.poolThreads) || 'auto';
+        if (!directHandlers() && crops.length >= 2 && poolMode !== 'single') {
           try {
             diagPush('ocr pool start run ' + runId + ' crops ' + crops.length);
             // 2.1.22: the doc's storage reads fail (like its writes) — the
@@ -1244,8 +1249,7 @@ async function runPipeline(tabId, opts = {}) {
             try {
               const b = (measuredThreadsForPool && Number.isInteger(measuredThreadsForPool.threads)) ? measuredThreadsForPool.threads : 4;
               const c = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
-              const mode = (settings && typeof settings.poolThreads === 'string' && settings.poolThreads) || 'auto';
-              poolThreadsForPool = poolThreadAllocation(b, c, mode);
+              poolThreadsForPool = poolThreadAllocation(b, c, poolMode);
             } catch {}
             r = await callMlChecked(runId, {
               type: MSG.ML_POOL_OCR, runId, sourceLang: settings.sourceLang,
@@ -1287,6 +1291,10 @@ async function runPipeline(tabId, opts = {}) {
             });
           }
         } else {
+          // 2.1.25: log when single mode was chosen (vs the pool being
+          // skipped for <2 crops or direct handlers), so a run's log
+          // names which OCR path it used.
+          if (poolMode === 'single') diagPush('ocr single mode run ' + runId + ' crops ' + crops.length);
           r = await callMlChecked(runId, {
             type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
             crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
@@ -1937,9 +1945,12 @@ async function runPipeline(tabId, opts = {}) {
   // trigger at all. Fail open: any error or missing value still sends it.
   if (result && result.ok) {
     try {
-      // 2.1.20: log every step of the trigger to the trace, so one run
-      // names exactly where it fails instead of another blind retry.
-      benchTracePush('threads bench trigger: run ok, checking saved count');
+      // 2.1.25: log only lines that tell something. The old code logged
+      // "run ok, checking saved count" + "already measured N, skipping"
+      // after EVERY run — in the steady state (bench done) that is dozens
+      // of identical lines and tells nothing. Now: silence when the bench
+      // is already measured (the pool line already shows "bench done
+      // best N"); log only when the bench will actually run, or on error.
       let alreadyMeasured = false;
       try {
         const saved = await chrome.storage.local.get('measuredThreads');
@@ -1947,7 +1958,6 @@ async function runPipeline(tabId, opts = {}) {
         const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
         if (m && m.method === 'full-chain' && m.hardwareConcurrency === cores && Number.isInteger(m.threads)) {
           alreadyMeasured = true;
-          benchTracePush('threads bench trigger: already measured ' + m.threads + ' threads, skipping');
         } else {
           benchTracePush('threads bench trigger: no complete save (method=' + (m && m.method) + ' threads=' + (m && m.threads) + '), will send');
         }
@@ -2004,7 +2014,16 @@ async function runPipeline(tabId, opts = {}) {
     // saves 'done', the pings stop early. Each ping logs its outcome, so
     // one run shows whether the pings reached the doc. Fire-and-forget:
     // the run does not wait for the pings.
-    (function startBenchKeepalivePings() {
+    // 2.1.25: check benchStatus BEFORE starting. In the steady state
+    // (bench done) the old code logged "pings starting" + "bench done,
+    // stopping pings" after every run — noise. Now: silent return when
+    // done, no pings, no lines.
+    (async function startBenchKeepalivePings() {
+      try {
+        const saved = await chrome.storage.local.get('benchStatus');
+        const st = saved && saved.benchStatus;
+        if (st && st.state === 'done') return;
+      } catch {}
       let count = 0;
       const maxPings = 8; // 8 x 15s = 2 minutes
       benchTracePush('threads bench keepalive: pings starting (15s x 8)');

@@ -80,8 +80,9 @@
     <option value="2+2">2+2 — split fast cores</option>
     <option value="4+4">4+4 — best per worker</option>
     <option value="4+6">4+6 — all cores</option>
+    <option value="single">Single 4 threads — one worker, no pool</option>
   </select></div>
-  <p class="hint">Test setting (2.1.23): which thread split the 2-worker OCR pool uses. Labels are the M4 values; the code computes them from the bench best count and total cores, so the same mode works on any CPU. Run the standard page once per mode and compare the OCR time.</p>
+  <p class="hint">Test setting: which thread split the 2-worker OCR pool uses, or Single for one worker with no pool. Labels are the M4 values; the code computes them from the bench best count and total cores, so the same mode works on any CPU. Run the standard page once per mode and compare the OCR time.</p>
   <p class="hint" data-i18n="debug_hint">Shows every pipeline stage's output in a side panel so each stage can be checked.</p>
 
   <h2 data-i18n="models" id="modelsSection">Models</h2>

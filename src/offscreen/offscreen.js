@@ -267,7 +267,12 @@ function scheduleBenchSelfStart() {
 }
 async function maybeBenchSelfStart() {
   try {
-    if (benchRunning) { benchLog('threads bench self-start: already running, skipping'); return; }
+    // 2.1.25: log only lines that tell something. The old code logged
+    // "already running, skipping" and "already measured N, skipping" on
+    // every idle fire — in the steady state that is dozens of identical
+    // lines. Now: silence on skip (the bench's own lines already show
+    // it running; the pool line already shows "bench done best N").
+    if (benchRunning) { return; }
     // 2.1.22: ask the SW for the saved value — the doc's own storage
     // reads fail like its writes, so a local read always says nothing
     // is saved and the bench would re-run after every run. The SW's
@@ -280,7 +285,6 @@ async function maybeBenchSelfStart() {
     if (!m) { try { m = await readMeasuredThreads(); } catch {} }
     const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
     if (m && m.method === 'full-chain' && m.hardwareConcurrency === cores && Number.isInteger(m.threads)) {
-      benchLog('threads bench self-start: already measured ' + m.threads + ' threads, skipping');
       return;
     }
     benchLog('threads bench self-start: idle 10s, starting');
@@ -998,7 +1002,8 @@ const handlers = {
   // NOT reset the self-start idle timer (the listener exempts it from
   // scheduleBenchSelfStart too), so the ping never blocks approach B.
   [MSG.ML_BENCH_KEEPALIVE]() {
-    try { benchLog('threads bench keepalive ping received'); } catch {}
+    // 2.1.25: no log line here — the SW already logs each ping's outcome
+    // ("keepalive ping N: ok"), so a doc-side line per ping is noise.
     return { ok: true };
   },
   // ML_BENCH_THREADS — Chrome 2.0.13: the SW sends this once after a
