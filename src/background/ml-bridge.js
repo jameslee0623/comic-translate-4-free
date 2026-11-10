@@ -106,6 +106,7 @@ function mlHostError(type, raw) {
 const ML_TIMEOUT_MS = {
   [MSG.ML_DETECT]: 30 * 1000,
   [MSG.ML_OCR]: 120 * 1000,
+  [MSG.ML_POOL_OCR]: 120 * 1000, // OCR pool test (2.1.10): same work as ML_OCR, same cap
   [MSG.ML_INPAINT]: 120 * 1000,
   [MSG.ML_DIAG]: 10 * 1000,
 };

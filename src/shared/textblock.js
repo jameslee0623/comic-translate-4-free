@@ -291,3 +291,23 @@ export function mergeBoxesByCost(entries, { tileMax, fixedMs, perPxMs, spread = 
   for (const b of boxes) predictedMs += cost(b, perPxMs);
   return { boxes, predictedMs, counts };
 }
+
+// OCR pool split (2.1.10): divide crops into two groups for two
+// workers. Greedy by area, largest first, each crop to the currently
+// lighter group — crop time grows with text, and text grows with crop
+// area, so area is the best balance proxy available before OCR. Pure
+// (no browser APIs) so the Node harness can test it. Returns
+// [group0, group1]; each group keeps its crops in input order.
+export function balanceOcrCrops(crops) {
+  const groups = [[], []];
+  const area = [0, 0];
+  const sorted = [...crops].sort((a, b) => (b.width * b.height) - (a.width * a.height));
+  for (const c of sorted) {
+    const gi = area[0] <= area[1] ? 0 : 1;
+    groups[gi].push(c);
+    area[gi] += c.width * c.height;
+  }
+  // Restore input order inside each group so results merge by id cleanly.
+  for (const g of groups) g.sort((a, b) => a.id - b.id);
+  return groups;
+}

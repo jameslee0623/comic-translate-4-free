@@ -1184,10 +1184,35 @@ async function runPipeline(tabId, opts = {}) {
       const ocrStats = new Map();
       if (crops.length) {
         const ocrCallT0 = performance.now();
-        const r = await callMlChecked(runId, {
-          type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
-          crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
-        });
+        let r;
+        // OCR pool test (2.1.10, Chrome only): two workers, each with its
+        // own Baberu session, splitting the crops. The doc owns the
+        // workers (kept alive across runs). Any pool failure falls back
+        // to single OCR for the run; a real user cancel never falls back.
+        // The pool returns the ML_OCR shape, so the merge below is the
+        // same for both paths. Needs >= 2 crops to split.
+        if (!directHandlers() && crops.length >= 2) {
+          try {
+            diagPush('ocr pool start run ' + runId + ' crops ' + crops.length);
+            r = await callMlChecked(runId, {
+              type: MSG.ML_POOL_OCR, runId, sourceLang: settings.sourceLang,
+              crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
+            });
+            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?'));
+          } catch (e) {
+            checkCancelled(runId);
+            diagPush('ocr pool failed, falling back to single: ' + String((e && e.message) || e));
+            r = await callMlChecked(runId, {
+              type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
+              crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
+            });
+          }
+        } else {
+          r = await callMlChecked(runId, {
+            type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
+            crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
+          });
+        }
         ocrCallMs = Math.round(performance.now() - ocrCallT0);
         ocrMs = r.ms;
         ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
