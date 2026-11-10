@@ -892,9 +892,9 @@ export const GPU_WATCHDOG_INACTIVITY_MS = 30 * 1000;
 export const GPU_LOAD_WINDOW_MS = 30 * 1000;
 const GPU_READY_TIMEOUT_MS = 5 * 1000;
 
-function gpuHangError(watchdogMs, mlType = MSG.ML_INPAINT) {
+function gpuHangError(watchdogMs, mlType = MSG.ML_INPAINT, detail = '') {
   const label = mlType === MSG.ML_OCR ? 'OCR' : 'inpaint';
-  const err = new Error(`GPU ${label} hang: no progress or reply for ${watchdogMs / 1000}s — the GPU worker was terminated automatically. Downgrading to WASM for this run.`);
+  const err = new Error(`GPU ${label} hang: no progress or reply for ${watchdogMs / 1000}s — the GPU worker was terminated automatically. Downgrading to WASM for this run.` + (detail ? ` (${detail})` : ''));
   err.gpuHang = true;
   err.mlType = mlType;
   return err;
@@ -1251,13 +1251,26 @@ export async function runChromeGpuOcr(opts) {
   let seenProgress = false;
   let lastWindowMs = loadWindowMs;
   let cancelReject = null;
+  // Debug detail for a hang (2.1.7): how far the decode got before it
+  // went silent — last crop fraction, how many progress events arrived,
+  // and how long the call had run. "No crop finished" means the hang
+  // was in the load window (model load or first crop); a fraction
+  // means it hung mid-decode on a later crop.
+  let lastFrac = 0;
+  let progressEvents = 0;
+  const startMs = Date.now();
   const clearWatchdog = () => { if (watchdogTimer) { clearTimeout(watchdogTimer); watchdogTimer = null; } };
   const fireWatchdog = () => {
     if (watchdogFired) return;
     watchdogFired = true;
-    try { diag('ocr gpu watchdog fired: no progress or reply for ' + (lastWindowMs / 1000) + 's, terminating GPU worker'); } catch {}
+    const elapsedS = ((Date.now() - startMs) / 1000).toFixed(1);
+    const done = Math.round(lastFrac * (crops ? crops.length : 0));
+    const detail = seenProgress
+      ? `last progress ${lastFrac} (${done} of ${crops.length} crops), ${progressEvents} progress events, ${elapsedS}s elapsed`
+      : `no crop finished, hung during model load or first crop, ${elapsedS}s elapsed`;
+    try { diag('ocr gpu watchdog fired: no progress or reply for ' + (lastWindowMs / 1000) + 's — ' + detail + ', terminating GPU worker'); } catch {}
     try { cancelGpuMessage({ type: MSG.ML_GPU_CANCEL, runId }); } catch {}
-    try { cancelReject?.(gpuHangError(lastWindowMs, MSG.ML_OCR)); } catch {}
+    try { cancelReject?.(gpuHangError(lastWindowMs, MSG.ML_OCR, detail)); } catch {}
   };
   const armWatchdog = (windowMs) => {
     const w = windowMs != null ? windowMs : (seenProgress ? watchdogInactivityMs : loadWindowMs);
@@ -1279,6 +1292,7 @@ export async function runChromeGpuOcr(opts) {
   };
   activeChromeGpuOcrJobs.set(runId, job);
   chromeGpuOcrProgressHooks.set(runId, (frac) => {
+    if (typeof frac === 'number') { lastFrac = frac; progressEvents++; }
     noteActivity();
     try { onProgress(frac); } catch {}
   });

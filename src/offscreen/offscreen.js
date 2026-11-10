@@ -947,7 +947,14 @@ const handlers = {
           // first to free memory, then retry this crop once. A GPU hang
           // is NOT caught here — the SW-side watchdog (runChromeGpuOcr)
           // kills the GPU worker and falls back to WASM for the run.
-          if (!isOom(e) || c._oomRetried) throw e;
+          if (!isOom(e) || c._oomRetried) {
+            // Debug (2.1.7): name the crop that broke, so a failing run
+            // shows which crop it was stuck on (GPU or WASM path alike).
+            // Cancellations pass through untagged — the SW detects them
+            // from the run's cancelled flag, not the message.
+            if (e && e.cancelled) throw e;
+            throw new Error('ocr crop ' + c.id + ' (' + c.width + 'x' + c.height + '): ' + String((e && e.message) || e));
+          }
           await resetGroup('inpaint');
           c._oomRetried = true;
           r = await baberu.ocrChunked(u8, c.width, c.height, {
