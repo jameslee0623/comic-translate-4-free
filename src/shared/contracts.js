@@ -39,6 +39,7 @@ export const MSG = {
   ML_BENCH_RESULT: 'ml/bench-result',    // Chrome 2.0.13: offscreen doc -> SW one-way {line} (benchmark progress/result lines for the panel log; no reply)
   ML_BENCH_SAVE: 'ml/bench-save',        // Chrome 2.1.19: offscreen doc -> SW one-way {key, value} (save a bench record — benchStatus or measuredThreads — to storage through the SW, whose storage writes are proven; the doc's own writes may be failing)
   ML_BENCH_KEEPALIVE: 'ml/bench-keepalive', // Chrome 2.1.21: SW -> offscreen doc {} -> {ok} (approach C: the SW pings the doc every 15s for 2 min after a run to keep it alive while the bench runs; the doc logs each ping and does NOT cancel the bench for it)
+  ML_BENCH_GET: 'ml/bench-get',          // Chrome 2.1.22: offscreen doc -> SW {} -> {ok, measuredThreads, benchStatus} (the doc asks the SW for the saved bench values, because the doc's own storage reads fail like its writes; used by the self-trigger so it does not re-run a finished bench)
   // SW -> content (tabs.sendMessage)
   RUN_STARTED: 'ct/run-started',         // {runId} (marks the tab's current run; stale renders are ignored)
   RENDER: 'ct/render',                   // {runId, mode, imageDataUrl, width, height, blocks, timings, debug, srcUrl?}

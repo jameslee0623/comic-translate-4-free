@@ -1222,9 +1222,21 @@ async function runPipeline(tabId, opts = {}) {
         if (!directHandlers() && crops.length >= 2) {
           try {
             diagPush('ocr pool start run ' + runId + ' crops ' + crops.length);
+            // 2.1.22: the doc's storage reads fail (like its writes) — the
+            // bench saved measuredThreads=4 via the SW, yet the pool in
+            // the doc still read fallback. So the SW reads the saved count
+            // (the SW's reads work) and passes it to the doc in the
+            // message. The doc uses it if it is a valid complete save.
+            let measuredThreadsForPool = null;
+            try {
+              const saved = await chrome.storage.local.get('measuredThreads');
+              const m = saved && saved.measuredThreads;
+              if (m && m.method === 'full-chain' && Number.isInteger(m.threads) && m.threads >= 1) measuredThreadsForPool = m;
+            } catch {}
             r = await callMlChecked(runId, {
               type: MSG.ML_POOL_OCR, runId, sourceLang: settings.sourceLang,
               crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
+              measuredThreads: measuredThreadsForPool,
             });
             // 2.1.16: show the bench trigger outcome from the previous run
             // (persisted to storage, so it survives a service-worker
@@ -1236,13 +1248,21 @@ async function runPipeline(tabId, opts = {}) {
             // whether the bench started and what it last said.
             let triggerText = '?';
             let benchLogText = '?';
+            let benchStatusText = (r.bench || '?');
             try {
-              const tg = await chrome.storage.local.get(['benchTrigger', 'benchTriggerReceived', 'benchLastLog']);
+              const tg = await chrome.storage.local.get(['benchTrigger', 'benchTriggerReceived', 'benchLastLog', 'benchStatus']);
               const t = tg && tg.benchTrigger;
               if (t) triggerText = t.delivered ? ((tg.benchTriggerReceived) ? 'delivered+doc' : 'delivered') : 'FAILED';
               if (tg && tg.benchLastLog && typeof tg.benchLastLog.line === 'string' && tg.benchLastLog.line) benchLogText = tg.benchLastLog.line.slice(0, 80);
+              // 2.1.22: read benchStatus here (the SW's reads work) — the
+              // doc's read returns 'none' even when the bench saved 'done',
+              // because the doc's storage reads fail like its writes.
+              const bs = tg && tg.benchStatus;
+              if (bs && typeof bs.state === 'string' && bs.state) {
+                benchStatusText = bs.state + (bs.best != null ? ' best ' + bs.best : '') + (bs.measured ? ' measured ' + bs.measured : '') + (bs.missing ? ' missing ' + bs.missing : '');
+              }
             } catch {}
-            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?') + ' threads ' + (r.threads ? r.threads[0] + '+' + r.threads[1] : '?') + ' groupMs ' + (r.groupMs ? r.groupMs[0] + '+' + r.groupMs[1] : '?') + ' src ' + (r.threadsSource || '?') + ' bench ' + (r.bench || '?') + ' trigger ' + triggerText + ' benchlog ' + benchLogText);
+            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?') + ' threads ' + (r.threads ? r.threads[0] + '+' + r.threads[1] : '?') + ' groupMs ' + (r.groupMs ? r.groupMs[0] + '+' + r.groupMs[1] : '?') + ' src ' + (r.threadsSource || '?') + ' bench ' + benchStatusText + ' trigger ' + triggerText + ' benchlog ' + benchLogText);
           } catch (e) {
             checkCancelled(runId);
             diagPush('ocr pool failed, falling back to single: ' + String((e && e.message) || e));
@@ -2286,6 +2306,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     try { if (typeof msg.line === 'string' && msg.line) benchTracePush(msg.line); } catch { try { if (typeof msg.line === 'string' && msg.line) diagPush(msg.line); } catch {} }
     try { if (typeof msg.line === 'string' && msg.line) chrome.storage.local.set({ benchLastLog: { line: msg.line, at: new Date().toISOString() } }); } catch {}
     return false;
+  }
+  if (msg && msg.type === MSG.ML_BENCH_GET) {
+    // 2.1.22: the doc asks the SW for the saved bench values, because
+    // the doc's own storage reads fail like its writes. The SW's reads
+    // work. Reply with both records (null when nothing is saved).
+    (async () => {
+      try {
+        const saved = await chrome.storage.local.get(['measuredThreads', 'benchStatus']);
+        sendResponse({ ok: true, measuredThreads: (saved && saved.measuredThreads) || null, benchStatus: (saved && saved.benchStatus) || null });
+      } catch (e) {
+        sendResponse({ ok: false, error: String((e && e.message) || e) });
+      }
+    })();
+    return true;
   }
   if (msg && msg.type === MSG.ML_BENCH_SAVE) {
     // 2.1.19: the offscreen doc saves bench records through the SW

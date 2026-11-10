@@ -268,7 +268,16 @@ function scheduleBenchSelfStart() {
 async function maybeBenchSelfStart() {
   try {
     if (benchRunning) { benchLog('threads bench self-start: already running, skipping'); return; }
-    const m = await readMeasuredThreads();
+    // 2.1.22: ask the SW for the saved value — the doc's own storage
+    // reads fail like its writes, so a local read always says nothing
+    // is saved and the bench would re-run after every run. The SW's
+    // reads work. Fall back to a local read if the SW does not reply.
+    let m = null;
+    try {
+      const reply = await chrome.runtime.sendMessage({ type: MSG.ML_BENCH_GET });
+      if (reply && reply.ok) m = reply.measuredThreads || null;
+    } catch {}
+    if (!m) { try { m = await readMeasuredThreads(); } catch {} }
     const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
     if (m && m.method === 'full-chain' && m.hardwareConcurrency === cores && Number.isInteger(m.threads)) {
       benchLog('threads bench self-start: already measured ' + m.threads + ' threads, skipping');
@@ -1070,10 +1079,20 @@ const handlers = {
     throwIfCancelled(runId);
     let threads = null;
     let threadsSource = '';
+    // 2.1.22: the SW passes the saved count in the message (the SW's
+    // storage reads work). The doc's own storage reads fail like its
+    // writes — the bench saved 4 via the SW, yet the pool still read
+    // fallback. Use the passed value first; fall back to a local read.
     try {
-      const m = await readMeasuredThreads();
+      const m = (msg && msg.measuredThreads) || null;
       if (m && Number.isInteger(m.threads) && m.threads >= 1) { threads = m.threads; threadsSource = 'measured:' + m.threads; }
     } catch {}
+    if (threads == null) {
+      try {
+        const m = await readMeasuredThreads();
+        if (m && Number.isInteger(m.threads) && m.threads >= 1) { threads = m.threads; threadsSource = 'measured:' + m.threads; }
+      } catch {}
+    }
     if (threads == null) {
       // No measured count yet — the bench has not finished/saved. Do NOT
       // fall back to the raw core count (10+10 was slower than single in
