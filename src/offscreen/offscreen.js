@@ -912,7 +912,11 @@ const handlers = {
   // successful run. Fire-and-forget: returns at once; the benchmark runs
   // on its own (runThreadBenchmark) and saves the winner. A failure
   // changes nothing: the next run keeps the raw core count.
+  // 2.1.16: record that the doc received the trigger (storage survives
+  // a service-worker restart, so the next run's pool line can show
+  // whether the trigger reached the doc even if the bench never saved).
   [MSG.ML_BENCH_THREADS]() {
+    try { chrome.storage.local.set({ benchTriggerReceived: { at: new Date().toISOString() } }); } catch {}
     try { runThreadBenchmark().catch(() => {}); } catch {}
     return { ok: true };
   },

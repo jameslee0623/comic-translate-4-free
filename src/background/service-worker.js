@@ -1198,7 +1198,19 @@ async function runPipeline(tabId, opts = {}) {
               type: MSG.ML_POOL_OCR, runId, sourceLang: settings.sourceLang,
               crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
             });
-            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?') + ' threads ' + (r.threads ? r.threads[0] + '+' + r.threads[1] : '?') + ' groupMs ' + (r.groupMs ? r.groupMs[0] + '+' + r.groupMs[1] : '?') + ' src ' + (r.threadsSource || '?') + ' bench ' + (r.bench || '?'));
+            // 2.1.16: show the bench trigger outcome from the previous run
+            // (persisted to storage, so it survives a service-worker
+            // restart). 'delivered+doc' = the doc got the trigger;
+            // 'delivered' = the SW got a reply but the doc left no
+            // received marker; 'FAILED' = the SW could not reach the doc
+            // in 3 tries; '?' = no trigger record yet (2.1.14 or earlier).
+            let triggerText = '?';
+            try {
+              const tg = await chrome.storage.local.get(['benchTrigger', 'benchTriggerReceived']);
+              const t = tg && tg.benchTrigger;
+              if (t) triggerText = t.delivered ? ((tg.benchTriggerReceived) ? 'delivered+doc' : 'delivered') : 'FAILED';
+            } catch {}
+            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?') + ' threads ' + (r.threads ? r.threads[0] + '+' + r.threads[1] : '?') + ' groupMs ' + (r.groupMs ? r.groupMs[0] + '+' + r.groupMs[1] : '?') + ' src ' + (r.threadsSource || '?') + ' bench ' + (r.bench || '?') + ' trigger ' + triggerText);
           } catch (e) {
             checkCancelled(runId);
             diagPush('ocr pool failed, falling back to single: ' + String((e && e.message) || e));
@@ -1847,8 +1859,10 @@ async function runPipeline(tabId, opts = {}) {
     keepAliveStop(runId); // FIX2: release the run-scoped hold last, after all cleanup.
   }
   // Chrome 2.0.13: after a successful run, measure the best WASM thread
-  // count once, in the background (ML_BENCH_THREADS). Fire-and-forget —
-  // the run never waits for it, and a failure changes nothing.
+  // count once, in the background (ML_BENCH_THREADS). The run does not
+  // wait for the bench itself, but the trigger is confirmed: 2.1.15 made
+  // it await the reply and retry (up to 3 tries, 3s each) instead of
+  // fire-and-forget, because a send to a dead doc was lost silently.
   // 2.0.25: gate the trigger here too. The offscreen doc also skips when
   // it sees a complete save, but in 2.0.24 the bench re-measured after
   // every run, so check in the service worker as well — if a complete
@@ -1872,9 +1886,14 @@ async function runPipeline(tabId, opts = {}) {
         // (the doc's handler replies at once) and retry after re-ensuring
         // the host if it fails. Up to 3 tries, 3s each. The outcome is
         // logged (it contains 'threads bench', so it survives into the
-        // next run's panel log).
+        // next run's panel log) AND saved to storage (2.1.16): the log
+        // line is lost if the service worker restarts before the next
+        // run, but storage survives, so the next run's pool line can
+        // show whether the trigger was delivered.
         let delivered = false;
+        let attempts = 0;
         for (let attempt = 0; attempt < 3 && !delivered; attempt++) {
+          attempts = attempt + 1;
           try { await ensureMlHost(); } catch {}
           try {
             await Promise.race([
@@ -1885,6 +1904,7 @@ async function runPipeline(tabId, opts = {}) {
           } catch {}
         }
         try { diagPush('threads bench trigger ' + (delivered ? 'delivered' : 'FAILED after 3 tries')); } catch {}
+        try { await chrome.storage.local.set({ benchTrigger: { delivered, attempts, at: new Date().toISOString() } }); } catch {}
       }
     } catch {}
   }
