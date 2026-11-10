@@ -353,6 +353,10 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
       ? 'could not find that image on the page anymore — it may have been removed or the page reloaded'
       : 'no picture found on this page — the extension translates the page\'s own picture, not a screenshot of the page');
   }
+  // The minimum-size gate uses the DISPLAYED size (what the user sees) —
+  // findMainImage returns the on-screen w/h. A big file shown small does not
+  // run. This is the only size gate: the capture tiers do not re-check the
+  // file size, so a picture that displays big runs even if its file is small.
   if (!manualSrc) tooSmall(info.w || 0, info.h || 0);
   const failures = [];
   // Capture diagnostic: one entry per tier attempted ({tier, ms, ok, bytes?, error?}).
@@ -401,7 +405,6 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
     const f = await chrome.tabs.sendMessage(tabId, { type: 'ct/fetch-image-bytes', srcUrl: info.src });
     if (f && f.ok && typeof f.dataUrl === 'string' && f.dataUrl.startsWith('data:')) {
       const { rgba, w, h } = await dataUrlToRGBA(f.dataUrl);
-      if (!manualSrc) tooSmall(w, h);
       const b64 = f.dataUrl.split(',')[1] || '';
       attempts.push({ tier: 'page-fetch', ms: Math.round(performance.now() - b0), ok: true, bytes: Math.round(b64.length * 3 / 4) });
       return { rgba, w, h, mode: 'replace', tier: 'page-fetch', attempts };
@@ -415,7 +418,6 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   const c0 = performance.now();
   try {
     const { rgba, w, h, bytes } = await fetchImagePixels(info.src, tabUrl);
-    if (!manualSrc) tooSmall(w, h);
     attempts.push({ tier: 'worker-fetch', ms: Math.round(performance.now() - c0), ok: true, bytes });
     return { rgba, w, h, mode: 'replace', tier: 'worker-fetch', attempts };
   } catch (e) { failures.push('download: ' + String((e && e.message) || e).slice(0, 120)); }
@@ -1080,7 +1082,7 @@ async function runPipeline(tabId, opts = {}) {
     // The data-URL image is only built in debug mode — in normal runs this
     // PNG encode of the full page is pure overhead.
     await emitDebug(runId, tabId, settings, 'capture',
-      { title: `Captured page — ${tier}, mean brightness ${capMean.toFixed(3)}`, image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null, w, h, ms: timings.capture });
+      { title: `Captured page — ${tier}, mean brightness ${capMean.toFixed(3)}`, image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null, w, h, bytes: (capWin && capWin.bytes != null ? capWin.bytes : null), ms: timings.capture });
 
     // ---- 1b. page cache: a page translated earlier in this session renders
     // instantly — no detection, OCR, inpaint, or translation. The stored entry

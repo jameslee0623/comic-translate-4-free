@@ -284,7 +284,13 @@
       return r.width >= 120 && r.height >= 120;
     });
     if (!imgs.length) { mainImgEl = null; return null; }
-    imgs.sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight));
+    // Displayed size is what the user sees — the minimum-size gate uses it,
+    // so a big file shown small (e.g. a 700x979 file at 350x490) does not run.
+    // Biggest on screen first (displayed area, not file area).
+    imgs.sort((a, b) => {
+      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      return (rb.width * rb.height) - (ra.width * ra.height);
+    });
     const im = imgs[0];
     mainImgEl = im;
     const cur = realSrc(im);
@@ -296,9 +302,10 @@
     // image, which would translate the translation and poison the page-cache
     // key so revisits never hit the cache.
     const wasTranslated = !!im.dataset.ctOriginal && /^data:/i.test(cur);
+    const r = im.getBoundingClientRect();
     return {
       src: wasTranslated ? im.dataset.ctOriginal : cur,
-      w: im.naturalWidth, h: im.naturalHeight,
+      w: Math.round(r.width), h: Math.round(r.height),
       translated: wasTranslated,
     };
   }
@@ -703,6 +710,13 @@
     let html = `<h3 style="margin:0 0 8px">${esc(p.title || stage)}`;
     if (stage === 'diaglog' && p.log) html += ` <button id="ct-copy-log" style="margin-left:8px;padding:4px 8px;background:#222;border:1px solid #444;color:#ccc;border-radius:4px;cursor:pointer;font:11px sans-serif;vertical-align:middle">Copy</button>`;
     html += `</h3>`;
+    // Capture tab (2.1.28): show the captured picture's size — dimensions
+    // (after renderScale) and the download bytes when known. This is the
+    // number the minImageSize gate uses, so a run on a small picture
+    // explains itself here instead of in the log.
+    if (stage === 'capture' && p.w != null && p.h != null) {
+      html += `<p style="color:#eee;margin:0 0 8px">size: <b>${p.w}×${p.h}</b>${p.bytes != null ? ` · ${Number(p.bytes).toLocaleString('en-US')} bytes` : ''}</p>`;
+    }
     if (times && times.totalMs != null) {
       html += `<p style="color:#eee;font-size:14px;margin:0 0 4px">total: <b>${times.totalMs}ms</b>`;
       if (times.seqMs != null && times.seqMs > times.totalMs) {
