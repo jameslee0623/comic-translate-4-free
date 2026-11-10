@@ -1865,15 +1865,26 @@ async function runPipeline(tabId, opts = {}) {
       } catch {}
       if (!alreadyMeasured) {
         // The doc can be discarded once the run ends; a trigger sent to
-        // a dead doc is silently lost (sendMessage resolves with no
-        // listener, and the bench never runs — the pool then keeps
-        // finding no saved count). Make sure the host exists first, then
-        // send. Fire-and-forget: a failure here changes nothing.
-        try { await ensureMlHost(); } catch {}
-        try {
-          const p = chrome.runtime.sendMessage({ type: MSG.ML_BENCH_THREADS });
-          if (p && p.catch) p.catch(() => {});
-        } catch {}
+        // a dead doc is lost (sendMessage rejects: no listener) and the
+        // bench never runs — the pool then keeps finding no saved count.
+        // The 2.1.14 run proved this: bench status stayed 'none', so the
+        // bench never started at all. Confirm delivery: await the reply
+        // (the doc's handler replies at once) and retry after re-ensuring
+        // the host if it fails. Up to 3 tries, 3s each. The outcome is
+        // logged (it contains 'threads bench', so it survives into the
+        // next run's panel log).
+        let delivered = false;
+        for (let attempt = 0; attempt < 3 && !delivered; attempt++) {
+          try { await ensureMlHost(); } catch {}
+          try {
+            await Promise.race([
+              chrome.runtime.sendMessage({ type: MSG.ML_BENCH_THREADS }),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('bench trigger timeout')), 3000)),
+            ]);
+            delivered = true;
+          } catch {}
+        }
+        try { diagPush('threads bench trigger ' + (delivered ? 'delivered' : 'FAILED after 3 tries')); } catch {}
       }
     } catch {}
   }
