@@ -9,7 +9,7 @@ import { Detector } from './ml/detector.js';
 import { BaberuOCR } from './ml/baberu.js';
 import { meanBrightness } from '../shared/image-ops.js';
 import { Inpainter } from './ml/inpaint.js';
-import { tileOrigins, TILE_MAX, balanceOcrCrops } from '../shared/textblock.js';
+import { tileOrigins, TILE_MAX } from '../shared/textblock.js';
 import { pixelPut, pixelPeek } from '../shared/pixel-bus.js';
 
 // Worker-safe: a Firefox inpaint worker imports this module, and a worker
@@ -109,13 +109,13 @@ threadsReady();
 // owns diagPush) plus the offscreen doc console. Fire-and-forget.
 // 2.1.14: persist the bench's state to storage so the next run can report
 // it even if the SW restarts (benchLog lines are lost on SW restart, so a
-// missing bench line never proved the bench did not run). The pool's done
-// line carries it, so one run shows whether the bench ran, which counts it
+// missing bench line never proved the bench did not run). The persisted
+// trace carries it, so one run shows whether the bench ran, which counts it
 // measured, and why it stopped.
 // 2.1.19: save a bench record through the SW. The doc's own storage
 // writes may be failing — the bench never saves a status and the doc
 // leaves no received marker, yet the SW's storage writes work (the
-// trigger record is saved and the pool reads it). The SW writes the same
+// trigger record is saved and the SW reads it). The SW writes the same
 // key to storage, so the bench's result persists even if the doc's own
 // write is lost. Fire-and-forget: the bench never waits for it.
 function saveBenchViaSw(key, value) {
@@ -271,7 +271,7 @@ async function maybeBenchSelfStart() {
     // "already running, skipping" and "already measured N, skipping" on
     // every idle fire — in the steady state that is dozens of identical
     // lines. Now: silence on skip (the bench's own lines already show
-    // it running; the pool line already shows "bench done best N").
+    // it running; the persisted trace already shows "bench done best N").
     if (benchRunning) { return; }
     // 2.1.22: ask the SW for the saved value — the doc's own storage
     // reads fail like its writes, so a local read always says nothing
@@ -739,128 +739,6 @@ async function getChromeGpuWorker() {
   return { worker: chromeGpuWorker, readyMs: Math.round(performance.now() - readyT0) };
 }
 
-// ---------------------------------------------------------------- OCR pool
-// Chrome OCR pool test (2.1.10): two dedicated workers, each with its
-// own Baberu session, splitting the crops. Mirrors the GPU worker
-// lifecycle on purpose (kept alive across runs, 10-min idle timeout,
-// terminate on error, cancel keeps the worker): the pool is a fair
-// test only if the sessions stay loaded — a fresh load per run would
-// eat the parallel gain. The workers are plain ml-worker.js (WASM-
-// only, same handlers as the doc); the doc owns them because the SW
-// cannot spawn workers. Each worker gets the measured thread count
-// (see ML_OCR `threads`), so both run 4 threads on this machine.
-// K=2 only: a third worker would need its own split and its own
-// measurement, and the question this test answers is whether a second
-// worker helps at all.
-const poolOcrWorkers = [null, null];
-const poolOcrReady = [null, null]; // per-slot creation promises
-let poolOcrSeq = 0;
-const poolOcrPending = new Map(); // callId -> {resolve, reject, runId, slot}
-let poolOcrIdleTimer = null;
-const POOL_OCR_IDLE_MS = 10 * 60 * 1000;
-
-function armPoolOcrIdleTimer() {
-  try { if (poolOcrIdleTimer) clearTimeout(poolOcrIdleTimer); } catch {}
-  poolOcrIdleTimer = setTimeout(() => {
-    if (poolOcrPending.size === 0) {
-      terminatePoolOcrWorker(0, null);
-      terminatePoolOcrWorker(1, null);
-    }
-  }, POOL_OCR_IDLE_MS);
-}
-
-function terminatePoolOcrWorker(slot, err) {
-  const worker = poolOcrWorkers[slot];
-  poolOcrWorkers[slot] = null;
-  poolOcrReady[slot] = null;
-  if (worker) { try { worker.terminate(); } catch {} }
-  if (err) {
-    for (const [callId, p] of poolOcrPending) {
-      if (p.slot === slot) {
-        poolOcrPending.delete(callId);
-        try { p.reject(err); } catch {}
-      }
-    }
-  }
-}
-
-// Cancel one run's pool jobs without killing the workers: reject its
-// pending replies and tell both workers to stop their OCR loops (each
-// worker's ML_CANCEL handler marks the run; the decode loop throws
-// between crops). The loaded Baberu sessions stay for the next run.
-function cancelPoolOcrJob(runId, err) {
-  let hadPending = false;
-  for (const [callId, p] of poolOcrPending) {
-    if (p.runId === runId) {
-      poolOcrPending.delete(callId);
-      hadPending = true;
-      try { p.reject(err || Object.assign(new Error('cancelled'), { cancelled: true })); } catch {}
-    }
-  }
-  for (const w of poolOcrWorkers) {
-    if (w) { try { w.postMessage({ type: MSG.ML_CANCEL, runId }); } catch {} }
-  }
-  return hadPending;
-}
-
-// Get one pool worker, creating it (and awaiting ml-ready) on the first
-// run only. Concurrent callers during creation share the one creation
-// promise instead of spawning a second worker for the slot.
-async function getPoolOcrWorker(slot) {
-  if (poolOcrReady[slot]) {
-    await poolOcrReady[slot];
-    if (!poolOcrWorkers[slot]) throw new Error('OCR pool worker failed to start');
-    return poolOcrWorkers[slot];
-  }
-  let worker;
-  try {
-    worker = new Worker(chrome.runtime.getURL('src/background/ml-worker.js'));
-  } catch (e) {
-    throw new Error('OCR pool worker creation failed: ' + String((e && e.message) || e));
-  }
-  poolOcrWorkers[slot] = worker;
-  poolOcrReady[slot] = new Promise((resolve, reject) => {
-    const to = setTimeout(() => {
-      if (poolOcrWorkers[slot] === worker) { poolOcrWorkers[slot] = null; poolOcrReady[slot] = null; try { worker.terminate(); } catch {} }
-      reject(new Error('OCR pool worker did not become ready after 15s'));
-    }, 15000);
-    worker.onmessage = (e) => {
-      const d = e && e.data;
-      if (!d) return;
-      if (d.type === 'ml-ready') {
-        clearTimeout(to);
-        worker.onmessage = (ev) => {
-          const m = ev && ev.data;
-          if (!m || m.callId == null) return;
-          const p = poolOcrPending.get(m.callId);
-          if (!p) return;
-          poolOcrPending.delete(m.callId);
-          if (m.ok) p.resolve(m.res);
-          else {
-            // An error reply means this worker's session may be broken —
-            // drop the worker so the next run starts fresh (and pays the
-            // load again). The SW falls back to single for this run.
-            const err = new Error(m.error || 'OCR pool worker failed');
-            terminatePoolOcrWorker(slot, err);
-            try { p.reject(err); } catch {}
-          }
-        };
-        worker.onerror = (ev) => {
-          terminatePoolOcrWorker(slot, new Error('OCR pool worker failed: ' + String((ev && ev.message) || ev || '')));
-        };
-        resolve();
-      }
-    };
-    worker.onerror = (ev) => {
-      clearTimeout(to);
-      if (poolOcrWorkers[slot] === worker) { poolOcrWorkers[slot] = null; poolOcrReady[slot] = null; }
-      reject(new Error('OCR pool worker failed to start: ' + String((ev && ev.message) || ev || '')));
-    };
-  });
-  await poolOcrReady[slot];
-  return worker;
-}
-
 // Fast-path inpaint for uniform backgrounds: if the unmasked pixels have low
 // variance, fill masked pixels with the median background color instead of
 // running LaMa. Returns Uint8ClampedArray RGBA, or null if background is not
@@ -962,9 +840,6 @@ const handlers = {
       // the shared worker — its loaded LaMa session stays for the next
       // run. No-op in worker realms (their registry is always empty).
       cancelChromeGpuJob(runId, Object.assign(new Error('cancelled'), { cancelled: true }));
-      // OCR pool (2.1.10): same — stop this run's pool jobs without
-      // killing the pool workers; their loaded Baberu sessions stay.
-      cancelPoolOcrJob(runId, Object.assign(new Error('cancelled'), { cancelled: true }));
     }
     return { ok: true };
   },
@@ -1011,7 +886,7 @@ const handlers = {
   // on its own (runThreadBenchmark) and saves the winner. A failure
   // changes nothing: the next run keeps the raw core count.
   // 2.1.16: record that the doc received the trigger (storage survives
-  // a service-worker restart, so the next run's pool line can show
+  // a service-worker restart, so the persisted trace can show
   // whether the trigger reached the doc even if the bench never saved).
   // 2.1.20: log the receipt, so the trace proves the handler ran.
   [MSG.ML_BENCH_THREADS]() {
@@ -1065,132 +940,6 @@ const handlers = {
     return { ok: true, results: (res && res.results) || [], ms: (res && res.ms) || 0, totalTiles: (res && res.totalTiles) || 0, readyMs, loadMs: (res && res.loadMs) || 0, patchStats: (res && res.patchStats) || [], tileMax: (res && res.tileMax) || 0, docMs: Math.round(performance.now() - docT0) };
   },
 
-  // ML_POOL_OCR {crops, sourceLang, runId} — Chrome OCR pool test (2.1.10):
-  // split the crops across two dedicated workers, each with its own
-  // Baberu session, and merge the results in crop order. Returns the
-  // ML_OCR result shape, so the SW's OCR merge code is unchanged.
-  // Groups are balanced by area (balanceOcrCrops). Each worker gets the
-  // measured thread count so both run 4 threads even if chrome.storage
-  // is unreadable in a worker realm. A worker failure (error, timeout,
-  // never ready) rejects the pool call and the SW falls back to single
-  // OCR for the run; the faulty worker is terminated, the healthy one
-  // stays. Cancel rejects as cancelled and never falls back.
-  async [MSG.ML_POOL_OCR]({ crops, runId, sourceLang, measuredThreads, poolThreads: msgPoolThreads }) {
-    if (typeof document === 'undefined') throw new Error('OCR pool is offscreen-document-only');
-    if (!crops || crops.length < 2) throw new Error('OCR pool needs at least 2 crops');
-    throwIfCancelled(runId);
-    const t0 = performance.now();
-    const [w0, w1] = await Promise.all([getPoolOcrWorker(0), getPoolOcrWorker(1)]);
-    throwIfCancelled(runId);
-    let threads = null;
-    let threadsSource = '';
-    // 2.1.23: the SW passes the thread split [t0, t1] in the message
-    // (computed from B and C via poolThreadAllocation, so the same mode
-    // works on any CPU). Use it first — it already reflects the setting
-    // and the measured best count. Fall back to a local read (single
-    // count for both workers) if the message carries no split.
-    let poolThreads = null;
-    try {
-      const pt = msgPoolThreads || null;
-      if (Array.isArray(pt) && pt.length === 2 && Number.isInteger(pt[0]) && pt[0] >= 1 && Number.isInteger(pt[1]) && pt[1] >= 1) {
-        poolThreads = [pt[0], pt[1]];
-        threadsSource = 'split:' + pt[0] + '+' + pt[1];
-      }
-    } catch {}
-    if (!poolThreads) {
-      try {
-        const m = measuredThreads || null;
-        if (m && Number.isInteger(m.threads) && m.threads >= 1) { threads = m.threads; threadsSource = 'measured:' + m.threads; }
-      } catch {}
-      if (threads == null) {
-        try {
-          const m = await readMeasuredThreads();
-          if (m && Number.isInteger(m.threads) && m.threads >= 1) { threads = m.threads; threadsSource = 'measured:' + m.threads; }
-        } catch {}
-      }
-      if (threads != null) poolThreads = [threads, threads];
-    }
-    if (!poolThreads) {
-      // No measured count yet — the bench has not finished/saved. Do NOT
-      // fall back to the raw core count (10+10 was slower than single in
-      // 2.1.11). Use the bench's own starting point instead:
-      // max(3, ceil(cores/4)) per worker — the smallest plausible
-      // big-core count — capped at floor(cores/2) so the two workers
-      // together never exceed the core count and cannot oversubscribe.
-      // This is a hardware-derived fallback, not the measured best —
-      // the pool switches to measured:N once the bench saves.
-      const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
-      const fb = Math.min(Math.floor(cores / 2), Math.max(3, Math.ceil(cores / 4)));
-      const t = (Number.isInteger(fb) && fb >= 1) ? fb : 1;
-      poolThreads = [t, t];
-      threadsSource = 'fallback:' + t;
-    }
-    // 2.1.14: carry the bench's persisted status so the SW log shows
-    // whether the bench ran and why it stopped (benchLog lines are lost
-    // on SW restart, so this is the durable signal).
-    let benchStatusText = 'none';
-    try {
-      const b = await readBenchStatus();
-      if (b && b.state) {
-        benchStatusText = b.state
-          + (b.best != null ? ' best ' + b.best : '')
-          + (b.measured && b.measured.length ? ' measured ' + b.measured.join(',') : '')
-          + (b.missing && b.missing.length ? ' missing ' + b.missing.join(',') : '');
-      }
-    } catch {}
-    const groups = balanceOcrCrops(crops);
-    const GROUP_TIMEOUT_MS = 120 * 1000;
-    const runGroup = (slot, group) => {
-      if (!group.length) return Promise.resolve({ results: [], ms: 0, loadMs: 0, engine: '' });
-      return new Promise((resolve, reject) => {
-        const callId = ++poolOcrSeq;
-        const to = setTimeout(() => {
-          if (!poolOcrPending.has(callId)) return;
-          poolOcrPending.delete(callId);
-          terminatePoolOcrWorker(slot, new Error('OCR pool worker timed out after 120s'));
-          reject(new Error('OCR pool worker timed out after 120s'));
-        }, GROUP_TIMEOUT_MS);
-        poolOcrPending.set(callId, {
-          resolve: (res) => { clearTimeout(to); resolve(res); },
-          reject: (err) => { clearTimeout(to); reject(err); },
-          runId, slot,
-        });
-        try {
-          (slot === 0 ? w0 : w1).postMessage({ type: MSG.ML_OCR, runId, callId, crops: group, sourceLang, threads: poolThreads[slot] });
-        } catch (e) {
-          clearTimeout(to);
-          poolOcrPending.delete(callId);
-          reject(e);
-        }
-      });
-    };
-    let groupResults;
-    try {
-      groupResults = await Promise.all([runGroup(0, groups[0]), runGroup(1, groups[1])]);
-    } catch (e) {
-      // A failed group must not leave the other worker running crops
-      // nobody waits for: stop both loops (sessions stay loaded).
-      for (const w of [w0, w1]) { try { w.postMessage({ type: MSG.ML_CANCEL, runId }); } catch {} }
-      throw e;
-    }
-    // Guard against late completion after timeout/cancel: don't deliver
-    // stale results if the run was cancelled while we were working.
-    throwIfCancelled(runId);
-    const results = [...groupResults[0].results, ...groupResults[1].results].sort((a, b) => a.id - b.id);
-    armPoolOcrIdleTimer();
-    return {
-      ok: true, results,
-      ms: Math.round(performance.now() - t0),
-      engine: groupResults[0].engine || groupResults[1].engine || '',
-      loadMs: Math.max(groupResults[0].loadMs || 0, groupResults[1].loadMs || 0),
-      groups: [groups[0].length, groups[1].length],
-      threads: [(groupResults[0].threads || 0), (groupResults[1].threads || 0)],
-      groupMs: [(groupResults[0].ms || 0), (groupResults[1].ms || 0)],
-      threadsSource,
-      bench: benchStatusText,
-    };
-  },
-
   async [MSG.ML_DETECT]({ key, width, height, threshold, runId, noStrip }) {
     throwIfCancelled(runId);
     const t0 = performance.now();
@@ -1225,24 +974,10 @@ const handlers = {
     return { ok: true, boxes, ms: Math.round(performance.now() - t0), inputMean: +meanBrightness(buf).toFixed(4) };
   },
 
-  async [MSG.ML_OCR]({ crops, runId, sourceLang, threads }) {
+  async [MSG.ML_OCR]({ crops, runId, sourceLang }) {
     throwIfCancelled(runId);
     // OCR engine follows the source language — all languages use Baberu.
     const engine = ocrEngineForLang(sourceLang || 'ja');
-    // OCR pool (2.1.10): the doc passes the measured thread count so a
-    // pool worker uses it even if chrome.storage is unreadable in its
-    // realm. Applied before ensureModel (which re-reads storage and
-    // agrees — both are the measured count). Single-path calls pass no
-    // threads, so this is a no-op for them. The reset drops this realm's
-    // sessions so the new count takes effect on the next load.
-    if (Number.isInteger(threads) && threads >= 1) {
-      try {
-        if (typeof ort !== 'undefined' && ort.env && ort.env.wasm && ort.env.wasm.numThreads !== threads) {
-          ort.env.wasm.numThreads = threads;
-          await resetGroup('*');
-        }
-      } catch {}
-    }
     // DIAG (2.0.9): time the model load separately — it runs before t0
     // and is invisible in r.ms, so the SW split can tell load from run
     // (same as inpaint loadMs in 2.0.5).
@@ -1327,9 +1062,8 @@ const handlers = {
     // stale results if the run was cancelled while we were working.
     throwIfCancelled(runId);
     // DIAG (2.1.11): report the thread count this realm actually used,
-    // so the pool's done line can show whether each worker really ran
-    // the measured count (the pool run was ~3x slower per crop, and the
-    // first suspect is a worker running 1 thread, not 4).
+    // so the log shows whether OCR really ran the measured best count
+    // (4 on the M4) or fell back to the raw core count.
     const threadsUsed = (typeof ort !== 'undefined' && ort.env && ort.env.wasm && typeof ort.env.wasm.numThreads === 'number') ? ort.env.wasm.numThreads : null;
     return { ok: true, results, ms: Math.round(performance.now() - t0), engine, loadMs, threads: threadsUsed };
   },

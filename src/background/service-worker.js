@@ -8,7 +8,6 @@ import {
   makeTextBlock, mergeOverlappingBoxes, sortBlocks,
   boxIoU, clampBox, dedupAndMergeSeams, mergeBoxesByCost,
   INPAINT_COST, INPAINT_COST_SPREAD, patchCostMs, TILE_MAX,
-  poolThreadAllocation,
 } from '../shared/textblock.js';
 import { toGrayU8, meanBrightness, renderScale, resizeBilinearRGBA } from '../shared/image-ops.js';
 import { pixelPut, pixelTake, pixelDrop, pixelPruneRun } from '../shared/pixel-bus.js';
@@ -1213,93 +1212,17 @@ async function runPipeline(tabId, opts = {}) {
       const ocrStats = new Map();
       if (crops.length) {
         const ocrCallT0 = performance.now();
-        let r;
-        // OCR pool test (2.1.10, Chrome only): two workers, each with its
-        // own Baberu session, splitting the crops. The doc owns the
-        // workers (kept alive across runs). Any pool failure falls back
-        // to single OCR for the run; a real user cancel never falls back.
-        // The pool returns the ML_OCR shape, so the merge below is the
-        // same for both paths. Needs >= 2 crops to split.
-        // 2.1.25: 'single' mode (Options > Debug > OCR pool threads)
-        // skips the pool and runs single OCR, so one page can be compared
-        // pool-vs-single. Single uses the measured best thread count
-        // (4 on the M4) via threadsReady().
-        const poolMode = (settings && typeof settings.poolThreads === 'string' && settings.poolThreads) || 'auto';
-        if (!directHandlers() && crops.length >= 2 && poolMode !== 'single') {
-          try {
-            diagPush('ocr pool start run ' + runId + ' crops ' + crops.length);
-            // 2.1.22: the doc's storage reads fail (like its writes) — the
-            // bench saved measuredThreads=4 via the SW, yet the pool in
-            // the doc still read fallback. So the SW reads the saved count
-            // (the SW's reads work) and passes it to the doc in the
-            // message. The doc uses it if it is a valid complete save.
-            // 2.1.23: the pool thread split is a setting (Options > Debug >
-            // OCR pool threads). The SW computes the [t0, t1] allocation
-            // from B (bench best) and C (total cores) via
-            // poolThreadAllocation, so the same mode works on any CPU.
-            // 'auto' = [B, B]; '2+2' = split B evenly; '4+4' = [B, B];
-            // '4+6' = [B, C-B]. The doc uses the passed split first.
-            let measuredThreadsForPool = null;
-            try {
-              const saved = await chrome.storage.local.get('measuredThreads');
-              const m = saved && saved.measuredThreads;
-              if (m && m.method === 'full-chain' && Number.isInteger(m.threads) && m.threads >= 1) measuredThreadsForPool = m;
-            } catch {}
-            let poolThreadsForPool = null;
-            try {
-              const b = (measuredThreadsForPool && Number.isInteger(measuredThreadsForPool.threads)) ? measuredThreadsForPool.threads : 4;
-              const c = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
-              poolThreadsForPool = poolThreadAllocation(b, c, poolMode);
-            } catch {}
-            r = await callMlChecked(runId, {
-              type: MSG.ML_POOL_OCR, runId, sourceLang: settings.sourceLang,
-              crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
-              measuredThreads: measuredThreadsForPool,
-              poolThreads: poolThreadsForPool,
-            });
-            // 2.1.16: show the bench trigger outcome from the previous run
-            // (persisted to storage, so it survives a service-worker
-            // restart). 'delivered+doc' = the doc got the trigger;
-            // 'delivered' = the SW got a reply but the doc left no
-            // received marker; 'FAILED' = the SW could not reach the doc
-            // in 3 tries; '?' = no trigger record yet (2.1.14 or earlier).
-            // 2.1.18: also show the bench's last log line, so we know
-            // whether the bench started and what it last said.
-            let triggerText = '?';
-            let benchLogText = '?';
-            let benchStatusText = (r.bench || '?');
-            try {
-              const tg = await chrome.storage.local.get(['benchTrigger', 'benchTriggerReceived', 'benchLastLog', 'benchStatus']);
-              const t = tg && tg.benchTrigger;
-              if (t) triggerText = t.delivered ? ((tg.benchTriggerReceived) ? 'delivered+doc' : 'delivered') : 'FAILED';
-              if (tg && tg.benchLastLog && typeof tg.benchLastLog.line === 'string' && tg.benchLastLog.line) benchLogText = tg.benchLastLog.line.slice(0, 80);
-              // 2.1.22: read benchStatus here (the SW's reads work) — the
-              // doc's read returns 'none' even when the bench saved 'done',
-              // because the doc's storage reads fail like its writes.
-              const bs = tg && tg.benchStatus;
-              if (bs && typeof bs.state === 'string' && bs.state) {
-                benchStatusText = bs.state + (bs.best != null ? ' best ' + bs.best : '') + (bs.measured ? ' measured ' + bs.measured : '') + (bs.missing ? ' missing ' + bs.missing : '');
-              }
-            } catch {}
-            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?') + ' threads ' + (r.threads ? r.threads[0] + '+' + r.threads[1] : '?') + ' groupMs ' + (r.groupMs ? r.groupMs[0] + '+' + r.groupMs[1] : '?') + ' src ' + (r.threadsSource || '?') + ' bench ' + benchStatusText + ' trigger ' + triggerText + ' benchlog ' + benchLogText);
-          } catch (e) {
-            checkCancelled(runId);
-            diagPush('ocr pool failed, falling back to single: ' + String((e && e.message) || e));
-            r = await callMlChecked(runId, {
-              type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
-              crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
-            });
-          }
-        } else {
-          // 2.1.25: log when single mode was chosen (vs the pool being
-          // skipped for <2 crops or direct handlers), so a run's log
-          // names which OCR path it used.
-          if (poolMode === 'single') diagPush('ocr single mode run ' + runId + ' crops ' + crops.length);
-          r = await callMlChecked(runId, {
-            type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
-            crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
-          });
-        }
+        // OCR is single-worker (2.1.26): the 2-worker pool (2.1.10-2.1.25)
+        // was removed — it never beat single on any page (standard page
+        // pool 4,932ms vs single 4,920ms; dense page pool 8,121ms vs
+        // single 7,961ms). Single uses the measured best thread count
+        // (4 on the M4) via threadsReady() in the doc. The thread bench
+        // itself stays: it measures and saves the best count, and single
+        // OCR reads it on every run.
+        const r = await callMlChecked(runId, {
+          type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
+          crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
+        });
         ocrCallMs = Math.round(performance.now() - ocrCallT0);
         ocrMs = r.ms;
         ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
@@ -1949,7 +1872,7 @@ async function runPipeline(tabId, opts = {}) {
       // "run ok, checking saved count" + "already measured N, skipping"
       // after EVERY run — in the steady state (bench done) that is dozens
       // of identical lines and tells nothing. Now: silence when the bench
-      // is already measured (the pool line already shows "bench done
+      // is already measured (the persisted trace already shows "bench done
       // best N"); log only when the bench will actually run, or on error.
       let alreadyMeasured = false;
       try {
@@ -1967,7 +1890,7 @@ async function runPipeline(tabId, opts = {}) {
       if (!alreadyMeasured) {
         // The doc can be discarded once the run ends; a trigger sent to
         // a dead doc is lost (sendMessage rejects: no listener) and the
-        // bench never runs — the pool then keeps finding no saved count.
+        // bench never runs — single OCR then keeps the raw core count.
         // The 2.1.14 run proved this: bench status stayed 'none', so the
         // bench never started at all. Confirm delivery: await the reply
         // (the doc's handler replies at once) and retry after re-ensuring
@@ -1975,7 +1898,7 @@ async function runPipeline(tabId, opts = {}) {
         // logged (it contains 'threads bench', so it survives into the
         // next run's panel log) AND saved to storage (2.1.16): the log
         // line is lost if the service worker restarts before the next
-        // run, but storage survives, so the next run's pool line can
+        // run, but storage survives, so the persisted trace can
         // show whether the trigger was delivered.
         let delivered = false;
         let attempts = 0;
@@ -2360,7 +2283,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // because the doc's own storage writes may be failing (the bench
     // never saves a status, yet the SW's trigger record is saved). The
     // SW writes the same key the doc would have written, so the bench's
-    // result and the pool's reads see the same storage.
+    // result and the SW's reads see the same storage.
     // 2.1.20: log the save so the trace proves it arrived and was stored.
     try {
       if (msg.key === 'benchStatus' && msg.value && typeof msg.value === 'object') {
