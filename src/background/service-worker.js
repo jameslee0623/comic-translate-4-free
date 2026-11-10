@@ -47,6 +47,25 @@ function diagPush(line) {
   } catch {}
 }
 
+// 2.1.20: bench trace — every bench line, persisted. diagPush alone is
+// in-memory, so a worker restart wipes the bench lines before the next
+// run's log can show them. benchTracePush also appends the line to
+// storage.local 'benchTrace' (last 100 lines), so the next run can show
+// the full trace even after a restart. Writes are chained so they land
+// in order. Fire-and-forget: never blocks the pipeline.
+let benchTraceChain = Promise.resolve();
+function benchTracePush(line) {
+  try { diagPush(line); } catch {}
+  benchTraceChain = benchTraceChain.then(async () => {
+    try {
+      const saved = await chrome.storage.local.get('benchTrace');
+      const arr = (saved && Array.isArray(saved.benchTrace)) ? saved.benchTrace : [];
+      arr.push({ line: String(line), at: new Date().toISOString() });
+      await chrome.storage.local.set({ benchTrace: arr.slice(-100) });
+    } catch {}
+  }).catch(() => {});
+}
+
 // 2.0.27: LEARNED inpaint merge spread. The merge charges a merged
 // patch at perPxMs * spread (textblock.js) — the spread is how much
 // more a big tile costs per pixel than a small one. It was a fixed
@@ -932,6 +951,15 @@ async function runPipeline(tabId, opts = {}) {
   const abortController = new AbortController();
   runs.set(runId, { cancelled: false, tabId, abortController });
   clearDiagLog(); // 1.4.0 (m6): this run's panel log is its own, not the tail of older runs.
+  // 2.1.20: show the persisted bench trace at the top of this run's log,
+  // so one paste shows the full bench history (trigger, start, saves)
+  // even after a worker restart wiped the in-memory lines.
+  try {
+    chrome.storage.local.get('benchTrace').then((saved) => {
+      const arr = (saved && Array.isArray(saved.benchTrace)) ? saved.benchTrace : [];
+      for (const e of arr.slice(-30)) { try { diagPush('threads bench trace: ' + e.line); } catch {} }
+    }).catch(() => {});
+  } catch {}
   persistRunRecord(runId, tabId, 'capture'); // FIX1: see helpers above.
   const settings = await getSettings();
   const timings = {};
@@ -1874,13 +1902,23 @@ async function runPipeline(tabId, opts = {}) {
   // trigger at all. Fail open: any error or missing value still sends it.
   if (result && result.ok) {
     try {
+      // 2.1.20: log every step of the trigger to the trace, so one run
+      // names exactly where it fails instead of another blind retry.
+      benchTracePush('threads bench trigger: run ok, checking saved count');
       let alreadyMeasured = false;
       try {
         const saved = await chrome.storage.local.get('measuredThreads');
         const m = saved && saved.measuredThreads;
         const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
-        if (m && m.method === 'full-chain' && m.hardwareConcurrency === cores && Number.isInteger(m.threads)) alreadyMeasured = true;
-      } catch {}
+        if (m && m.method === 'full-chain' && m.hardwareConcurrency === cores && Number.isInteger(m.threads)) {
+          alreadyMeasured = true;
+          benchTracePush('threads bench trigger: already measured ' + m.threads + ' threads, skipping');
+        } else {
+          benchTracePush('threads bench trigger: no complete save (method=' + (m && m.method) + ' threads=' + (m && m.threads) + '), will send');
+        }
+      } catch (e) {
+        benchTracePush('threads bench trigger: storage read failed: ' + String((e && e.message) || e) + ' — will send anyway');
+      }
       if (!alreadyMeasured) {
         // The doc can be discarded once the run ends; a trigger sent to
         // a dead doc is lost (sendMessage rejects: no listener) and the
@@ -1896,21 +1934,36 @@ async function runPipeline(tabId, opts = {}) {
         // show whether the trigger was delivered.
         let delivered = false;
         let attempts = 0;
+        let lastError = '';
         for (let attempt = 0; attempt < 3 && !delivered; attempt++) {
           attempts = attempt + 1;
-          try { await ensureMlHost(); } catch {}
           try {
-            await Promise.race([
+            await ensureMlHost();
+            benchTracePush('threads bench trigger attempt ' + attempts + ': host alive');
+          } catch (e) {
+            lastError = 'ensureMlHost: ' + String((e && e.message) || e);
+            benchTracePush('threads bench trigger attempt ' + attempts + ': ensureMlHost failed: ' + lastError);
+          }
+          try {
+            const reply = await Promise.race([
               chrome.runtime.sendMessage({ type: MSG.ML_BENCH_THREADS }),
               new Promise((_, rej) => setTimeout(() => rej(new Error('bench trigger timeout')), 3000)),
             ]);
             delivered = true;
-          } catch {}
+            benchTracePush('threads bench trigger attempt ' + attempts + ': delivered, reply=' + JSON.stringify(reply || null));
+          } catch (e) {
+            lastError = String((e && e.message) || e);
+            benchTracePush('threads bench trigger attempt ' + attempts + ': send failed: ' + lastError);
+          }
         }
-        try { diagPush('threads bench trigger ' + (delivered ? 'delivered' : 'FAILED after 3 tries')); } catch {}
-        try { await chrome.storage.local.set({ benchTrigger: { delivered, attempts, at: new Date().toISOString() } }); } catch {}
+        benchTracePush('threads bench trigger ' + (delivered ? 'delivered' : 'FAILED after 3 tries') + (delivered ? '' : ' last error: ' + lastError));
+        try { await chrome.storage.local.set({ benchTrigger: { delivered, attempts, at: new Date().toISOString(), lastError } }); } catch {}
       }
-    } catch {}
+    } catch (e) {
+      try { benchTracePush('threads bench trigger: outer error: ' + String((e && e.message) || e)); } catch {}
+    }
+  } else {
+    benchTracePush('threads bench trigger: run not ok (ok=' + (result && result.ok) + '), skipping');
   }
   return result;
 }
@@ -2198,10 +2251,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return false;
   }
   if (msg && msg.type === MSG.ML_BENCH_RESULT) {
-    try { if (typeof msg.line === 'string' && msg.line) diagPush(msg.line); } catch { /* bench lines must never break the pipeline */ }
-    // 2.1.18: persist the last bench line — the in-memory log is lost if
-    // the worker restarts, but storage survives, so the next run's pool
-    // line can show what the bench last said.
+    // 2.1.20: persist every bench line to the trace (diagPush alone is
+    // lost on a worker restart).
+    try { if (typeof msg.line === 'string' && msg.line) benchTracePush(msg.line); } catch { try { if (typeof msg.line === 'string' && msg.line) diagPush(msg.line); } catch {} }
     try { if (typeof msg.line === 'string' && msg.line) chrome.storage.local.set({ benchLastLog: { line: msg.line, at: new Date().toISOString() } }); } catch {}
     return false;
   }
@@ -2211,14 +2263,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // never saves a status, yet the SW's trigger record is saved). The
     // SW writes the same key the doc would have written, so the bench's
     // result and the pool's reads see the same storage.
+    // 2.1.20: log the save so the trace proves it arrived and was stored.
     try {
       if (msg.key === 'benchStatus' && msg.value && typeof msg.value === 'object') {
+        benchTracePush('threads bench save received benchStatus=' + (msg.value.state || '?') + (msg.value.best != null ? ' best ' + msg.value.best : ''));
         chrome.storage.local.set({ benchStatus: msg.value });
+        benchTracePush('threads bench save stored benchStatus=' + (msg.value.state || '?'));
       } else if (msg.key === 'measuredThreads' && msg.value && typeof msg.value === 'object') {
+        benchTracePush('threads bench save received measuredThreads=' + (msg.value.threads != null ? msg.value.threads : '?'));
         chrome.storage.local.set({ measuredThreads: msg.value });
         chrome.storage.sync.set({ measuredThreads: msg.value });
+        benchTracePush('threads bench save stored measuredThreads=' + (msg.value.threads != null ? msg.value.threads : '?'));
+      } else {
+        benchTracePush('threads bench save received bad key=' + String(msg.key));
       }
-    } catch {}
+    } catch (e) {
+      try { benchTracePush('threads bench save error: ' + String((e && e.message) || e)); } catch {}
+    }
     return false;
   }
   // Pill "Allow <host>" button (content script). permissions.request() must be

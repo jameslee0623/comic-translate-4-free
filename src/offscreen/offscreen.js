@@ -119,6 +119,8 @@ threadsReady();
 // key to storage, so the bench's result persists even if the doc's own
 // write is lost. Fire-and-forget: the bench never waits for it.
 function saveBenchViaSw(key, value) {
+  // 2.1.20: log the send, so the trace proves the doc asked the SW to save.
+  try { benchLog('threads bench save send ' + key + '=' + (key === 'benchStatus' ? (value.state || '?') : (value.threads != null ? value.threads : '?'))); } catch {}
   try {
     const p = chrome.runtime.sendMessage({ type: MSG.ML_BENCH_SAVE, key, value });
     if (p && p.catch) p.catch(() => {});
@@ -256,6 +258,9 @@ async function runThreadBenchmark() {
       benchRunning = false;
       benchCancelled = false;
     } else {
+      // 2.1.20: this silent return was invisible — log it so the trace
+      // proves the bench was blocked by a running bench, not never called.
+      benchLog('threads bench skip: already running, started ' + Math.round((Date.now() - benchStartedAt) / 1000) + 's ago');
       return;
     }
   }
@@ -323,7 +328,11 @@ async function runThreadBenchmark() {
     // of being kept — the old number answered a different question.
     const timings = {};
     try {
+      // 2.1.20: log the storage read, so the trace proves the bench
+      // reached it and what it found.
+      benchLog('threads bench read storage: start');
       const m = await readMeasuredThreads();
+      benchLog('threads bench read storage: ' + (m ? 'method=' + (m.method || 'none') + ' threads=' + (m.threads === undefined ? 'none' : m.threads) + ' timings=' + (m.timings ? Object.keys(m.timings).length : 0) : 'nothing saved'));
       if (m && m.method === 'full-chain' && m.hardwareConcurrency === cores && Number.isInteger(m.threads)) {
         benchLog('threads bench skipped: already measured ' + m.threads + ' threads');
         return;
@@ -331,7 +340,6 @@ async function runThreadBenchmark() {
       // 2.0.25: diagnostic — the bench re-measured after every run in
       // 2.0.24 even though a complete save existed. Log what was read so
       // the next run proves whether the skip sees the save.
-      benchLog('threads bench read storage: ' + (m ? 'method=' + (m.method || 'none') + ' threads=' + (m.threads === undefined ? 'none' : m.threads) + ' timings=' + (m.timings ? Object.keys(m.timings).length : 0) : 'nothing saved'));
       if (m && m.method === 'full-chain' && m.hardwareConcurrency === cores && m.timings && typeof m.timings === 'object') {
         for (const n of counts) {
           const t = m.timings[n];
@@ -952,7 +960,9 @@ const handlers = {
   // 2.1.16: record that the doc received the trigger (storage survives
   // a service-worker restart, so the next run's pool line can show
   // whether the trigger reached the doc even if the bench never saved).
+  // 2.1.20: log the receipt, so the trace proves the handler ran.
   [MSG.ML_BENCH_THREADS]() {
+    try { benchLog('threads bench trigger received'); } catch {}
     try { chrome.storage.local.set({ benchTriggerReceived: { at: new Date().toISOString() } }); } catch {}
     try { runThreadBenchmark().catch(() => {}); } catch {}
     return { ok: true };
