@@ -14,7 +14,7 @@ import { pixelPut, pixelTake, pixelDrop, pixelPruneRun } from '../shared/pixel-b
 import { generateMask } from '../shared/mask.js';
 import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL, BACKEND_SHORT_LABEL } from './translators.js';
 import { detectPageLang } from '../shared/lang-detect.js';
-import { mlHostAlive, ensureMlHost, callMl, cancelMlForRun, runPooledInpaint, cancelPooledInpaint, largestPatchAreaShare, runGpuInpaint, cancelGpuInpaint, runChromeGpuInpaint, cancelChromeGpuInpaint, notifyChromeGpuProgress, runChromeGpuOcr, cancelChromeGpuOcr, notifyChromeGpuOcrProgress, makeCanvas, canvasToBlob, directHandlers, WEBP_TYPE, WEBP_QUALITY, setMlAlarmRecoveryHook } from './ml-bridge.js';
+import { mlHostAlive, ensureMlHost, callMl, cancelMlForRun, runPooledInpaint, cancelPooledInpaint, largestPatchAreaShare, runGpuInpaint, cancelGpuInpaint, runChromeGpuInpaint, cancelChromeGpuInpaint, notifyChromeGpuProgress, makeCanvas, canvasToBlob, directHandlers, WEBP_TYPE, WEBP_QUALITY, setMlAlarmRecoveryHook } from './ml-bridge.js';
 import {
   initPageCache, buildCacheKey, buildCacheKeyTier1, buildCacheKeyTier2,
   pageCacheGet, pageCachePut,
@@ -66,12 +66,6 @@ const INPAINT_SPREAD_MIN = 1.0;
 const INPAINT_SPREAD_MAX = 2.0;
 const INPAINT_SPREAD_LEARN = 0.1;
 let inpaintSpreadCache = null;
-// GPU OCR (2.1.6): set after one GPU OCR failure (error or watchdog
-// hang) in this service-worker lifetime, so a deterministically hung
-// GPU does not cost every run a 30s watchdog wait before the WASM
-// fallback. Cleared when the SW restarts. If GPU OCR hangs on every
-// run, the next step is a persistent stick (storage), not this flag.
-let gpuOcrDowngraded = false;
 async function readInpaintSpread() {
   if (inpaintSpreadCache) return inpaintSpreadCache;
   const d = { gpu: INPAINT_COST_SPREAD, wasm: INPAINT_COST_SPREAD, wasm1: INPAINT_COST_SPREAD };
@@ -221,8 +215,6 @@ function abortRunResources(id, r) {
   // for the next run; the ML_CANCEL broadcast below does the same;
   // both are idempotent).
   try { cancelChromeGpuInpaint(id); } catch {}
-  // GPU OCR (2.1.6): same — a cancelled OCR GPU job stops, worker kept.
-  try { cancelChromeGpuOcr(id); } catch {}
 }
 
 async function cancelRunsForTab(tabId) {
@@ -1192,43 +1184,10 @@ async function runPipeline(tabId, opts = {}) {
       const ocrStats = new Map();
       if (crops.length) {
         const ocrCallT0 = performance.now();
-        let r;
-        // GPU OCR (2.1.6, Chrome only): Baberu on WebGPU in the shared
-        // GPU worker, behind the 30s watchdog (runChromeGpuOcr). The
-        // 1.3.4 decode deadlocked on WebGPU with no error, so the
-        // watchdog — not an error — is what catches a hang, and the
-        // run falls back to WASM. One GPU failure stops GPU OCR tries
-        // for this SW lifetime (gpuOcrDowngraded). Firefox never tries:
-        // its GPU fails at pipeline creation on Metal (same as LaMa).
-        if (!directHandlers() && !gpuOcrDowngraded) {
-          try {
-            diagPush('ocr gpu start run ' + runId + ' crops ' + crops.length);
-            r = await runChromeGpuOcr({
-              runId, sourceLang: settings.sourceLang,
-              crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
-              diag: diagPush,
-              isCancelled: () => runs.get(runId)?.cancelled === true,
-            });
-            diagPush('ocr gpu done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0));
-          } catch (e) {
-            checkCancelled(runId);
-            if (e && e.gpuSkipped) {
-              diagPush('ocr gpu skipped: ' + String((e && e.message) || e));
-            } else {
-              gpuOcrDowngraded = true;
-              diagPush('ocr gpu failed, downgrading to WASM for this SW lifetime: ' + String((e && e.message) || e));
-            }
-            r = await callMlChecked(runId, {
-              type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
-              crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
-            });
-          }
-        } else {
-          r = await callMlChecked(runId, {
-            type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
-            crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
-          });
-        }
+        const r = await callMlChecked(runId, {
+          type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
+          crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
+        });
         ocrCallMs = Math.round(performance.now() - ocrCallT0);
         ocrMs = r.ms;
         ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
@@ -2151,13 +2110,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // GPU1-Chrome: the same progress re-arms the SW-side GPU watchdog
     // in ml-bridge.js (progress resets the 60s inactivity window).
     try { notifyChromeGpuProgress(msg.runId, msg.frac); } catch {}
-    return false;
-  }
-  // GPU OCR (2.1.6): per-crop progress from the offscreen doc re-arms
-  // the GPU OCR watchdog in ml-bridge.js. No pill routing — the pill
-  // never showed per-crop OCR progress on the WASM path either.
-  if (msg && msg.type === MSG.ML_OCR_PROGRESS) {
-    try { notifyChromeGpuOcrProgress(msg.runId, msg.frac); } catch {}
     return false;
   }
   if (msg && msg.type === MSG.ML_BENCH_RESULT) {

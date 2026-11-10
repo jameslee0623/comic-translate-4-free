@@ -415,22 +415,18 @@ async function assetText(path) {
 // GPU worker realm (ml-gpu-worker.js, terminated to reclaim GPU
 // buffers), FIX1 recovery, keep-alives, and the panel log, so a GPU
 // failure is observed in full and fails cleanly instead of freezing.
-// Detector stays WASM-only (it hardcodes ['wasm'] below). LaMa inpaint
-// and Baberu OCR touch GPU, and only in the GPU worker realm: the
+// Detector stays WASM-only (it hardcodes ['wasm'] below), Baberu
+// stays WASM-only ('ocr-baberu' is never in this set). Only LaMa
+// inpaint ever touches GPU, and only in the GPU worker realm: the
 // flag below is set by ml-gpu-worker.js before importing this module,
 // and unset everywhere else (shared worker, background page,
 // offscreen document), where this set stays empty and all models
 // stay WASM. Chrome GPU1: the offscreen document spawns the GPU worker
-// (ML_GPU_INPAINT / ML_GPU_OCR handlers) but never sets the flag itself, so its own
+// (ML_GPU_INPAINT handler) but never sets the flag itself, so its own
 // sessions stay WASM — only the spawned worker realm runs GPU. A WebGPU session still runs inside a WASM instance and
 // shares its realm's heap (1.3.4 finding) — that is why GPU LaMa
-// and GPU Baberu must never share a realm with WASM sessions.
-// Baberu on GPU (2.1.6): the 1.3.4 autoregressive step loop deadlocked
-// on WebGPU with no error (OCR 38% stall). It runs here only behind
-// the SW-side watchdog (runChromeGpuOcr): no progress for 30s kills
-// the worker and the run falls back to WASM. If it hangs every run,
-// the SW stops trying GPU OCR for the session.
-const WEBGPU_KINDS = (typeof globalThis !== 'undefined' && globalThis.__ctGpuInpaintWorker) ? new Set(['inpaint', 'ocr-baberu']) : new Set([]);
+// must never share a realm with WASM sessions.
+const WEBGPU_KINDS = (typeof globalThis !== 'undefined' && globalThis.__ctGpuInpaintWorker) ? new Set(['inpaint']) : new Set([]);
 const HAS_WEBGPU = typeof navigator !== 'undefined' && !!navigator.gpu;
 const webgpuDowngraded = new Set(); // kinds that fell back to WASM
 function providersFor(kind) {
@@ -600,10 +596,6 @@ async function getChromeGpuWorker() {
             try { if (globalThis.__ctInpaintProgress) globalThis.__ctInpaintProgress(m.runId, m.frac); } catch {}
             return;
           }
-          if (m.type === 'ocr-progress') {
-            try { if (globalThis.__ctOcrProgress) globalThis.__ctOcrProgress(m.runId, m.frac); } catch {}
-            return;
-          }
           if (m.callId == null) return;
           const p = chromeGpuPending.get(m.callId);
           if (!p) return;
@@ -752,9 +744,8 @@ const handlers = {
 
   // ML_GPU_WARMUP {runId} — Chrome GPU1 (2.0.7): warm the shared GPU
   // worker at pipeline start (see service-worker.js). Creates the
-  // worker if needed, then posts ML_ENSURE for inpaint and ocr-baberu
-  // so the LaMa and Baberu models load now, overlapping
-  // detect/OCR/translate. The reply is
+  // worker if needed, then posts ML_ENSURE for inpaint so the LaMa
+  // model loads now, overlapping detect/OCR/translate. The reply is
   // ignored (no pending entry) and this handler never throws — a
   // warmup failure changes nothing: the normal GPU path still loads
   // on demand and falls back to WASM on failure.
@@ -762,9 +753,6 @@ const handlers = {
     try {
       const { worker } = await getChromeGpuWorker();
       try { worker.postMessage({ type: MSG.ML_ENSURE, model: 'inpaint', runId, callId: ++chromeGpuSeq }); } catch {}
-      // GPU OCR (2.1.6): warm Baberu too, so the first OCR crop does
-      // not pay the GPU model load inside the OCR stage.
-      try { worker.postMessage({ type: MSG.ML_ENSURE, model: 'ocr-baberu', runId, callId: ++chromeGpuSeq }); } catch {}
     } catch {}
     return { ok: true };
   },
@@ -816,35 +804,6 @@ const handlers = {
     });
     armChromeGpuIdleTimer();
     return { ok: true, results: (res && res.results) || [], ms: (res && res.ms) || 0, totalTiles: (res && res.totalTiles) || 0, readyMs, loadMs: (res && res.loadMs) || 0, patchStats: (res && res.patchStats) || [], tileMax: (res && res.tileMax) || 0 };
-  },
-
-  // ML_GPU_OCR {crops, sourceLang, runId} — Chrome GPU OCR (2.1.6):
-  // same shape as ML_GPU_INPAINT, but forwards the ML_OCR handler to
-  // the shared GPU worker, where Baberu runs on WebGPU (WEBGPU_KINDS
-  // has 'ocr-baberu' in that realm only). The SW-side watchdog
-  // (runChromeGpuOcr) covers the 1.3.4 hang: per-crop progress from
-  // the worker re-arms it; 30s of silence terminates the worker and
-  // the SW falls back to WASM. Returns the ML_OCR result shape, so
-  // the SW's OCR merge code is unchanged.
-  async [MSG.ML_GPU_OCR]({ crops, runId, sourceLang }) {
-    if (typeof document === 'undefined') throw new Error('GPU_SKIPPED: ml/gpu-ocr is offscreen-document-only');
-    if (typeof navigator === 'undefined' || !navigator.gpu) throw new Error('GPU_SKIPPED: no navigator.gpu in the offscreen document realm, using WASM path');
-    if (!crops || !crops.length) return { ok: true, results: [], ms: 0, engine: '', loadMs: 0 };
-    throwIfCancelled(runId);
-    const { worker, readyMs } = await getChromeGpuWorker();
-    throwIfCancelled(runId);
-    const callId = ++chromeGpuSeq;
-    const res = await new Promise((resolve, reject) => {
-      chromeGpuPending.set(callId, { resolve, reject, runId });
-      try {
-        worker.postMessage({ type: MSG.ML_OCR, runId, callId, crops, sourceLang });
-      } catch (e) {
-        chromeGpuPending.delete(callId);
-        reject(e);
-      }
-    });
-    armChromeGpuIdleTimer();
-    return { ok: true, results: (res && res.results) || [], ms: (res && res.ms) || 0, engine: (res && res.engine) || '', loadMs: (res && res.loadMs) || 0, readyMs };
   },
 
   async [MSG.ML_DETECT]({ key, width, height, threshold, runId, noStrip }) {
@@ -928,10 +887,6 @@ const handlers = {
         // exactly as if OCR had returned ''.
         if (cropStddev(u8) < 3.0) {
           results.push({ id: c.id, text: '', chars: 0, chunks: 0, hitCeiling: false, stopped: 'eos', skipped: true, ms: Math.round(performance.now() - cT0) });
-          // GPU OCR watchdog (2.1.6): a finished crop is progress. The
-          // SW-side watchdog re-arms on each one; a decode hung mid-crop
-          // (the 1.3.4 38% stall) sends none, so the watchdog fires.
-          try { globalThis.__ctOcrProgress?.(runId, results.length / crops.length); } catch {}
           continue;
         }
         // Baberu v1.1 reads up to ~256 chars; the chunked path is a rare
@@ -944,14 +899,16 @@ const handlers = {
           });
         } catch (e) {
           // OOM recovery: drop the inpainter (206MB, not needed for OCR)
-          // first to free memory, then retry this crop once. A GPU hang
-          // is NOT caught here — the SW-side watchdog (runChromeGpuOcr)
-          // kills the GPU worker and falls back to WASM for the run.
+          // first to free memory, then retry this crop once. Baberu is
+          // WASM-only (GPU OCR was tried in 2.1.6 and reverted in 2.1.8:
+          // it finished but ran ~2x slower than WASM — the
+          // autoregressive step loop is latency-bound, not throughput-
+          // bound — so there is no GPU downgrade path here).
           if (!isOom(e) || c._oomRetried) {
-            // Debug (2.1.7): name the crop that broke, so a failing run
-            // shows which crop it was stuck on (GPU or WASM path alike).
-            // Cancellations pass through untagged — the SW detects them
-            // from the run's cancelled flag, not the message.
+            // Debug (2.1.7, kept through the 2.1.8 revert): name the
+            // crop that broke, so a failing run shows which crop it was
+            // stuck on. Cancellations pass through untagged — the SW
+            // detects them from the run's cancelled flag, not the message.
             if (e && e.cancelled) throw e;
             throw new Error('ocr crop ' + c.id + ' (' + c.width + 'x' + c.height + '): ' + String((e && e.message) || e));
           }
@@ -963,7 +920,6 @@ const handlers = {
           });
         }
         results.push({ id: c.id, text: r.text, chars: r.text.length, chunks: r.chunks, hitCeiling: r.hitCeiling, stopped: r.stopped, ms: Math.round(performance.now() - cT0) });
-        try { globalThis.__ctOcrProgress?.(runId, results.length / crops.length); } catch {}
       }
     } finally {
       releaseRun(runId);

@@ -1,10 +1,6 @@
 // Firefox GPU ML worker — CLASSIC worker (not module), see ml-bridge.js.
-// GPU1: dedicated worker for LaMa inpainting and Baberu OCR on
-// WebGPU. It runs no other model: the detector stays on the shared
-// WASM worker. Baberu joined in 2.1.6, behind the SW-side watchdog
-// (runChromeGpuOcr) — its autoregressive step loop deadlocked on
-// WebGPU in 1.3.4 with no error, so a hang here is caught by
-// silence (no per-crop progress), not by an error.
+// GPU1: dedicated worker for LaMa inpainting on WebGPU ONLY. It runs
+// no other model: detector and Baberu stay on the shared WASM worker.
 // Separate realm from the shared worker on purpose: a WebGPU session
 // still runs inside a WASM instance and shares that realm's heap
 // (1.3.4 finding), so GPU LaMa must never share a realm with WASM
@@ -43,10 +39,10 @@ importScripts('../offscreen/vendor/ort.min.js');
 importScripts('../offscreen/vendor/ort.webgpu.min.js'); // GPU1: WebGPU EP addon (requires ort.min.js first, not a replacement).
 
 // GPU1 realm flag: set BEFORE dynamically importing offscreen.js, so
-// that module's WEBGPU_KINDS is ['inpaint', 'ocr-baberu'] in THIS realm
-// only. Every other realm (shared worker, background page, offscreen
-// document) leaves the flag unset and stays WASM-only. Detector is
-// WASM-only even here: detector hardcodes ['wasm'], and 'detector'
+// that module's WEBGPU_KINDS is ['inpaint'] in THIS realm only. Every
+// other realm (shared worker, background page, offscreen document)
+// leaves the flag unset and stays WASM-only. Detector and Baberu are
+// WASM-only even here: detector hardcodes ['wasm'], and 'ocr-baberu'
 // is not in WEBGPU_KINDS.
 globalThis.__ctGpuInpaintWorker = true;
 
@@ -60,12 +56,6 @@ Promise.all([
   // to the page (only inpaint reports progress; other handlers never call it).
   globalThis.__ctInpaintProgress = (runId, frac) => {
     try { self.postMessage({ type: 'inpaint-progress', runId, frac }); } catch {}
-  };
-  // GPU OCR (2.1.6): same shape — the OCR handler reports per-crop
-  // progress through this hook so the SW-side watchdog can see the
-  // decode moving. A decode hung mid-crop sends nothing.
-  globalThis.__ctOcrProgress = (runId, frac) => {
-    try { self.postMessage({ type: 'ocr-progress', runId, frac }); } catch {}
   };
   self.onmessage = async (e) => {
     const msg = e.data;
