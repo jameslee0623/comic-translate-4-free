@@ -1198,7 +1198,7 @@ async function runPipeline(tabId, opts = {}) {
               type: MSG.ML_POOL_OCR, runId, sourceLang: settings.sourceLang,
               crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
             });
-            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?'));
+            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?') + ' threads ' + (r.threads ? r.threads[0] + '+' + r.threads[1] : '?') + ' groupMs ' + (r.groupMs ? r.groupMs[0] + '+' + r.groupMs[1] : '?'));
           } catch (e) {
             checkCancelled(runId);
             diagPush('ocr pool failed, falling back to single: ' + String((e && e.message) || e));
@@ -1359,7 +1359,7 @@ async function runPipeline(tabId, opts = {}) {
       // paste / round-trip call / stage total). loadMs/readyMs ride on
       // r from the ML handler; the rest is timed here.
       let inpaintPath = 'wasm';
-      let prepMs = 0, callMs = 0, pasteMs = 0, splitLoadMs = 0, splitReadyMs = null, splitTileMax = 0;
+      let prepMs = 0, callMs = 0, pasteMs = 0, splitLoadMs = 0, splitReadyMs = null, splitTileMax = 0, splitHostMs = null, splitDocMs = null;
       // 2.0.27: the merge uses the LEARNED spread for this path
       // (gpu on Chrome, wasm1 on Firefox), starting at 1.3 and
       // adjusting from real runs (see readInpaintSpread above).
@@ -1521,6 +1521,13 @@ async function runPipeline(tabId, opts = {}) {
         splitLoadMs = (r && r.loadMs) || 0;
         splitReadyMs = (r && r.readyMs != null) ? r.readyMs : null;
         splitTileMax = (r && r.tileMax) || 0;
+        // BUGFIX (2.1.11): r is block-scoped (declared inside the
+        // patches block above) but the timing line below sits outside it
+        // — reading r there threw 'r is not defined' and killed the run
+        // after inpaint finished. Hoist the two timing values like
+        // splitLoadMs above, so the line below reads them, not r.
+        splitHostMs = (r && r.hostMs != null) ? r.hostMs : null;
+        splitDocMs = (r && r.docMs != null) ? r.docMs : null;
         // MEASURE1: tile shape of this page, from the handler's count.
         if (r && typeof r.totalTiles === 'number') diagPush('inpaint tiles total ' + r.totalTiles + ' patches ' + patches.length);
         const pasteT0 = performance.now();
@@ -1597,9 +1604,9 @@ async function runPipeline(tabId, opts = {}) {
       // worker's patch loop; load = model load. transit = call - host -
       // doc = the SW<->doc message hops both ways. Doc overhead (handler
       // work outside the worker) is doc - load - worker. GPU path only.
-      if (patches.length && inpaintPath === 'gpu' && r && r.hostMs != null) {
-        const transitMs = callMs - (r.hostMs || 0) - (r.docMs || 0);
-        diagPush('inpaint gpu timing host ' + (r.hostMs || 0) + ' doc ' + (r.docMs || 0) + ' worker ' + inpaintMs + ' load ' + splitLoadMs + ' call ' + callMs + ' transit ' + transitMs);
+      if (patches.length && inpaintPath === 'gpu' && splitHostMs != null) {
+        const transitMs = callMs - (splitHostMs || 0) - (splitDocMs || 0);
+        diagPush('inpaint gpu timing host ' + (splitHostMs || 0) + ' doc ' + (splitDocMs || 0) + ' worker ' + inpaintMs + ' load ' + splitLoadMs + ' call ' + callMs + ' transit ' + transitMs);
       }
       parProgress('inpaint', 1);
       await emitDebug(runId, tabId, settings, 'inpaint', {

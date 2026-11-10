@@ -1004,6 +1004,8 @@ const handlers = {
       engine: groupResults[0].engine || groupResults[1].engine || '',
       loadMs: Math.max(groupResults[0].loadMs || 0, groupResults[1].loadMs || 0),
       groups: [groups[0].length, groups[1].length],
+      threads: [(groupResults[0].threads || 0), (groupResults[1].threads || 0)],
+      groupMs: [(groupResults[0].ms || 0), (groupResults[1].ms || 0)],
     };
   },
 
@@ -1142,7 +1144,12 @@ const handlers = {
     // Guard against late completion after timeout/cancel: don't deliver
     // stale results if the run was cancelled while we were working.
     throwIfCancelled(runId);
-    return { ok: true, results, ms: Math.round(performance.now() - t0), engine, loadMs };
+    // DIAG (2.1.11): report the thread count this realm actually used,
+    // so the pool's done line can show whether each worker really ran
+    // the measured count (the pool run was ~3x slower per crop, and the
+    // first suspect is a worker running 1 thread, not 4).
+    const threadsUsed = (typeof ort !== 'undefined' && ort.env && ort.env.wasm && typeof ort.env.wasm.numThreads === 'number') ? ort.env.wasm.numThreads : null;
+    return { ok: true, results, ms: Math.round(performance.now() - t0), engine, loadMs, threads: threadsUsed };
   },
 
   // MEASURE1 diagnostic: report the WASM thread facts of the realm
