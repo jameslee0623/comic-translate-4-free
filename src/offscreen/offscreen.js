@@ -953,11 +953,18 @@ const handlers = {
     const [w0, w1] = await Promise.all([getPoolOcrWorker(0), getPoolOcrWorker(1)]);
     throwIfCancelled(runId);
     let threads = null;
+    let threadsSource = '';
     try {
       const m = await readMeasuredThreads();
-      if (m && Number.isInteger(m.threads) && m.threads >= 1) threads = m.threads;
+      if (m && Number.isInteger(m.threads) && m.threads >= 1) { threads = m.threads; threadsSource = 'measured:' + m.threads; }
     } catch {}
-    if (threads == null) threads = Math.max(1, (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4);
+    if (threads == null) {
+      // No measured count — do not pool at a guessed count. The 2.1.11
+      // run proved 10+10 threads is slower than single (13.2s vs ~7.8s),
+      // so a pool without the measured count only hurts. Throw so the SW
+      // falls back to single; the bench re-measures after a successful run.
+      throw new Error('OCR pool skipped: no measured thread count saved yet');
+    }
     const groups = balanceOcrCrops(crops);
     const GROUP_TIMEOUT_MS = 120 * 1000;
     const runGroup = (slot, group) => {
@@ -1006,6 +1013,7 @@ const handlers = {
       groups: [groups[0].length, groups[1].length],
       threads: [(groupResults[0].threads || 0), (groupResults[1].threads || 0)],
       groupMs: [(groupResults[0].ms || 0), (groupResults[1].ms || 0)],
+      threadsSource,
     };
   },
 
