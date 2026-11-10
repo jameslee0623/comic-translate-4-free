@@ -1864,8 +1864,16 @@ async function runPipeline(tabId, opts = {}) {
         if (m && m.method === 'full-chain' && m.hardwareConcurrency === cores && Number.isInteger(m.threads)) alreadyMeasured = true;
       } catch {}
       if (!alreadyMeasured) {
-        const p = chrome.runtime.sendMessage({ type: MSG.ML_BENCH_THREADS });
-        if (p && p.catch) p.catch(() => {});
+        // The doc can be discarded once the run ends; a trigger sent to
+        // a dead doc is silently lost (sendMessage resolves with no
+        // listener, and the bench never runs — the pool then keeps
+        // finding no saved count). Make sure the host exists first, then
+        // send. Fire-and-forget: a failure here changes nothing.
+        try { await ensureMlHost(); } catch {}
+        try {
+          const p = chrome.runtime.sendMessage({ type: MSG.ML_BENCH_THREADS });
+          if (p && p.catch) p.catch(() => {});
+        } catch {}
       }
     } catch {}
   }

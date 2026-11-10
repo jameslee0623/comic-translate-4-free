@@ -959,11 +959,18 @@ const handlers = {
       if (m && Number.isInteger(m.threads) && m.threads >= 1) { threads = m.threads; threadsSource = 'measured:' + m.threads; }
     } catch {}
     if (threads == null) {
-      // No measured count — do not pool at a guessed count. The 2.1.11
-      // run proved 10+10 threads is slower than single (13.2s vs ~7.8s),
-      // so a pool without the measured count only hurts. Throw so the SW
-      // falls back to single; the bench re-measures after a successful run.
-      throw new Error('OCR pool skipped: no measured thread count saved yet');
+      // No measured count yet — the bench has not finished/saved. Do NOT
+      // fall back to the raw core count (10+10 was slower than single in
+      // 2.1.11). Use the bench's own starting point instead:
+      // max(3, ceil(cores/4)) per worker — the smallest plausible
+      // big-core count — capped at floor(cores/2) so the two workers
+      // together never exceed the core count and cannot oversubscribe.
+      // This is a hardware-derived fallback, not the measured best —
+      // the pool switches to measured:N once the bench saves.
+      const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
+      threads = Math.min(Math.floor(cores / 2), Math.max(3, Math.ceil(cores / 4)));
+      if (!Number.isInteger(threads) || threads < 1) threads = 1;
+      threadsSource = 'fallback:' + threads;
     }
     const groups = balanceOcrCrops(crops);
     const GROUP_TIMEOUT_MS = 120 * 1000;
