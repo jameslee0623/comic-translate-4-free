@@ -81,6 +81,7 @@ async function readMeasuredThreads() {
   return null;
 }
 async function saveMeasuredThreads(value) {
+  saveBenchViaSw('measuredThreads', value);
   try { await chrome.storage.local.set({ measuredThreads: value }); } catch {}
   try { await chrome.storage.sync.set({ measuredThreads: value }); } catch {}
 }
@@ -111,9 +112,23 @@ threadsReady();
 // missing bench line never proved the bench did not run). The pool's done
 // line carries it, so one run shows whether the bench ran, which counts it
 // measured, and why it stopped.
-async function saveBenchStatus(state, extra = {}) {
+// 2.1.19: save a bench record through the SW. The doc's own storage
+// writes may be failing — the bench never saves a status and the doc
+// leaves no received marker, yet the SW's storage writes work (the
+// trigger record is saved and the pool reads it). The SW writes the same
+// key to storage, so the bench's result persists even if the doc's own
+// write is lost. Fire-and-forget: the bench never waits for it.
+function saveBenchViaSw(key, value) {
   try {
-    await chrome.storage.local.set({ benchStatus: { state, ...extra, updatedAt: new Date().toISOString() } });
+    const p = chrome.runtime.sendMessage({ type: MSG.ML_BENCH_SAVE, key, value });
+    if (p && p.catch) p.catch(() => {});
+  } catch {}
+}
+async function saveBenchStatus(state, extra = {}) {
+  const value = { state, ...extra, updatedAt: new Date().toISOString() };
+  saveBenchViaSw('benchStatus', value);
+  try {
+    await chrome.storage.local.set({ benchStatus: value });
   } catch {}
 }
 async function readBenchStatus() {

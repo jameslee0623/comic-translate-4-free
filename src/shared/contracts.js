@@ -37,6 +37,7 @@ export const MSG = {
   ML_GPU_CANCEL: 'ml/gpu-cancel',        // Chrome GPU1: SW -> offscreen doc {runId} -> {ok} (watchdog hang only: terminate the shared GPU worker; idempotent)
   ML_BENCH_THREADS: 'ml/bench-threads',  // Chrome 2.0.13: SW -> offscreen doc {} -> {ok} (after a successful run: measure the best WASM thread count once, in the background; fire-and-forget)
   ML_BENCH_RESULT: 'ml/bench-result',    // Chrome 2.0.13: offscreen doc -> SW one-way {line} (benchmark progress/result lines for the panel log; no reply)
+  ML_BENCH_SAVE: 'ml/bench-save',        // Chrome 2.1.19: offscreen doc -> SW one-way {key, value} (save a bench record — benchStatus or measuredThreads — to storage through the SW, whose storage writes are proven; the doc's own writes may be failing)
   // SW -> content (tabs.sendMessage)
   RUN_STARTED: 'ct/run-started',         // {runId} (marks the tab's current run; stale renders are ignored)
   RENDER: 'ct/render',                   // {runId, mode, imageDataUrl, width, height, blocks, timings, debug, srcUrl?}

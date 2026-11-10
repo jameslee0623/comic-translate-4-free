@@ -2205,6 +2205,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     try { if (typeof msg.line === 'string' && msg.line) chrome.storage.local.set({ benchLastLog: { line: msg.line, at: new Date().toISOString() } }); } catch {}
     return false;
   }
+  if (msg && msg.type === MSG.ML_BENCH_SAVE) {
+    // 2.1.19: the offscreen doc saves bench records through the SW
+    // because the doc's own storage writes may be failing (the bench
+    // never saves a status, yet the SW's trigger record is saved). The
+    // SW writes the same key the doc would have written, so the bench's
+    // result and the pool's reads see the same storage.
+    try {
+      if (msg.key === 'benchStatus' && msg.value && typeof msg.value === 'object') {
+        chrome.storage.local.set({ benchStatus: msg.value });
+      } else if (msg.key === 'measuredThreads' && msg.value && typeof msg.value === 'object') {
+        chrome.storage.local.set({ measuredThreads: msg.value });
+        chrome.storage.sync.set({ measuredThreads: msg.value });
+      }
+    } catch {}
+    return false;
+  }
   // Pill "Allow <host>" button (content script). permissions.request() must be
   // called synchronously in the message turn — the click's user gesture only
   // survives one sync hop across sendMessage, so nothing may be awaited first
