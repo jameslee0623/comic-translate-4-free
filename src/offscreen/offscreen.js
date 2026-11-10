@@ -255,6 +255,9 @@ async function runThreadBenchmark() {
   // bench silently and nothing was ever saved. benchKeepAliveStop in the
   // finally still releases it.
   benchKeepAliveStart();
+  // 2.1.18: log immediately, before any await, so the next run can prove
+  // the bench started even if it dies before the first status save.
+  benchLog('threads bench started');
   try {
     const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
     // 2.0.26: new bench spread (James's design, from CPU research

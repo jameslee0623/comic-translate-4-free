@@ -1204,13 +1204,17 @@ async function runPipeline(tabId, opts = {}) {
             // 'delivered' = the SW got a reply but the doc left no
             // received marker; 'FAILED' = the SW could not reach the doc
             // in 3 tries; '?' = no trigger record yet (2.1.14 or earlier).
+            // 2.1.18: also show the bench's last log line, so we know
+            // whether the bench started and what it last said.
             let triggerText = '?';
+            let benchLogText = '?';
             try {
-              const tg = await chrome.storage.local.get(['benchTrigger', 'benchTriggerReceived']);
+              const tg = await chrome.storage.local.get(['benchTrigger', 'benchTriggerReceived', 'benchLastLog']);
               const t = tg && tg.benchTrigger;
               if (t) triggerText = t.delivered ? ((tg.benchTriggerReceived) ? 'delivered+doc' : 'delivered') : 'FAILED';
+              if (tg && tg.benchLastLog && typeof tg.benchLastLog.line === 'string' && tg.benchLastLog.line) benchLogText = tg.benchLastLog.line.slice(0, 80);
             } catch {}
-            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?') + ' threads ' + (r.threads ? r.threads[0] + '+' + r.threads[1] : '?') + ' groupMs ' + (r.groupMs ? r.groupMs[0] + '+' + r.groupMs[1] : '?') + ' src ' + (r.threadsSource || '?') + ' bench ' + (r.bench || '?') + ' trigger ' + triggerText);
+            diagPush('ocr pool done ms ' + r.ms + ' loadMs ' + (r.loadMs || 0) + ' groups ' + (r.groups ? r.groups[0] + '+' + r.groups[1] : '?') + ' threads ' + (r.threads ? r.threads[0] + '+' + r.threads[1] : '?') + ' groupMs ' + (r.groupMs ? r.groupMs[0] + '+' + r.groupMs[1] : '?') + ' src ' + (r.threadsSource || '?') + ' bench ' + (r.bench || '?') + ' trigger ' + triggerText + ' benchlog ' + benchLogText);
           } catch (e) {
             checkCancelled(runId);
             diagPush('ocr pool failed, falling back to single: ' + String((e && e.message) || e));
@@ -2195,6 +2199,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg && msg.type === MSG.ML_BENCH_RESULT) {
     try { if (typeof msg.line === 'string' && msg.line) diagPush(msg.line); } catch { /* bench lines must never break the pipeline */ }
+    // 2.1.18: persist the last bench line — the in-memory log is lost if
+    // the worker restarts, but storage survives, so the next run's pool
+    // line can show what the bench last said.
+    try { if (typeof msg.line === 'string' && msg.line) chrome.storage.local.set({ benchLastLog: { line: msg.line, at: new Date().toISOString() } }); } catch {}
     return false;
   }
   // Pill "Allow <host>" button (content script). permissions.request() must be
