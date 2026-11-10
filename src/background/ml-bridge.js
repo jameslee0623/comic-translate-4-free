@@ -892,10 +892,11 @@ export const GPU_WATCHDOG_INACTIVITY_MS = 30 * 1000;
 export const GPU_LOAD_WINDOW_MS = 30 * 1000;
 const GPU_READY_TIMEOUT_MS = 5 * 1000;
 
-function gpuHangError(watchdogMs) {
-  const err = new Error(`GPU inpaint hang: no progress or reply for ${watchdogMs / 1000}s — the GPU worker was terminated automatically. Downgrading to WASM for this run.`);
+function gpuHangError(watchdogMs, mlType = MSG.ML_INPAINT) {
+  const label = mlType === MSG.ML_OCR ? 'OCR' : 'inpaint';
+  const err = new Error(`GPU ${label} hang: no progress or reply for ${watchdogMs / 1000}s — the GPU worker was terminated automatically. Downgrading to WASM for this run.`);
   err.gpuHang = true;
-  err.mlType = MSG.ML_INPAINT;
+  err.mlType = mlType;
   return err;
 }
 function gpuCancelledError() {
@@ -1111,6 +1112,19 @@ export function cancelChromeGpuInpaint(runId) {
   if (!job) return;
   try { job.close(gpuCancelledError()); } catch {}
 }
+// GPU OCR (2.1.6): same hooks as inpaint, separate map so an OCR job
+// and an inpaint job for one run never share state (they never run at
+// the same time, but a stale inpaint entry must not cancel an OCR run).
+const chromeGpuOcrProgressHooks = new Map();
+export function notifyChromeGpuOcrProgress(runId, frac) {
+  try { chromeGpuOcrProgressHooks.get(runId)?.(frac); } catch {}
+}
+const activeChromeGpuOcrJobs = new Map();
+export function cancelChromeGpuOcr(runId) {
+  const job = activeChromeGpuOcrJobs.get(runId);
+  if (!job) return;
+  try { job.close(gpuCancelledError()); } catch {}
+}
 function chromeGpuSkippedError(message) {
   return Object.assign(new Error(message), { gpuSkipped: true });
 }
@@ -1204,6 +1218,100 @@ export async function runChromeGpuInpaint(opts) {
     clearWatchdog();
     if (activeChromeGpuJobs.get(runId) === job) activeChromeGpuJobs.delete(runId);
     if (chromeGpuProgressHooks.get(runId)) chromeGpuProgressHooks.delete(runId);
+  }
+}
+
+// Chrome GPU OCR (2.1.6). Mirrors runChromeGpuInpaint exactly: same
+// watchdog (30s load window, then 30s inactivity), same cancel and
+// gpuSkipped semantics. The Baberu decode is autoregressive — one
+// token at a time, KV cache growing every step — and that shape
+// deadlocked on WebGPU in 1.3.4 with no error (OCR 38% stall). The
+// watchdog is what makes a retry safe: per-crop progress from the
+// GPU worker re-arms it; 30s of silence terminates the worker and
+// the service worker falls back to WASM. Returns the ML_OCR result
+// shape {results, ms, engine, loadMs}, so the caller's merge code is
+// unchanged. Throws once on any GPU failure (error, hang, skipped);
+// it never retries internally.
+export async function runChromeGpuOcr(opts) {
+  const {
+    runId, crops, sourceLang,
+    onProgress = () => {},
+    diag = () => {},
+    isCancelled = () => false,
+    ensureHost = () => ensureMlHost(),
+    sendGpuMessage = (msg) => chrome.runtime.sendMessage(msg),
+    cancelGpuMessage = (msg) => { try { const p = chrome.runtime.sendMessage(msg); if (p && p.catch) p.catch(() => {}); } catch {} },
+    watchdogInactivityMs = GPU_WATCHDOG_INACTIVITY_MS,
+    loadWindowMs = GPU_LOAD_WINDOW_MS,
+  } = opts || {};
+  if (!crops || !crops.length) return { results: [], ms: 0, engine: '', loadMs: 0 };
+  if (isCancelled()) throw gpuCancelledError();
+  let watchdogTimer = null;
+  let watchdogFired = false;
+  let seenProgress = false;
+  let lastWindowMs = loadWindowMs;
+  let cancelReject = null;
+  const clearWatchdog = () => { if (watchdogTimer) { clearTimeout(watchdogTimer); watchdogTimer = null; } };
+  const fireWatchdog = () => {
+    if (watchdogFired) return;
+    watchdogFired = true;
+    try { diag('ocr gpu watchdog fired: no progress or reply for ' + (lastWindowMs / 1000) + 's, terminating GPU worker'); } catch {}
+    try { cancelGpuMessage({ type: MSG.ML_GPU_CANCEL, runId }); } catch {}
+    try { cancelReject?.(gpuHangError(lastWindowMs, MSG.ML_OCR)); } catch {}
+  };
+  const armWatchdog = (windowMs) => {
+    const w = windowMs != null ? windowMs : (seenProgress ? watchdogInactivityMs : loadWindowMs);
+    lastWindowMs = w;
+    clearWatchdog();
+    if (!watchdogFired) watchdogTimer = setTimeout(fireWatchdog, w);
+  };
+  const noteActivity = () => { if (!watchdogFired) { seenProgress = true; armWatchdog(); } };
+  const job = {
+    close(err) {
+      clearWatchdog();
+      // User cancel sends ML_CANCEL, not ML_GPU_CANCEL — the doc stops
+      // this run's GPU loop but keeps the shared worker (and its loaded
+      // sessions) alive for the next run. ML_GPU_CANCEL is the watchdog
+      // hang path only, and it terminates the worker.
+      try { cancelGpuMessage({ type: MSG.ML_CANCEL, runId }); } catch {}
+      try { cancelReject?.(err || gpuCancelledError()); } catch {}
+    },
+  };
+  activeChromeGpuOcrJobs.set(runId, job);
+  chromeGpuOcrProgressHooks.set(runId, (frac) => {
+    noteActivity();
+    try { onProgress(frac); } catch {}
+  });
+  try {
+    await ensureHost();
+    if (isCancelled()) throw gpuCancelledError();
+    const res = await new Promise((resolve, reject) => {
+      cancelReject = reject;
+      armWatchdog();
+      let reply;
+      try {
+        reply = sendGpuMessage({ type: MSG.ML_GPU_OCR, runId, sourceLang, crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })) });
+      } catch (e) {
+        reject(e);
+        return;
+      }
+      Promise.resolve(reply).then((r) => {
+        if (!r) { reject(new Error('ML host did not respond')); return; }
+        if (r.ok === false) {
+          const m = String(r.error || 'GPU worker failed');
+          if (m.startsWith('GPU_SKIPPED:')) reject(chromeGpuSkippedError(m));
+          else reject(new Error(m));
+          return;
+        }
+        resolve(r);
+      }, (e) => reject(e));
+    });
+    clearWatchdog();
+    return { results: (res && res.results) || [], ms: (res && res.ms) || 0, engine: (res && res.engine) || '', loadMs: (res && res.loadMs) || 0, readyMs: (res && res.readyMs) };
+  } finally {
+    clearWatchdog();
+    if (activeChromeGpuOcrJobs.get(runId) === job) activeChromeGpuOcrJobs.delete(runId);
+    if (chromeGpuOcrProgressHooks.get(runId)) chromeGpuOcrProgressHooks.delete(runId);
   }
 }
 

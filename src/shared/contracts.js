@@ -31,6 +31,8 @@ export const MSG = {
   ML_CANCEL: 'ml/cancel',                // {runId} -> {ok} (abort in-flight ML work for a run)
   ML_DIAG: 'ml/diag',                    // MEASURE1 {runId} -> {ok, sharedArrayBuffer, crossOriginIsolated, hardwareConcurrency, numThreads, context} (realm thread facts, no model load)
   ML_INPAINT_PROGRESS: 'ml/inpaint-progress', // offscreen -> SW (one-way) {runId, frac} (pill progress + worker keep-alive)
+  ML_OCR_PROGRESS: 'ml/ocr-progress', // offscreen -> SW (one-way) {runId, frac} (GPU OCR watchdog re-arm; Chrome only, mirrors inpaint progress)
+  ML_GPU_OCR: 'ml/gpu-ocr',          // Chrome GPU OCR: SW -> offscreen doc {crops, sourceLang, runId} -> {ok, results, ms, engine, loadMs} (doc forwards to the shared GPU worker; Baberu runs WebGPU there, WASM fallback on hang/error)
   ML_GPU_INPAINT: 'ml/gpu-inpaint',      // Chrome GPU1: SW -> offscreen doc {patches, runId} -> {ok, results, ms, totalTiles} (doc owns one shared dedicated GPU worker across runs; doc realm itself never runs GPU sessions)
   ML_GPU_WARMUP: 'ml/gpu-warmup',        // Chrome GPU1: SW -> offscreen doc {runId} -> {ok} (pipeline start: create the shared GPU worker and load LaMa now, so the load overlaps detect/OCR/translate)
   ML_GPU_CANCEL: 'ml/gpu-cancel',        // Chrome GPU1: SW -> offscreen doc {runId} -> {ok} (watchdog hang only: terminate the shared GPU worker; idempotent)

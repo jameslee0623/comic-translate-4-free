@@ -20,3 +20,18 @@ globalThis.__ctInpaintProgress = (runId, frac) => {
     chrome.runtime.sendMessage({ type: MSG.ML_INPAINT_PROGRESS, runId, frac }).catch(() => {});
   } catch { /* progress must never break inpaint */ }
 };
+
+// GPU OCR progress (2.1.6): same shape as inpaint, separate throttle
+// state — OCR and inpaint never run at the same time, but a shared
+// timer would drop OCR events right after inpaint ones. The SW uses
+// these only to re-arm the GPU OCR watchdog; the pill shows no
+// per-crop OCR progress (it never did on the WASM path either).
+let lastOcrSent = 0;
+globalThis.__ctOcrProgress = (runId, frac) => {
+  try {
+    const now = Date.now();
+    if (frac < 1 && now - lastOcrSent < 500) return;
+    lastOcrSent = now;
+    chrome.runtime.sendMessage({ type: MSG.ML_OCR_PROGRESS, runId, frac }).catch(() => {});
+  } catch { /* progress must never break OCR */ }
+};
