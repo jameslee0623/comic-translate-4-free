@@ -160,6 +160,7 @@ function applyToForm(s) {
   $('thresholdVal').textContent = Number(s.detectionThreshold).toFixed(2);
   setVal('minImageSize', s.minImageSize);
   setChecked('debugMode', s.debugMode);
+  setVal('poolThreads', s.poolThreads || 'auto');
   setChecked('autoTranslate', s.autoTranslateOnLoad);
   setChecked('playDing', s.playDing !== false);
   setChecked('allowAllSites', s.allowAllSites);
@@ -204,7 +205,7 @@ $('threshold').oninput = e => { $('thresholdVal').textContent = Number(e.target.
 for (const id of ['sourceLang', 'targetLang', 'backend', 'backendFailover', 'azureKey', 'azureRegion',
     'lmStudioUrl', 'lmStudioApi', 'lmStudioKey',
     'threshold', 'minImageSize',
-    'debugMode', 'autoTranslate', 'playDing']) {
+    'debugMode', 'poolThreads', 'autoTranslate', 'playDing']) {
   const el = $(id);
   if (!el) continue;
   const evt = el.type === 'text' || el.type === 'password' || el.type === 'number' ? 'input' : 'change';
@@ -246,6 +247,7 @@ function collect() {
     detectionThreshold: threshold.ok ? threshold.value : (lastSettings.detectionThreshold ?? DEFAULTS.detectionThreshold),
     minImageSize: minImg.ok ? Math.round(minImg.value) : (lastSettings.minImageSize ?? DEFAULTS.minImageSize),
     debugMode: $('debugMode').checked,
+    poolThreads: $('poolThreads').value || 'auto',
     backendFailover: $('backendFailover').checked,
     siteWhitelist: [...allowedSites], autoTranslateOnLoad: $('autoTranslate').checked,
     playDing: $('playDing').checked,

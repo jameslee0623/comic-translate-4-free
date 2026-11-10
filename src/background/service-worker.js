@@ -8,6 +8,7 @@ import {
   makeTextBlock, mergeOverlappingBoxes, sortBlocks,
   boxIoU, clampBox, dedupAndMergeSeams, mergeBoxesByCost,
   INPAINT_COST, INPAINT_COST_SPREAD, patchCostMs, TILE_MAX,
+  poolThreadAllocation,
 } from '../shared/textblock.js';
 import { toGrayU8, meanBrightness, renderScale, resizeBilinearRGBA } from '../shared/image-ops.js';
 import { pixelPut, pixelTake, pixelDrop, pixelPruneRun } from '../shared/pixel-bus.js';
@@ -1227,16 +1228,30 @@ async function runPipeline(tabId, opts = {}) {
             // the doc still read fallback. So the SW reads the saved count
             // (the SW's reads work) and passes it to the doc in the
             // message. The doc uses it if it is a valid complete save.
+            // 2.1.23: the pool thread split is a setting (Options > Debug >
+            // OCR pool threads). The SW computes the [t0, t1] allocation
+            // from B (bench best) and C (total cores) via
+            // poolThreadAllocation, so the same mode works on any CPU.
+            // 'auto' = [B, B]; '2+2' = split B evenly; '4+4' = [B, B];
+            // '4+6' = [B, C-B]. The doc uses the passed split first.
             let measuredThreadsForPool = null;
             try {
               const saved = await chrome.storage.local.get('measuredThreads');
               const m = saved && saved.measuredThreads;
               if (m && m.method === 'full-chain' && Number.isInteger(m.threads) && m.threads >= 1) measuredThreadsForPool = m;
             } catch {}
+            let poolThreadsForPool = null;
+            try {
+              const b = (measuredThreadsForPool && Number.isInteger(measuredThreadsForPool.threads)) ? measuredThreadsForPool.threads : 4;
+              const c = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
+              const mode = (settings && typeof settings.poolThreads === 'string' && settings.poolThreads) || 'auto';
+              poolThreadsForPool = poolThreadAllocation(b, c, mode);
+            } catch {}
             r = await callMlChecked(runId, {
               type: MSG.ML_POOL_OCR, runId, sourceLang: settings.sourceLang,
               crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
               measuredThreads: measuredThreadsForPool,
+              poolThreads: poolThreadsForPool,
             });
             // 2.1.16: show the bench trigger outcome from the previous run
             // (persisted to storage, so it survives a service-worker

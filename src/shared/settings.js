@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS = {
   allowAllSites: false, // site access: translate on any site (requests <all_urls> when enabled)
   autoTranslateOnLoad: true, // start the pipeline automatically on allowed page loads
   playDing: true, // play a chime when a translation finishes (toggle in Settings)
+  poolThreads: 'auto', // OCR pool thread allocation (test setting, 2.1.23): 'auto' = measured best per worker; '2+2' = split fast cores; '4+4' = best per worker; '4+6' = all cores. Values are M4 labels — the code computes them from B (bench best) and C (total cores) so the same mode works on any CPU.
   firstRun: false, // transient: set true by onInstalled, consumed by the popup to show the models section once
 };
 

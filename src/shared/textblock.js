@@ -311,3 +311,33 @@ export function balanceOcrCrops(crops) {
   for (const g of groups) g.sort((a, b) => a.id - b.id);
   return groups;
 }
+
+// 2.1.23: pool thread allocation for ANY CPU. B = best single-worker
+// threads (from the bench — it estimates the fast-core count, because
+// performance drops when threads spill onto slow cores). C = total cores
+// (hardwareConcurrency). Two workers. Modes (labels are the M4 values;
+// the code computes them from B and C so the same mode works on any CPU):
+// - 'auto': each worker gets B (the 2.1.22 behavior; on M4 [4,4]).
+// - '2+2': split B evenly across workers (on M4 [2,2]) — total B, all
+//   on fast cores, two crops at once.
+// - '4+4': each worker gets B (on M4 [4,4]) — total 2B, uses fast +
+//   some slow cores.
+// - '4+6': first worker B, second worker the rest (on M4 [4,6]) —
+//   total C, all cores, asymmetric.
+// The M4 test (2+2 vs 4+4 vs 4+6) picks the winning mode; that mode
+// becomes the new 'auto' for every CPU. For a CPU with no slow cores
+// (B == C), 'half' is [B/2, B/2] and 'full' is [B, 0] -> clamped to
+// [B, 1], so 'full' and 'best' converge — which is correct, because
+// there are no slow cores to avoid or use.
+export function poolThreadAllocation(B, C, mode) {
+  const b = (Number.isInteger(B) && B >= 1) ? B : 4;
+  const c = (Number.isInteger(C) && C >= 1) ? C : 4;
+  if (mode === '2+2') {
+    return [Math.max(1, Math.floor(b / 2)), Math.max(1, Math.ceil(b / 2))];
+  }
+  if (mode === '4+6') {
+    return [b, Math.max(1, c - b)];
+  }
+  // '4+4', 'auto', and any unknown mode: each worker gets B.
+  return [b, b];
+}

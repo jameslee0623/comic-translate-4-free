@@ -1070,7 +1070,7 @@ const handlers = {
   // never ready) rejects the pool call and the SW falls back to single
   // OCR for the run; the faulty worker is terminated, the healthy one
   // stays. Cancel rejects as cancelled and never falls back.
-  async [MSG.ML_POOL_OCR]({ crops, runId, sourceLang }) {
+  async [MSG.ML_POOL_OCR]({ crops, runId, sourceLang, measuredThreads, poolThreads: msgPoolThreads }) {
     if (typeof document === 'undefined') throw new Error('OCR pool is offscreen-document-only');
     if (!crops || crops.length < 2) throw new Error('OCR pool needs at least 2 crops');
     throwIfCancelled(runId);
@@ -1079,21 +1079,33 @@ const handlers = {
     throwIfCancelled(runId);
     let threads = null;
     let threadsSource = '';
-    // 2.1.22: the SW passes the saved count in the message (the SW's
-    // storage reads work). The doc's own storage reads fail like its
-    // writes — the bench saved 4 via the SW, yet the pool still read
-    // fallback. Use the passed value first; fall back to a local read.
+    // 2.1.23: the SW passes the thread split [t0, t1] in the message
+    // (computed from B and C via poolThreadAllocation, so the same mode
+    // works on any CPU). Use it first — it already reflects the setting
+    // and the measured best count. Fall back to a local read (single
+    // count for both workers) if the message carries no split.
+    let poolThreads = null;
     try {
-      const m = (msg && msg.measuredThreads) || null;
-      if (m && Number.isInteger(m.threads) && m.threads >= 1) { threads = m.threads; threadsSource = 'measured:' + m.threads; }
+      const pt = msgPoolThreads || null;
+      if (Array.isArray(pt) && pt.length === 2 && Number.isInteger(pt[0]) && pt[0] >= 1 && Number.isInteger(pt[1]) && pt[1] >= 1) {
+        poolThreads = [pt[0], pt[1]];
+        threadsSource = 'split:' + pt[0] + '+' + pt[1];
+      }
     } catch {}
-    if (threads == null) {
+    if (!poolThreads) {
       try {
-        const m = await readMeasuredThreads();
+        const m = measuredThreads || null;
         if (m && Number.isInteger(m.threads) && m.threads >= 1) { threads = m.threads; threadsSource = 'measured:' + m.threads; }
       } catch {}
+      if (threads == null) {
+        try {
+          const m = await readMeasuredThreads();
+          if (m && Number.isInteger(m.threads) && m.threads >= 1) { threads = m.threads; threadsSource = 'measured:' + m.threads; }
+        } catch {}
+      }
+      if (threads != null) poolThreads = [threads, threads];
     }
-    if (threads == null) {
+    if (!poolThreads) {
       // No measured count yet — the bench has not finished/saved. Do NOT
       // fall back to the raw core count (10+10 was slower than single in
       // 2.1.11). Use the bench's own starting point instead:
@@ -1103,9 +1115,10 @@ const handlers = {
       // This is a hardware-derived fallback, not the measured best —
       // the pool switches to measured:N once the bench saves.
       const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 4;
-      threads = Math.min(Math.floor(cores / 2), Math.max(3, Math.ceil(cores / 4)));
-      if (!Number.isInteger(threads) || threads < 1) threads = 1;
-      threadsSource = 'fallback:' + threads;
+      const fb = Math.min(Math.floor(cores / 2), Math.max(3, Math.ceil(cores / 4)));
+      const t = (Number.isInteger(fb) && fb >= 1) ? fb : 1;
+      poolThreads = [t, t];
+      threadsSource = 'fallback:' + t;
     }
     // 2.1.14: carry the bench's persisted status so the SW log shows
     // whether the bench ran and why it stopped (benchLog lines are lost
@@ -1138,7 +1151,7 @@ const handlers = {
           runId, slot,
         });
         try {
-          (slot === 0 ? w0 : w1).postMessage({ type: MSG.ML_OCR, runId, callId, crops: group, sourceLang, threads });
+          (slot === 0 ? w0 : w1).postMessage({ type: MSG.ML_OCR, runId, callId, crops: group, sourceLang, threads: poolThreads[slot] });
         } catch (e) {
           clearTimeout(to);
           poolOcrPending.delete(callId);
