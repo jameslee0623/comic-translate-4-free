@@ -66,6 +66,26 @@ function benchTracePush(line) {
   }).catch(() => {});
 }
 
+// 2.1.29: retired bench lines. 2.1.25 removed these from live code, but
+// they live on in the persisted benchTrace and replay into every run's
+// log. Filter them out of the replay (and purge them at run start).
+// Fresh live lines still show when they actually happen: pings only
+// start when the bench is not done, and a fresh "bench done, stopping
+// pings" is pushed live when pings stop. Real events are kept: bench
+// started, per-count timings, saves, "bench done best N", trigger
+// delivered/failed, errors.
+const BENCH_TRACE_RETIRED = [
+  'already measured',
+  'run ok, checking saved count',
+  'pings starting',
+  'bench done, stopping pings',
+];
+function benchTraceIsRetired(line) {
+  const s = String(line || '');
+  for (const p of BENCH_TRACE_RETIRED) { if (s.indexOf(p) !== -1) return true; }
+  return false;
+}
+
 // 2.0.27: LEARNED inpaint merge spread. The merge charges a merged
 // patch at perPxMs * spread (textblock.js) — the spread is how much
 // more a big tile costs per pixel than a small one. It was a fixed
@@ -953,10 +973,18 @@ async function runPipeline(tabId, opts = {}) {
   // 2.1.20: show the persisted bench trace at the top of this run's log,
   // so one paste shows the full bench history (trigger, start, saves)
   // even after a worker restart wiped the in-memory lines.
+  // 2.1.29: replay only the last 10 real lines (was 30), filter out the
+  // retired lines, and trim the stored list to the last 5 real lines at
+  // run start so the old noise is purged from storage, not just hidden.
   try {
     chrome.storage.local.get('benchTrace').then((saved) => {
       const arr = (saved && Array.isArray(saved.benchTrace)) ? saved.benchTrace : [];
-      for (const e of arr.slice(-30)) { try { diagPush('threads bench trace: ' + e.line); } catch {} }
+      const kept = arr.filter((e) => e && !benchTraceIsRetired(e.line));
+      for (const e of kept.slice(-10)) { try { diagPush('threads bench trace: ' + e.line); } catch {} }
+      const trimmed = kept.slice(-5);
+      if (trimmed.length !== arr.length) {
+        try { chrome.storage.local.set({ benchTrace: trimmed }); } catch {}
+      }
     }).catch(() => {});
   } catch {}
   persistRunRecord(runId, tabId, 'capture'); // FIX1: see helpers above.
