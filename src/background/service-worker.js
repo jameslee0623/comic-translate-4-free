@@ -351,51 +351,80 @@ async function fetchImagePixels(url, referrer) {
 // image URL (needs the host permission the popup requests on click). If none
 // can read the picture we throw an actionable error; there is no screenshot
 // fallback.
-async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
-  // Manual send (right-click "Send to comic-translate-4-free"): translate
-  // this exact image, bypassing the minimum image size — the user picked it.
+// Multi-pic: at most this many pictures per run (James's old design used 50).
+const MAX_IMAGES_PER_PAGE = 50;
+
+// Inventory: every picture on the page worth translating, top to bottom.
+// Manual send (right-click): this exact image, bypassing the minimum size.
+// Otherwise the page's own inventory (ct/list-images), filtered by the
+// minimum image size (displayed, the default — 500 — everywhere, James's
+// order), capped at MAX_IMAGES_PER_PAGE. Returns {images, skipped, ignored}.
+async function getPipelineImages(tabId, settings, tabUrl, opts = {}) {
   const manualSrc = opts.srcUrl || null;
   const minSize = settings.minImageSize || 500;
-  const tooSmall = (w, h) => {
-    if (Math.max(w, h) < minSize) {
-      throw new Error(`page image is ${w}×${h}px — below the minimum image size of ${minSize}px (change it in Settings)`);
+  if (manualSrc) {
+    let info = null;
+    try { info = (await chrome.tabs.sendMessage(tabId, { type: 'ct/find-image-by-src', srcUrl: manualSrc }))?.image || null; }
+    catch { info = null; }
+    if (!info || !info.src) {
+      throw new Error('could not find that image on the page anymore — it may have been removed or the page reloaded');
     }
-  };
-  let info = null;
-  try {
-    info = manualSrc
-      ? (await chrome.tabs.sendMessage(tabId, { type: 'ct/find-image-by-src', srcUrl: manualSrc }))?.image || null
-      : (await chrome.tabs.sendMessage(tabId, { type: 'ct/find-image' }))?.image || null;
+    return { images: [info], skipped: [], ignored: 0 };
   }
-  catch { info = null; }
-  if (!info || !info.src) {
-    throw new Error(manualSrc
-      ? 'could not find that image on the page anymore — it may have been removed or the page reloaded'
-      : 'no picture found on this page — the extension translates the page\'s own picture, not a screenshot of the page');
+  let list = [], total = 0;
+  try {
+    const r = await chrome.tabs.sendMessage(tabId, { type: 'ct/list-images' });
+    list = r?.images || [];
+    total = r?.total || list.length;
+  } catch { list = []; }
+  if (!list.length) {
+    throw new Error('no pictures found on this page — the extension translates the page\'s own pictures, not a screenshot of the page');
   }
   // The minimum-size gate uses the DISPLAYED size (what the user sees) —
-  // findMainImage returns the on-screen w/h. A big file shown small does not
-  // run. This is the only size gate: the capture tiers do not re-check the
-  // file size, so a picture that displays big runs even if its file is small.
-  if (!manualSrc) tooSmall(info.w || 0, info.h || 0);
+  // collectPageImages returns the on-screen w/h. A big file shown small does
+  // not run. This is the only size gate: the capture tiers do not re-check
+  // the file size, so a picture that displays big runs even if its file is small.
+  const eligible = list.filter(im => Math.max(im.w || 0, im.h || 0) >= minSize);
+  const skipped = [];
+  if (list.length - eligible.length) skipped.push(`${list.length - eligible.length} below the minimum image size of ${minSize}px (change it in Settings)`);
+  const picked = eligible.slice(0, MAX_IMAGES_PER_PAGE);
+  if (eligible.length - picked.length) skipped.push(`${eligible.length - picked.length} over the ${MAX_IMAGES_PER_PAGE}-image per-run cap`);
+  if (!picked.length) throw new Error(`no usable pictures on this page (${skipped.join('; ')}).`);
+  // Pictures the inventory never considered (icons, spacers, hidden or
+  // still-loading <img>) — reported so untranslated ones are accounted for.
+  return { images: picked, skipped, ignored: Math.max(0, total - list.length) };
+}
+
+// One picture's pixels, loaded just before its stages run and released after.
+// Tier 1a: pixels straight from the page canvas by uid. Skipped when the page
+// already shows our translated render (info.translated): the canvas would hand
+// back the translated pixels, so the pipeline would translate the translation
+// and the page-cache key would never match. The download tiers below fetch the
+// ORIGINAL url the content script reported, so pixels and cache key stay
+// correct and revisits hit the cache.
+// Tier 1b: download inside the PAGE (content script) — the browser applies the
+// page's real referrer policy and cookies, exactly like the page's own <img>
+// load. Some image hosts / WAFs (e.g. Cloudflare) 403 the service worker's
+// fetch because its Referer and Sec-Fetch-* headers don't match what the page
+// itself sends; this tier is indistinguishable from the page loading the image
+// itself. The extension's host permissions let the content script read the
+// cross-origin response bytes.
+// Tier 1c: background fetch of the image URL (for an already-translated page
+// this is the ORIGINAL url, so the pixels — and the cache key — are the
+// originals, not the render).
+// Capture diagnostic: one entry per tier attempted ({tier, ms, ok, bytes?, error?}).
+// Returned to the caller, which logs it — the log then names the path
+// (page-canvas = local, page/worker-fetch = network download) and how long
+// each attempt took, so a slow capture can be read as internet or local
+// without a debug-mode run.
+async function loadPipelineImagePixels(tabId, info, settings, tabUrl, opts = {}) {
   const failures = [];
-  // Capture diagnostic: one entry per tier attempted ({tier, ms, ok, bytes?, error?}).
-  // Returned to the caller, which logs it — the log then names the path
-  // (page-canvas = local, page/worker-fetch = network download) and how
-  // long each attempt took, so a slow capture can be read as internet or
-  // local without a debug-mode run.
   const attempts = [];
-  // Tier 1a: pixels straight from the page. Skipped when the page already
-  // shows our translated render (info.translated): the canvas would hand back
-  // the translated pixels, so the pipeline would translate the translation
-  // and the page-cache key would never match. The download tier below fetches
-  // the ORIGINAL url the content script reported, so pixels and cache key
-  // stay correct and revisits hit the cache.
   if (!info.translated) {
     const a0 = performance.now();
     try {
       const p = await chrome.tabs.sendMessage(tabId,
-        manualSrc ? { type: 'ct/get-image-pixels', srcUrl: manualSrc } : { type: 'ct/get-image-pixels' });
+        info.uid ? { type: 'ct/get-image-pixels-by-uid', uid: info.uid } : { type: 'ct/get-image-pixels', srcUrl: info.src });
       if (p && p.ok && typeof p.dataUrl === 'string') {
         const { rgba, w, h } = await dataUrlToRGBA(p.dataUrl);
         // A blank (all-black) capture fed to the detector yields 2 bogus
@@ -413,13 +442,6 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
   } else {
     failures.push('page canvas skipped (already showing the translated render)');
   }
-  // Tier 1b: download inside the PAGE (content script). The browser applies the
-  // page's real referrer policy and cookies — exactly like the page's own
-  // <img> load. Some image hosts / WAFs (e.g. Cloudflare) 403 the service
-  // worker's fetch because its Referer and Sec-Fetch-* headers don't match
-  // what the page itself sends; this tier is indistinguishable from the page
-  // loading the image itself. The extension's host permissions let the
-  // content script read the cross-origin response bytes.
   const b0 = performance.now();
   try {
     const f = await chrome.tabs.sendMessage(tabId, { type: 'ct/fetch-image-bytes', srcUrl: info.src });
@@ -432,9 +454,6 @@ async function getPipelineImage(tabId, settings, tabUrl, opts = {}) {
     failures.push('page download: ' + String((f && f.error) || 'no bytes').slice(0, 100));
   } catch (e) { failures.push('page download: ' + String((e && e.message) || e).slice(0, 100)); }
   attempts.push({ tier: 'page-fetch', ms: Math.round(performance.now() - b0), ok: false, error: failures[failures.length - 1] });
-  // Tier 1c: background fetch of the image URL (for an already-translated
-  // page this is the ORIGINAL url, so the pixels — and the cache key — are
-  // the originals, not the render).
   const c0 = performance.now();
   try {
     const { rgba, w, h, bytes } = await fetchImagePixels(info.src, tabUrl);
@@ -843,8 +862,9 @@ async function isIncognitoTab(tabId) {
 
 // Send the render payload to the page and verify it landed. Shared by the
 // live pipeline and the page-cache hit path (which re-sends a stored entry).
-// extra.srcUrl names the exact <img> for the manual-send path; the auto
-// path omits it and the page replaces its detected main image.
+// extra.srcUrl names the exact <img> for the manual-send path; extra.uid
+// names it for the multi-pic path; the auto path omits both and the page
+// replaces its detected main image.
 async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timings, debug, extra = {}) {
   // DIAGNOSTIC (temporary): delivery is the decisive step — log the
   // attempt, any send failure, and the reply, so the log shows whether
@@ -857,6 +877,7 @@ async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timing
       imageDataUrl, width: w, height: h,
       blocks, timings, debug,
       ...(extra.srcUrl ? { srcUrl: extra.srcUrl } : {}),
+      ...(extra.uid ? { uid: extra.uid } : {}),
     });
   } catch (e) {
     diagPush('sendRender send failed run ' + runId + ' tab ' + tabId + ': ' + String((e && e.message) || e));
@@ -880,9 +901,12 @@ async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timing
 // the difference, and re-composites the text with the CURRENT font settings.
 // Tier-1 hit with a new targetLang: translate the OCR'd blocks only,
 // skipping detect/OCR/inpaint entirely. Stores the Tier-2 entry for next time.
-async function renderFromTier1(tabId, runId, tier1Entry, tier2Key, settings, timings, srcUrl, rgba, w, h, mode, tier) {
+// uid names the <img> for the multi-pic render; onProgress maps the stage
+// onto this image's slice of the run (defaults to the whole run).
+async function renderFromTier1(tabId, runId, tier1Entry, tier2Key, settings, timings, srcUrl, rgba, w, h, mode, tier, uid, onProgress) {
   checkCancelled(runId);
-  setProgress(runId, 'translate', 0.5);
+  const progress = onProgress || ((stage, frac, extra) => setProgress(runId, stage, frac, extra || {}));
+  progress('translate', 0.5);
   const t0 = performance.now();
   // Blocks from Tier-1 have OCR text but no translations.
   const blocks = tier1Entry.blocks.map(b => ({ ...b }));
@@ -936,17 +960,21 @@ async function renderFromTier1(tabId, runId, tier1Entry, tier2Key, settings, tim
   }
   // Render with the translated blocks.
   const entry = { ...tier1Entry, blocks };
-  return await renderFromPageCache(tabId, runId, entry, settings, timings, srcUrl);
+  return await renderFromPageCache(tabId, runId, entry, settings, timings, srcUrl, { uid, onProgress: progress });
 }
 
 async function renderFromPageCache(tabId, runId, entry, settings, timings, srcUrl, opts = {}) {
   checkCancelled(runId);
-  setProgress(runId, 'render', 0.96);
+  // Multi-pic: the per-image loop owns progress (including the final
+  // 'done'), so this only reports its own stage. The doneExtra is returned
+  // for the loop to use on the final 'done'.
+  const progress = opts.onProgress || ((stage, frac, extra) => setProgress(runId, stage, frac, extra || {}));
+  progress('render', 0.96);
   const t0 = performance.now();
   await sendRender(tabId, runId, entry.mode || 'replace',
     entry.imageDataUrl, entry.width, entry.height, entry.blocks,
     { ...timings, cacheHit: Math.round(performance.now() - t0) },
-    settings.debugMode, { srcUrl });
+    settings.debugMode, { srcUrl, uid: opts.uid });
   // Label the pill so a cache serve never looks like a fresh translate:
   // full hits say "from cache"; Tier-1-after-translate says which backend
   // actually translated (its blocks carry backendUsed from translateBlocks).
@@ -955,8 +983,7 @@ async function renderFromPageCache(tabId, runId, entry, settings, timings, srcUr
   const doneExtra = opts.fromCache
     ? { cached: true }
     : { backendLabel: BACKEND_SHORT_LABEL[entry.blocks?.[0]?.backendUsed || settings.translationBackend] || settings.translationBackend };
-  setProgress(runId, 'done', 1, doneExtra);
-  return { runId, ok: true, cached: !!opts.fromCache };
+  return { runId, ok: true, cached: !!opts.fromCache, doneExtra };
 }
 
 // ---------------------------------------------------------------- pipeline
@@ -1057,765 +1084,815 @@ async function runPipeline(tabId, opts = {}) {
     try {
       await chrome.tabs.sendMessage(tabId, { type: MSG.RUN_STARTED, runId });
     } catch { /* content script not there yet */ }
-    // ---- 1. capture: the page's own picture (min-size gated), else viewport
-    setProgress(runId, 'capture', 0.02);
-    let t0 = performance.now();
-    let rgba, w, h, mode, tier, attempts;
-    if (opts.preCaptured) {
-      // 403 fallback: pixels were read from a background tab where the image
-      // is same-origin. Skip the download tiers entirely; the rest of the
-      // pipeline (detect → OCR → translate → inpaint → render) runs normally
-      // on the original tab, replacing the picture in place.
-      ({ rgba, w, h } = opts.preCaptured);
-      mode = 'replace';
-      tier = 'fallback-tab';
-    } else {
-      ({ rgba, w, h, mode, tier, attempts } = await getPipelineImage(tabId, settings, tabUrl, { srcUrl: manualSrc }));
-    }
-    timings.capture = Math.round(performance.now() - t0);
-    // Capture diagnostic: which tier ran, how long each attempt took, and
-    // how big the download was — the log then answers "internet or local?"
-    // on its own, no debug mode needed. page-canvas is local (the picture
-    // was already in the page); page/worker-fetch download it, so a slow
-    // fetch with a big byte count is the server or the connection.
-    const capAttempts = attempts || [];
-    for (const a of capAttempts) {
-      diagPush('capture attempt ' + a.tier + ' ' + (a.ok ? 'ok' : 'failed') + ' ms ' + a.ms +
-        (a.bytes != null ? ' bytes ' + a.bytes : '') +
-        (a.error ? ' error ' + String(a.error).slice(0, 120) : ''));
-    }
-    const capWin = capAttempts.find(a => a.ok);
-    diagPush('capture tier ' + tier + ' ms ' + timings.capture + ' image ' + w + 'x' + h +
-      (capWin && capWin.bytes != null ? ' bytes ' + capWin.bytes : ''));
-    // Single source of truth for dimensions: normalize ALL capture tiers to
-    // renderScale dims HERE, once. Tier 1a (page canvas) already downscales,
-    // but tiers 1b/1c (fetches) return full-res — without this, detector
-    // boxes, cache keys, and Tier-1 entries disagree on the coordinate system.
-    // Everything downstream (detect, OCR, inpaint, cache) uses these scaled w/h.
-    {
-      const cs = renderScale(w, h);
-      if (cs < 1) {
-        const sw = Math.max(1, Math.round(w * cs)), sh = Math.max(1, Math.round(h * cs));
-        rgba = resizeBilinearRGBA(rgba, w, h, sw, sh);
-        w = sw; h = sh;
+    // ---- 1. inventory: every qualifying picture on the page (multi-pic).
+    // Each one then runs the full pipeline; per-image stage progress maps onto
+    // its slice of the overall run, debug titles carry the image index, and one
+    // bad picture never kills the rest of the run.
+    const { images, skipped, ignored } = await getPipelineImages(tabId, settings, tabUrl, { srcUrl: manualSrc });
+    if (skipped.length) diagPush('skipping page images: ' + skipped.join(' | ').slice(0, 300));
+    const doneImgs = [], failedImgs = [];
+    // Skipped pictures (below min size, over the cap) count as "not
+    // translated" in the run summary, so the user knows why some pictures
+    // on the page did not change.
+    if (skipped.length) failedImgs.push(...skipped);
+    let fallbackUrl = null;
+    let lastDoneExtra = null;
+    const multi = images.length > 1;
+    // GPU1 per-run downgrade: set on any GPU failure (error or hang),
+    // so GPU is never retried again in THIS run. Next run tries GPU
+    // fresh (per-run stick only, per spec). Shared across images in
+    // this run; dies with the run in finally (runs.delete(runId)).
+    let gpuDowngradedThisRun = false;
+    // Per-image worker (nested: closes over runId, settings, tabId, tabUrl,
+    // manualSrc, abortController, gpuDowngradedThisRun, opts). One image's
+    // pixels are loaded just before its stages run; its pixel-bus keys are
+    // dropped by the caller after each image, so only one image's bytes are
+    // ever live alongside the WASM sessions.
+    async function runOneImage(img, imgSetProgress, imgEmitDebug, imgTimings, imgPxKeys, imgT0) {
+      // ---- 1. capture: the page's own picture (min-size gated), else viewport
+      imgSetProgress('capture', 0.02);
+      let t0 = performance.now();
+      let rgba, w, h, mode, tier, attempts;
+      if (opts.preCaptured) {
+        // 403 fallback: pixels were read from a background tab where the image
+        // is same-origin. Skip the download tiers entirely; the rest of the
+        // pipeline (detect → OCR → translate → inpaint → render) runs normally
+        // on the original tab, replacing the picture in place.
+        ({ rgba, w, h } = opts.preCaptured);
+        mode = 'replace';
+        tier = 'fallback-tab';
+      } else {
+        ({ rgba, w, h, mode, tier, attempts } = await loadPipelineImagePixels(tabId, img, settings, tabUrl, { srcUrl: manualSrc }));
       }
-    }
-    const capMean = meanBrightness(rgba);
-    if (capMean < 0.004) {
-      throw new Error(
-        `captured image came back blank (all pixels black) via "${tier}" — ` +
-        `the page's picture could not be read. Reload the page and try again; ` +
-        `if it persists, the site may be blocking pixel access.`);
-    }
-    // The data-URL image is only built in debug mode — in normal runs this
-    // PNG encode of the full page is pure overhead.
-    await emitDebug(runId, tabId, settings, 'capture',
-      { title: `Captured page — ${tier}, mean brightness ${capMean.toFixed(3)}`, image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null, w, h, bytes: (capWin && capWin.bytes != null ? capWin.bytes : null), ms: timings.capture });
-
-    // ---- 1b. page cache: a page translated earlier in this session renders
-    // instantly — no detection, OCR, inpaint, or translation. The stored entry
-    // is re-sent as ct/render, so the content script re-composites the text
-    // with the CURRENT font settings; font-size tweaks never invalidate it.
-    // An early return inside try still runs the finally below (runs.delete +
-    // dropping staged pixel payloads), so cleanup is unchanged.
-    checkCancelled(runId);
-    let cacheHit = null;
-    let tier1Key = null, tier1Entry = null;
-    try {
-      if (!(await isIncognitoTab(tabId))) {
-        // Two-tier lookup: Tier 1 (target-independent) first, then Tier 2
-        // (targetLang + backend). A Tier-1 hit with a new targetLang
-        // translates only — skipping detect/OCR/inpaint.
-        tier1Key = await buildCacheKeyTier1(rgba, w, h, settings);
-        tier1Entry = await pageCacheGet(tier1Key);
-        // Dimension guard: the entry must match the CURRENT (scaled) capture
-        // dims. A mismatch means the entry was stored at different dims
-        // (e.g. before the R3 normalization) — treat as miss and overwrite.
-        if (tier1Entry && (tier1Entry.width !== w || tier1Entry.height !== h)) {
-          tier1Entry = null;
-        }
-        if (tier1Entry) {
-          const tier2Key = buildCacheKeyTier2(tier1Key, settings);
-          const tier2Entry = await pageCacheGet(tier2Key);
-          if (tier2Entry && tier2Entry.translations) {
-            // Full hit: apply cached translations to the Tier-1 blocks.
-            const blocks = tier1Entry.blocks.map((b, i) => ({
-              ...b, translation: tier2Entry.translations[i] || '',
-            }));
-            cacheHit = { ...tier1Entry, blocks };
-          } else {
-            // Tier-1 hit, Tier-2 miss: translate the OCR'd blocks only.
-            // (Falls through to the translate-only path below.)
-            cacheHit = { tier1Only: true, entry: tier1Entry, tier2Key };
-          }
-        } else {
-          // No Tier 1: try the legacy v1 key for backward compatibility.
-          cacheHit = await pageCacheGet(await buildCacheKey(rgba, w, h, settings));
+      imgTimings.capture = Math.round(performance.now() - t0);
+      // Capture diagnostic: which tier ran, how long each attempt took, and
+      // how big the download was — the log then answers "internet or local?"
+      // on its own, no debug mode needed. page-canvas is local (the picture
+      // was already in the page); page/worker-fetch download it, so a slow
+      // fetch with a big byte count is the server or the connection.
+      const capAttempts = attempts || [];
+      for (const a of capAttempts) {
+        diagPush('capture attempt ' + a.tier + ' ' + (a.ok ? 'ok' : 'failed') + ' ms ' + a.ms +
+          (a.bytes != null ? ' bytes ' + a.bytes : '') +
+          (a.error ? ' error ' + String(a.error).slice(0, 120) : ''));
+      }
+      const capWin = capAttempts.find(a => a.ok);
+      diagPush('capture tier ' + tier + ' ms ' + imgTimings.capture + ' image ' + w + 'x' + h +
+        (capWin && capWin.bytes != null ? ' bytes ' + capWin.bytes : ''));
+      // Single source of truth for dimensions: normalize ALL capture tiers to
+      // renderScale dims HERE, once. Tier 1a (page canvas) already downscales,
+      // but tiers 1b/1c (fetches) return full-res — without this, detector
+      // boxes, cache keys, and Tier-1 entries disagree on the coordinate system.
+      // Everything downstream (detect, OCR, inpaint, cache) uses these scaled w/h.
+      {
+        const cs = renderScale(w, h);
+        if (cs < 1) {
+          const sw = Math.max(1, Math.round(w * cs)), sh = Math.max(1, Math.round(h * cs));
+          rgba = resizeBilinearRGBA(rgba, w, h, sw, sh);
+          w = sw; h = sh;
         }
       }
-    } catch (e) {
-      console.warn('[ct] page-cache lookup failed:', String((e && e.message) || e).slice(0, 120));
-    }
-    if (cacheHit) {
-      if (cacheHit.tier1Only) {
-        // Translate-only path: Tier-1 gave us inpainted base + OCR blocks.
-        // Translate to the new targetLang, store Tier-2, render.
-        return await renderFromTier1(tabId, runId, cacheHit.entry, cacheHit.tier2Key,
-          settings, timings, manualSrc, rgba, w, h, mode, tier);
+      const capMean = meanBrightness(rgba);
+      if (capMean < 0.004) {
+        throw new Error(
+          `captured image came back blank (all pixels black) via "${tier}" — ` +
+          `the page's picture could not be read. Reload the page and try again; ` +
+          `if it persists, the site may be blocking pixel access.`);
       }
-      return await renderFromPageCache(tabId, runId, cacheHit, settings, timings, manualSrc, { fromCache: true });
-    }
+      // The data-URL image is only built in debug mode — in normal runs this
+      // PNG encode of the full page is pure overhead.
+      await imgEmitDebug('capture',
+        { title: `Captured page — ${tier}, mean brightness ${capMean.toFixed(3)}`, image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null, w, h, bytes: (capWin && capWin.bytes != null ? capWin.bytes : null), ms: imgTimings.capture });
 
-    // ---- 2. detection (+ tall-image slicing)
-    checkCancelled(runId);
-    setProgress(runId, 'detect', 0.1);
-    t0 = performance.now();
-    let detections, detectInputMean = null;
-    if (h / w > 3.5) {
-      detections = await detectSliced(rgba, w, h, settings.detectionThreshold, runId, pxKeys);
-    } else {
-      // NOTE: pixel bytes go through the IDB pixel bus — chrome.runtime
-      // messaging drops ArrayBuffers sent from the service worker.
-      const pxKey = `detect:${runId}`;
-      pxKeys.push(pxKey);
-      await pixelPut(pxKey, rgba.buffer);
-      const r = await callMlChecked(runId, { type: MSG.ML_DETECT, key: pxKey, width: w, height: h, threshold: settings.detectionThreshold, runId });
-      detections = r.boxes;
-      timings.detect = r.ms;
-      detectInputMean = r.inputMean;
-      if (detectInputMean != null && detectInputMean < 0.004) {
-        throw new Error(`the detector received a blank image (input mean ${detectInputMean}) ` +
-          `although the capture looked fine (mean ${capMean.toFixed(3)}) — pixel data was lost ` +
-          `between capture and detection. Reload the page and try again.`);
-      }
-    }
-    if (!timings.detect) timings.detect = Math.round(performance.now() - t0);
-    setProgress(runId, 'detect', 0.25);
-    await emitDebug(runId, tabId, settings, 'detect', {
-      title: `Detection — ${detections.length} boxes @ ≥${settings.detectionThreshold}` +
-        (detectInputMean != null ? ` (detector input mean ${detectInputMean})` : ''),
-      boxes: detections, w, h, threshold: settings.detectionThreshold, ms: timings.detect,
-      image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null,
-    });
-
-    // ---- 3. text blocks
-    checkCancelled(runId);
-    t0 = performance.now();
-    const blocks = buildBlocks(detections, w, h, rgba, settings);
-    timings.blocks = Math.round(performance.now() - t0);
-    setProgress(runId, 'blocks', 0.3);
-    await emitDebug(runId, tabId, settings, 'blocks', {
-      title: `Text blocks — ${blocks.length}`,
-      blocks: blocks.map((b, i) => ({
-        i, text_class: b.text_class,
-        xyxy: b.xyxy.map(v => Math.round(v)),
-        bubble_xyxy: b.bubble_xyxy ? b.bubble_xyxy.map(v => Math.round(v)) : null,
-        font_color: b.font_color,
-      })),
-      ms: timings.blocks,
-    });
-
-    // ---- 4. OCR (sequential — the mask stage needs blk.text, so it must
-    // wait for OCR; see buildBlockMaskData's `if (!blk.text ...)` guard).
-    checkCancelled(runId);
-    setProgress(runId, 'ocr', 0.38);
-    {
-      // DIAG (2.0.9): prep = crop building + pixelPut (SW side, invisible
-      // in r.ms); call = the ML round trip; load rides on r.loadMs.
-      const ocrPrepT0 = performance.now();
-      const crops = [];
-      for (const [i, b] of blocks.entries()) {
-        const c = cropForBlock(rgba, w, h, b.xyxy, b.bubble_xyxy);
-        if (!c) continue;
-        const pxKey = `ocr:${runId}:${i}`;
-        pxKeys.push(pxKey);
-        await pixelPut(pxKey, c.data.buffer);
-        crops.push({ id: i, key: pxKey, data: c.data, width: c.w, height: c.h, x: c.x, y: c.y, bw: b.xyxy[2] - b.xyxy[0], bh: b.xyxy[3] - b.xyxy[1] });
-      }
-      const ocrPrepMs = Math.round(performance.now() - ocrPrepT0);
-      let ocrMs = 0, ocrEngineLabel = '', ocrCallMs = 0;
-      // Per-crop OCR diagnostics for the debug panel: char count and whether
-      // this crop needed the Baberu chunked re-OCR (v1.1: >256 chars, rare).
-      const ocrStats = new Map();
-      if (crops.length) {
-        const ocrCallT0 = performance.now();
-        // OCR is single-worker (2.1.26): the 2-worker pool (2.1.10-2.1.25)
-        // was removed — it never beat single on any page (standard page
-        // pool 4,932ms vs single 4,920ms; dense page pool 8,121ms vs
-        // single 7,961ms). Single uses the measured best thread count
-        // (4 on the M4) via threadsReady() in the doc. The thread bench
-        // itself stays: it measures and saves the best count, and single
-        // OCR reads it on every run.
-        const r = await callMlChecked(runId, {
-          type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
-          crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
-        });
-        ocrCallMs = Math.round(performance.now() - ocrCallT0);
-        ocrMs = r.ms;
-        ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
-        for (const res of r.results) {
-          blocks[res.id].text = res.text;
-          ocrStats.set(res.id, { chars: res.chars, chunks: res.chunks, hitCeiling: res.hitCeiling, stopped: res.stopped, skipped: !!res.skipped });
-        }
-        // DIAG (2.0.9): OCR split + slowest crops, so one Mac run shows
-        // whether OCR time is one long crop, even per-crop cost, or the
-        // Baberu load — the fix depends on which it is.
-        diagPush('ocr split ms prep ' + ocrPrepMs + ' load ' + ((r && r.loadMs) || 0) + ' run ' + ocrMs + ' call ' + ocrCallMs);
-        const cropById = new Map(crops.map(c => [c.id, c]));
-        let ocrChars = 0, ocrSkipped = 0;
-        const ocrSlow = [];
-        for (const res of r.results) {
-          ocrChars += res.chars || 0;
-          if (res.skipped) ocrSkipped++;
-          const cc = cropById.get(res.id);
-          ocrSlow.push({ id: res.id, w: cc ? cc.width : 0, h: cc ? cc.height : 0, chars: res.chars || 0, chunks: res.chunks || 0, skipped: !!res.skipped, ms: res.ms || 0 });
-        }
-        ocrSlow.sort((a, b) => b.ms - a.ms);
-        diagPush('ocr crops ' + r.results.length + ' skipped ' + ocrSkipped + ' chars ' + ocrChars);
-        for (const s of ocrSlow.slice(0, 5)) diagPush('ocr slow crop ' + s.id + ' ' + s.w + 'x' + s.h + ' chars ' + s.chars + ' chunks ' + s.chunks + ' skipped ' + (s.skipped ? 'yes' : 'no') + ' ms ' + s.ms);
-      }
-      timings.ocr = ocrMs;
-      setProgress(runId, 'ocr', 0.55);
-      const ocrThumbs = [];
-      // Thumbnails are debug-panel only — skip the 40 canvas encodes in normal runs.
-      if (settings.debugMode) {
-        for (const c of crops.slice(0, 40)) {
-          ocrThumbs.push({
-            id: c.id, text: blocks[c.id].text,
-            ...(ocrStats.get(c.id) || {}),
-            thumb: await rgbaToDataURL(c.data, c.width, c.height, 200),
-          });
-        }
-      }
-      const ocrTextCount = blocks.filter(b => b.text && b.text.trim()).length;
-      const clippedCount = [...ocrStats.values()].filter(s => s.hitCeiling).length;
-      await emitDebug(runId, tabId, settings, 'ocr', {
-        title: `OCR — ${crops.length} crops, ${ocrTextCount} with text${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}` +
-          (clippedCount ? `, ${clippedCount} hit the 256-char model cap (re-OCR'd in chunks)` : ''),
-        crops: ocrThumbs, ms: ocrMs,
-      });
-    }
-
-    // Auto-detect source language: Baberu reads all four scripts, so vote
-    // across the OCR'd blocks. Undetectable -> 'ja', the old default.
-    let effSettings = settings;
-    if (settings.sourceLang === 'auto') {
-      const detected = detectPageLang(blocks.map(b => b.text));
-      effSettings = { ...settings, sourceLang: detected || 'ja' };
-      for (const b of blocks) b.source_lang = effSettings.sourceLang;
-    }
-
-    // ---- 5+6+7. translate || (mask -> inpaint). Translate and mask both need
-    // only the OCR text and are independent of each other (translate: network
-    // I/O here; mask: CPU here). Inpaint needs the mask, so it chains off the
-    // mask promise and starts as soon as the mask is done — it does not wait
-    // for translate. Render waits for both translate and inpaint.
-    checkCancelled(runId);
-    const par = { translate: 0, mask: 0, inpaint: 0 };
-    let parMax = 0.58;
-    const parProgress = (branch, frac) => {
-      par[branch] = frac;
-      parMax = Math.max(parMax, 0.58 + 0.32 * (par.translate + par.mask + par.inpaint) / 3);
-      setProgress(runId, branch, parMax);
-    };
-    // Long tiled inpaints feed per-tile progress through this (Firefox: the
-    // ML host shares this page; Chrome: forwarded from the offscreen doc).
-    // The pill keeps moving instead of looking stalled at one percentage
-    // for minutes.
-    runs.get(runId).onInpaintProgress = (frac) => parProgress('inpaint', frac);
-    const runTranslate = async () => {
-      parProgress('translate', 0);
-      const t0t = performance.now();
-      // 30s aborts the CURRENT attempt so translateBlocks can fail over:
-      // rejecting the race directly used to bypass failover entirely, so a
-      // stalled backend never switched to Azure. The 60s backstop kills a
-      // run wedged past stall (30s) + rescue (20s).
-      const TRANSLATE_TIMEOUT_MS = 30000;
-      const TRANSLATE_BACKSTOP_MS = 60000;
-      let timeoutId = null, backstopId = null;
-      timeoutId = setTimeout(() => {
-        try { abortController.abort(); } catch { /* already aborted */ }
-      }, TRANSLATE_TIMEOUT_MS);
-      const backstopP = new Promise((_, reject) => {
-        backstopId = setTimeout(() => {
-          reject(new Error('translate timed out — the translation backend may be stuck'));
-        }, TRANSLATE_BACKSTOP_MS);
-      });
-      let translated;
+      // ---- 1b. page cache: a page translated earlier in this session renders
+      // instantly — no detection, OCR, inpaint, or translation. The stored entry
+      // is re-sent as ct/render, so the content script re-composites the text
+      // with the CURRENT font settings; font-size tweaks never invalidate it.
+      // An early return inside try still runs the finally below (runs.delete +
+      // dropping staged pixel payloads), so cleanup is unchanged.
+      checkCancelled(runId);
+      let cacheHit = null;
+      let tier1Key = null, tier1Entry = null;
       try {
-        const failoverNotice = (p) => {
-          if (p && p.failoverFrom && p.failoverTo) {
-            chrome.tabs.sendMessage(tabId, {
-              type: MSG.PILL_NOTICE,
-              text: `Engine ${p.failoverFrom} failed — retrying with ${p.failoverTo}`,
-              sticky: false,
-            }).catch(() => {});
+        if (!(await isIncognitoTab(tabId))) {
+          // Two-tier lookup: Tier 1 (target-independent) first, then Tier 2
+          // (targetLang + backend). A Tier-1 hit with a new targetLang
+          // translates only — skipping detect/OCR/inpaint.
+          tier1Key = await buildCacheKeyTier1(rgba, w, h, settings);
+          tier1Entry = await pageCacheGet(tier1Key);
+          // Dimension guard: the entry must match the CURRENT (scaled) capture
+          // dims. A mismatch means the entry was stored at different dims
+          // (e.g. before the R3 normalization) — treat as miss and overwrite.
+          if (tier1Entry && (tier1Entry.width !== w || tier1Entry.height !== h)) {
+            tier1Entry = null;
           }
-        };
-        translated = await Promise.race([
-          translateBlocks(blocks, effSettings, failoverNotice, abortController.signal, 30000, () => runs.get(runId)?.cancelled === true),
-          backstopP,
-        ]);
-      } finally {
-        if (timeoutId) clearTimeout(timeoutId);
-        if (backstopId) clearTimeout(backstopId);
-      }
-      checkCancelled(runId);
-      blocks.forEach((b, i) => { b.translation = translated[i]; });
-      const translateMs = Math.round(performance.now() - t0t);
-      parProgress('translate', 1);
-      await emitDebug(runId, tabId, settings, 'translate', {
-        // Title shows the backend that ACTUALLY translated, not the
-        // configured one — after failover they differ, and the old title
-        // always said Google even when Azure/LM Studio did the work.
-        title: `Translation — ${BACKEND_LABEL[blocks[0]?.backendUsed || settings.translationBackend] || settings.translationBackend}`,
-        rows: blocks.map(b => ({ text: b.text, translation: b.translation, backend: b.backendUsed || settings.translationBackend })),
-        ms: translateMs,
-      });
-      return { translateMs };
-    };
-    const runMask = async () => {
-      parProgress('mask', 0);
-      const t0m = performance.now();
-      const pageGray = toGrayU8(rgba, w, h);
-      const { mask: fullMask, entries } = generateMask(rgba, w, h, pageGray, blocks, 5);
-      const maskMs = Math.round(performance.now() - t0m);
-      parProgress('mask', 1);
-      await emitDebug(runId, tabId, settings, 'mask', {
-        title: `Mask — ${entries.length} block masks`,
-        mask: settings.debugMode ? await rgbaToDataURL(maskToRGBA(fullMask, w, h), w, h) : null, ms: maskMs,
-      });
-      return { fullMask, entries, maskMs };
-    };
-    const runInpaint = async ({ fullMask, entries, maskMs }) => {
-      checkCancelled(runId);
-      parProgress('inpaint', 0);
-      const t0i = performance.now();
-      // DIAG (2.0.5): phase split of the inpaint stage, so one Mac run
-      // shows where the stage time goes (prep / model load / GPU run /
-      // paste / round-trip call / stage total). loadMs/readyMs ride on
-      // r from the ML handler; the rest is timed here.
-      let inpaintPath = 'wasm';
-      let prepMs = 0, callMs = 0, pasteMs = 0, splitLoadMs = 0, splitReadyMs = null, splitTileMax = 0, splitHostMs = null, splitDocMs = null;
-      // 2.0.27: the merge uses the LEARNED spread for this path
-      // (gpu on Chrome, wasm1 on Firefox), starting at 1.3 and
-      // adjusting from real runs (see readInpaintSpread above).
-      const spreadMap = await readInpaintSpread();
-      const mergeKey = directHandlers() ? 'wasm1' : 'gpu';
-      const mergeSpread = spreadMap[mergeKey] || INPAINT_COST_SPREAD;
-      const { boxes: patchBoxes, predictedMs, counts: patchCounts } = mergeBoxesByCost(entries, {
-        // 2.0.14: cost-based merge (see textblock.js) — merge only when
-        // the merged patch is predicted cheaper than the two apart.
-        // Expected path: Chrome tries GPU first (tileMax 1024); Firefox
-        // is WASM 1-thread (tileMax 512). A Chrome GPU failure falls back
-        // to WASM on these same patches, as before.
-        tileMax: directHandlers() ? TILE_MAX : 1024,
-        ...(directHandlers() ? INPAINT_COST.wasm1 : INPAINT_COST.gpu),
-        spread: mergeSpread,
-      });
-      diagPush('inpaint merge cost: ' + entries.length + ' boxes -> ' + patchBoxes.length + ' patches, predicted ' + Math.round(predictedMs) + 'ms (spread ' + mergeSpread.toFixed(2) + ')');
-      const patches = [];
-      for (const [i, pb] of patchBoxes.entries()) {
-        checkCancelled(runId);
-        const [x1, y1, x2, y2] = pb.map(Math.round);
-        const pxKey = `inpaint:${runId}:${i}`;
-        const maskKey = `inpaint-mask:${runId}:${i}`;
-        pxKeys.push(pxKey, maskKey);
-        await pixelPut(pxKey, cropRGBA(rgba, w, x1, y1, x2, y2).data.buffer);
-        // Keep the mask bytes in memory too: the offscreen handler only
-        // peeks the pixel-store copy (inputs are dropped by the pipeline
-        // finally, not on read), but we need the mask again at compositing
-        // time for mask-aware paste. pixelPut copies, so this view stays
-        // valid.
-        const maskData = cropMask1(fullMask, w, x1, y1, x2, y2);
-        await pixelPut(maskKey, maskData.buffer);
-        patches.push({ id: i, x: x1, y: y1, key: pxKey, maskKey, maskData, width: x2 - x1, height: y2 - y1 });
-      }
-      prepMs = Math.round(performance.now() - t0i);
-      const inpainted = new Uint8ClampedArray(rgba);
-      let inpaintMs = 0;
-      // GPU1 per-run downgrade: set on any GPU failure (error or hang),
-      // so GPU is never retried again in THIS run. Next run tries GPU
-      // fresh (per-run stick only, per spec). Local to runPipeline, so
-      // it dies with the run in finally (runs.delete(runId)).
-      let gpuDowngradedThisRun = false;
-      if (patches.length) {
-        diagPush('inpaint start run ' + runId + ' patches ' + patches.length);
-        const wirePatches = patches.map(({ id, key, maskKey, width, height }) => ({ id, key, maskKey, width, height }));
-        let r;
-        // GPU1 (Firefox only): LaMa on WebGPU in a dedicated worker,
-        // tried first when the browser exposes WebGPU. Any GPU failure
-        // except user cancel (error, buffer error, OOM, or a hang
-        // caught by the 60s inactivity watchdog in ml-bridge.js)
-        // downgrades to WASM and retries once via the preloaded shared
-        // worker, then sticks to WASM for the rest of this run. The
-        // full error text is logged (no cut) so the panel log shows
-        // exactly how GPU died. Cancelled runs never fall back:
-        // checkCancelled throws before the downgrade. Chrome takes
-        // the GPU1-Chrome branch below (offscreen-document GPU worker).
-        // If WebGPU is not exposed, one line explains why GPU was
-        // skipped, so a missing navigator.gpu is visible, not silent.
-        const callT0 = performance.now();
-        if (directHandlers() && !gpuDowngradedThisRun && !(typeof navigator !== 'undefined' && navigator.gpu)) {
-          diagPush('inpaint gpu skipped: no navigator.gpu, using WASM path');
-        }
-        if (directHandlers() && !gpuDowngradedThisRun && typeof navigator !== 'undefined' && navigator.gpu) {
-          try {
-            diagPush('inpaint gpu start run ' + runId + ' patches ' + patches.length);
-            r = await runGpuInpaint({
-              runId, patches: wirePatches,
-              onProgress: (frac) => parProgress('inpaint', frac),
-              diag: diagPush,
-              isCancelled: () => runs.get(runId)?.cancelled === true,
-            });
-            inpaintPath = 'gpu';
-            diagPush('inpaint gpu done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0));
-          } catch (e) {
-            checkCancelled(runId);
-            gpuDowngradedThisRun = true;
-            inpaintPath = 'gpu-failed-wasm';
-            diagPush('inpaint gpu failed, downgrading to WASM for this run: ' + String((e && e.message) || e));
-            r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
-            diagPush('inpaint gpu WASM retry done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0));
-          }
-        } else if (!directHandlers() && !gpuDowngradedThisRun) {
-        // GPU1-Chrome: LaMa on WebGPU in a dedicated worker spawned by
-        // the offscreen document (the SW cannot spawn workers). Tried
-        // first on Chrome; the document decides GPU availability in its
-        // own realm (its navigator.gpu, not the SW's). Any GPU failure
-        // except user cancel (error or a hang caught by the 60s
-        // inactivity watchdog in ml-bridge.js) downgrades to WASM and
-        // retries once via the offscreen document, then sticks to WASM
-        // for the rest of this run. GPU_SKIPPED (no navigator.gpu in
-        // the doc realm, worker creation/ready failure) logs "skipped"
-        // and falls back to the single WASM path. Full error text is
-        // logged (no cut). Cancelled runs never fall back:
-        // checkCancelled throws before the downgrade.
-          try {
-            diagPush('inpaint gpu start run ' + runId + ' patches ' + patches.length);
-            r = await runChromeGpuInpaint({
-              runId, patches: wirePatches,
-              onProgress: (frac) => parProgress('inpaint', frac),
-              diag: diagPush,
-              isCancelled: () => runs.get(runId)?.cancelled === true,
-            });
-            inpaintPath = 'gpu';
-            diagPush('inpaint gpu done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0) + (r.readyMs != null ? ' readyMs ' + r.readyMs : ''));
-          } catch (e) {
-            checkCancelled(runId);
-            if (e && e.gpuSkipped) {
-              inpaintPath = 'gpu-skipped-wasm';
-              diagPush('inpaint gpu skipped: ' + String((e && e.message) || e));
-              r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
+          if (tier1Entry) {
+            const tier2Key = buildCacheKeyTier2(tier1Key, settings);
+            const tier2Entry = await pageCacheGet(tier2Key);
+            if (tier2Entry && tier2Entry.translations) {
+              // Full hit: apply cached translations to the Tier-1 blocks.
+              const blocks = tier1Entry.blocks.map((b, i) => ({
+                ...b, translation: tier2Entry.translations[i] || '',
+              }));
+              cacheHit = { ...tier1Entry, blocks };
             } else {
+              // Tier-1 hit, Tier-2 miss: translate the OCR'd blocks only.
+              // (Falls through to the translate-only path below.)
+              cacheHit = { tier1Only: true, entry: tier1Entry, tier2Key };
+            }
+          } else {
+            // No Tier 1: try the legacy v1 key for backward compatibility.
+            cacheHit = await pageCacheGet(await buildCacheKey(rgba, w, h, settings));
+          }
+        }
+      } catch (e) {
+        console.warn('[ct] page-cache lookup failed:', String((e && e.message) || e).slice(0, 120));
+      }
+      if (cacheHit) {
+        if (cacheHit.tier1Only) {
+          // Translate-only path: Tier-1 gave us inpainted base + OCR blocks.
+          // Translate to the new targetLang, store Tier-2, render.
+          return await renderFromTier1(tabId, runId, cacheHit.entry, cacheHit.tier2Key,
+            settings, imgTimings, manualSrc, rgba, w, h, mode, tier, img.uid, imgSetProgress);
+        }
+        return await renderFromPageCache(tabId, runId, cacheHit, settings, imgTimings, manualSrc, { fromCache: true, uid: img.uid, onProgress: imgSetProgress });
+      }
+
+      // ---- 2. detection (+ tall-image slicing)
+      checkCancelled(runId);
+      imgSetProgress('detect', 0.1);
+      t0 = performance.now();
+      let detections, detectInputMean = null;
+      if (h / w > 3.5) {
+        detections = await detectSliced(rgba, w, h, settings.detectionThreshold, runId, imgPxKeys);
+      } else {
+        // NOTE: pixel bytes go through the IDB pixel bus — chrome.runtime
+        // messaging drops ArrayBuffers sent from the service worker.
+        const pxKey = `detect:${runId}`;
+        imgPxKeys.push(pxKey);
+        await pixelPut(pxKey, rgba.buffer);
+        const r = await callMlChecked(runId, { type: MSG.ML_DETECT, key: pxKey, width: w, height: h, threshold: settings.detectionThreshold, runId });
+        detections = r.boxes;
+        imgTimings.detect = r.ms;
+        detectInputMean = r.inputMean;
+        if (detectInputMean != null && detectInputMean < 0.004) {
+          throw new Error(`the detector received a blank image (input mean ${detectInputMean}) ` +
+            `although the capture looked fine (mean ${capMean.toFixed(3)}) — pixel data was lost ` +
+            `between capture and detection. Reload the page and try again.`);
+        }
+      }
+      if (!imgTimings.detect) imgTimings.detect = Math.round(performance.now() - t0);
+      imgSetProgress('detect', 0.25);
+      await imgEmitDebug('detect', {
+        title: `Detection — ${detections.length} boxes @ ≥${settings.detectionThreshold}` +
+          (detectInputMean != null ? ` (detector input mean ${detectInputMean})` : ''),
+        boxes: detections, w, h, threshold: settings.detectionThreshold, ms: imgTimings.detect,
+        image: settings.debugMode ? await rgbaToDataURL(rgba, w, h) : null,
+      });
+
+      // ---- 3. text blocks
+      checkCancelled(runId);
+      t0 = performance.now();
+      const blocks = buildBlocks(detections, w, h, rgba, settings);
+      imgTimings.blocks = Math.round(performance.now() - t0);
+      imgSetProgress('blocks', 0.3);
+      await imgEmitDebug('blocks', {
+        title: `Text blocks — ${blocks.length}`,
+        blocks: blocks.map((b, i) => ({
+          i, text_class: b.text_class,
+          xyxy: b.xyxy.map(v => Math.round(v)),
+          bubble_xyxy: b.bubble_xyxy ? b.bubble_xyxy.map(v => Math.round(v)) : null,
+          font_color: b.font_color,
+        })),
+        ms: imgTimings.blocks,
+      });
+
+      // ---- 4. OCR (sequential — the mask stage needs blk.text, so it must
+      // wait for OCR; see buildBlockMaskData's `if (!blk.text ...)` guard).
+      checkCancelled(runId);
+      imgSetProgress('ocr', 0.38);
+      {
+        // DIAG (2.0.9): prep = crop building + pixelPut (SW side, invisible
+        // in r.ms); call = the ML round trip; load rides on r.loadMs.
+        const ocrPrepT0 = performance.now();
+        const crops = [];
+        for (const [i, b] of blocks.entries()) {
+          const c = cropForBlock(rgba, w, h, b.xyxy, b.bubble_xyxy);
+          if (!c) continue;
+          const pxKey = `ocr:${runId}:${i}`;
+          imgPxKeys.push(pxKey);
+          await pixelPut(pxKey, c.data.buffer);
+          crops.push({ id: i, key: pxKey, data: c.data, width: c.w, height: c.h, x: c.x, y: c.y, bw: b.xyxy[2] - b.xyxy[0], bh: b.xyxy[3] - b.xyxy[1] });
+        }
+        const ocrPrepMs = Math.round(performance.now() - ocrPrepT0);
+        let ocrMs = 0, ocrEngineLabel = '', ocrCallMs = 0;
+        // Per-crop OCR diagnostics for the debug panel: char count and whether
+        // this crop needed the Baberu chunked re-OCR (v1.1: >256 chars, rare).
+        const ocrStats = new Map();
+        if (crops.length) {
+          const ocrCallT0 = performance.now();
+          // OCR is single-worker (2.1.26): the 2-worker pool (2.1.10-2.1.25)
+          // was removed — it never beat single on any page (standard page
+          // pool 4,932ms vs single 4,920ms; dense page pool 8,121ms vs
+          // single 7,961ms). Single uses the measured best thread count
+          // (4 on the M4) via threadsReady() in the doc. The thread bench
+          // itself stays: it measures and saves the best count, and single
+          // OCR reads it on every run.
+          const r = await callMlChecked(runId, {
+            type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
+            crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
+          });
+          ocrCallMs = Math.round(performance.now() - ocrCallT0);
+          ocrMs = r.ms;
+          ocrEngineLabel = (MODEL_GROUPS.find(g => g.id === r.engine) || {}).label || r.engine || '';
+          for (const res of r.results) {
+            blocks[res.id].text = res.text;
+            ocrStats.set(res.id, { chars: res.chars, chunks: res.chunks, hitCeiling: res.hitCeiling, stopped: res.stopped, skipped: !!res.skipped });
+          }
+          // DIAG (2.0.9): OCR split + slowest crops, so one Mac run shows
+          // whether OCR time is one long crop, even per-crop cost, or the
+          // Baberu load — the fix depends on which it is.
+          diagPush('ocr split ms prep ' + ocrPrepMs + ' load ' + ((r && r.loadMs) || 0) + ' run ' + ocrMs + ' call ' + ocrCallMs);
+          const cropById = new Map(crops.map(c => [c.id, c]));
+          let ocrChars = 0, ocrSkipped = 0;
+          const ocrSlow = [];
+          for (const res of r.results) {
+            ocrChars += res.chars || 0;
+            if (res.skipped) ocrSkipped++;
+            const cc = cropById.get(res.id);
+            ocrSlow.push({ id: res.id, w: cc ? cc.width : 0, h: cc ? cc.height : 0, chars: res.chars || 0, chunks: res.chunks || 0, skipped: !!res.skipped, ms: res.ms || 0 });
+          }
+          ocrSlow.sort((a, b) => b.ms - a.ms);
+          diagPush('ocr crops ' + r.results.length + ' skipped ' + ocrSkipped + ' chars ' + ocrChars);
+          for (const s of ocrSlow.slice(0, 5)) diagPush('ocr slow crop ' + s.id + ' ' + s.w + 'x' + s.h + ' chars ' + s.chars + ' chunks ' + s.chunks + ' skipped ' + (s.skipped ? 'yes' : 'no') + ' ms ' + s.ms);
+        }
+        imgTimings.ocr = ocrMs;
+        imgSetProgress('ocr', 0.55);
+        const ocrThumbs = [];
+        // Thumbnails are debug-panel only — skip the 40 canvas encodes in normal runs.
+        if (settings.debugMode) {
+          for (const c of crops.slice(0, 40)) {
+            ocrThumbs.push({
+              id: c.id, text: blocks[c.id].text,
+              ...(ocrStats.get(c.id) || {}),
+              thumb: await rgbaToDataURL(c.data, c.width, c.height, 200),
+            });
+          }
+        }
+        const ocrTextCount = blocks.filter(b => b.text && b.text.trim()).length;
+        const clippedCount = [...ocrStats.values()].filter(s => s.hitCeiling).length;
+        await imgEmitDebug('ocr', {
+          title: `OCR — ${crops.length} crops, ${ocrTextCount} with text${ocrEngineLabel ? ` (${ocrEngineLabel})` : ''}` +
+            (clippedCount ? `, ${clippedCount} hit the 256-char model cap (re-OCR'd in chunks)` : ''),
+          crops: ocrThumbs, ms: ocrMs,
+        });
+      }
+
+      // Auto-detect source language: Baberu reads all four scripts, so vote
+      // across the OCR'd blocks. Undetectable -> 'ja', the old default.
+      let effSettings = settings;
+      if (settings.sourceLang === 'auto') {
+        const detected = detectPageLang(blocks.map(b => b.text));
+        effSettings = { ...settings, sourceLang: detected || 'ja' };
+        for (const b of blocks) b.source_lang = effSettings.sourceLang;
+      }
+
+      // ---- 5+6+7. translate || (mask -> inpaint). Translate and mask both need
+      // only the OCR text and are independent of each other (translate: network
+      // I/O here; mask: CPU here). Inpaint needs the mask, so it chains off the
+      // mask promise and starts as soon as the mask is done — it does not wait
+      // for translate. Render waits for both translate and inpaint.
+      checkCancelled(runId);
+      const par = { translate: 0, mask: 0, inpaint: 0 };
+      let parMax = 0.58;
+      const parProgress = (branch, frac) => {
+        par[branch] = frac;
+        parMax = Math.max(parMax, 0.58 + 0.32 * (par.translate + par.mask + par.inpaint) / 3);
+        imgSetProgress(branch, parMax);
+      };
+      // Long tiled inpaints feed per-tile progress through this (Firefox: the
+      // ML host shares this page; Chrome: forwarded from the offscreen doc).
+      // The pill keeps moving instead of looking stalled at one percentage
+      // for minutes.
+      runs.get(runId).onInpaintProgress = (frac) => parProgress('inpaint', frac);
+      const runTranslate = async () => {
+        parProgress('translate', 0);
+        const t0t = performance.now();
+        // 30s aborts the CURRENT attempt so translateBlocks can fail over:
+        // rejecting the race directly used to bypass failover entirely, so a
+        // stalled backend never switched to Azure. The 60s backstop kills a
+        // run wedged past stall (30s) + rescue (20s).
+        const TRANSLATE_TIMEOUT_MS = 30000;
+        const TRANSLATE_BACKSTOP_MS = 60000;
+        let timeoutId = null, backstopId = null;
+        timeoutId = setTimeout(() => {
+          try { abortController.abort(); } catch { /* already aborted */ }
+        }, TRANSLATE_TIMEOUT_MS);
+        const backstopP = new Promise((_, reject) => {
+          backstopId = setTimeout(() => {
+            reject(new Error('translate timed out — the translation backend may be stuck'));
+          }, TRANSLATE_BACKSTOP_MS);
+        });
+        let translated;
+        try {
+          const failoverNotice = (p) => {
+            if (p && p.failoverFrom && p.failoverTo) {
+              chrome.tabs.sendMessage(tabId, {
+                type: MSG.PILL_NOTICE,
+                text: `Engine ${p.failoverFrom} failed — retrying with ${p.failoverTo}`,
+                sticky: false,
+              }).catch(() => {});
+            }
+          };
+          translated = await Promise.race([
+            translateBlocks(blocks, effSettings, failoverNotice, abortController.signal, 30000, () => runs.get(runId)?.cancelled === true),
+            backstopP,
+          ]);
+        } finally {
+          if (timeoutId) clearTimeout(timeoutId);
+          if (backstopId) clearTimeout(backstopId);
+        }
+        checkCancelled(runId);
+        blocks.forEach((b, i) => { b.translation = translated[i]; });
+        const translateMs = Math.round(performance.now() - t0t);
+        parProgress('translate', 1);
+        await imgEmitDebug('translate', {
+          // Title shows the backend that ACTUALLY translated, not the
+          // configured one — after failover they differ, and the old title
+          // always said Google even when Azure/LM Studio did the work.
+          title: `Translation — ${BACKEND_LABEL[blocks[0]?.backendUsed || settings.translationBackend] || settings.translationBackend}`,
+          rows: blocks.map(b => ({ text: b.text, translation: b.translation, backend: b.backendUsed || settings.translationBackend })),
+          ms: translateMs,
+        });
+        return { translateMs };
+      };
+      const runMask = async () => {
+        parProgress('mask', 0);
+        const t0m = performance.now();
+        const pageGray = toGrayU8(rgba, w, h);
+        const { mask: fullMask, entries } = generateMask(rgba, w, h, pageGray, blocks, 5);
+        const maskMs = Math.round(performance.now() - t0m);
+        parProgress('mask', 1);
+        await imgEmitDebug('mask', {
+          title: `Mask — ${entries.length} block masks`,
+          mask: settings.debugMode ? await rgbaToDataURL(maskToRGBA(fullMask, w, h), w, h) : null, ms: maskMs,
+        });
+        return { fullMask, entries, maskMs };
+      };
+      const runInpaint = async ({ fullMask, entries, maskMs }) => {
+        checkCancelled(runId);
+        parProgress('inpaint', 0);
+        const t0i = performance.now();
+        // DIAG (2.0.5): phase split of the inpaint stage, so one Mac run
+        // shows where the stage time goes (prep / model load / GPU run /
+        // paste / round-trip call / stage total). loadMs/readyMs ride on
+        // r from the ML handler; the rest is timed here.
+        let inpaintPath = 'wasm';
+        let prepMs = 0, callMs = 0, pasteMs = 0, splitLoadMs = 0, splitReadyMs = null, splitTileMax = 0, splitHostMs = null, splitDocMs = null;
+        // 2.0.27: the merge uses the LEARNED spread for this path
+        // (gpu on Chrome, wasm1 on Firefox), starting at 1.3 and
+        // adjusting from real runs (see readInpaintSpread above).
+        const spreadMap = await readInpaintSpread();
+        const mergeKey = directHandlers() ? 'wasm1' : 'gpu';
+        const mergeSpread = spreadMap[mergeKey] || INPAINT_COST_SPREAD;
+        const { boxes: patchBoxes, predictedMs, counts: patchCounts } = mergeBoxesByCost(entries, {
+          // 2.0.14: cost-based merge (see textblock.js) — merge only when
+          // the merged patch is predicted cheaper than the two apart.
+          // Expected path: Chrome tries GPU first (tileMax 1024); Firefox
+          // is WASM 1-thread (tileMax 512). A Chrome GPU failure falls back
+          // to WASM on these same patches, as before.
+          tileMax: directHandlers() ? TILE_MAX : 1024,
+          ...(directHandlers() ? INPAINT_COST.wasm1 : INPAINT_COST.gpu),
+          spread: mergeSpread,
+        });
+        diagPush('inpaint merge cost: ' + entries.length + ' boxes -> ' + patchBoxes.length + ' patches, predicted ' + Math.round(predictedMs) + 'ms (spread ' + mergeSpread.toFixed(2) + ')');
+        const patches = [];
+        for (const [i, pb] of patchBoxes.entries()) {
+          checkCancelled(runId);
+          const [x1, y1, x2, y2] = pb.map(Math.round);
+          const pxKey = `inpaint:${runId}:${i}`;
+          const maskKey = `inpaint-mask:${runId}:${i}`;
+          imgPxKeys.push(pxKey, maskKey);
+          await pixelPut(pxKey, cropRGBA(rgba, w, x1, y1, x2, y2).data.buffer);
+          // Keep the mask bytes in memory too: the offscreen handler only
+          // peeks the pixel-store copy (inputs are dropped by the pipeline
+          // finally, not on read), but we need the mask again at compositing
+          // time for mask-aware paste. pixelPut copies, so this view stays
+          // valid.
+          const maskData = cropMask1(fullMask, w, x1, y1, x2, y2);
+          await pixelPut(maskKey, maskData.buffer);
+          patches.push({ id: i, x: x1, y: y1, key: pxKey, maskKey, maskData, width: x2 - x1, height: y2 - y1 });
+        }
+        prepMs = Math.round(performance.now() - t0i);
+        const inpainted = new Uint8ClampedArray(rgba);
+        let inpaintMs = 0;
+        if (patches.length) {
+          diagPush('inpaint start run ' + runId + ' patches ' + patches.length);
+          const wirePatches = patches.map(({ id, key, maskKey, width, height }) => ({ id, key, maskKey, width, height }));
+          let r;
+          // GPU1 (Firefox only): LaMa on WebGPU in a dedicated worker,
+          // tried first when the browser exposes WebGPU. Any GPU failure
+          // except user cancel (error, buffer error, OOM, or a hang
+          // caught by the 60s inactivity watchdog in ml-bridge.js)
+          // downgrades to WASM and retries once via the preloaded shared
+          // worker, then sticks to WASM for the rest of this run. The
+          // full error text is logged (no cut) so the panel log shows
+          // exactly how GPU died. Cancelled runs never fall back:
+          // checkCancelled throws before the downgrade. Chrome takes
+          // the GPU1-Chrome branch below (offscreen-document GPU worker).
+          // If WebGPU is not exposed, one line explains why GPU was
+          // skipped, so a missing navigator.gpu is visible, not silent.
+          const callT0 = performance.now();
+          if (directHandlers() && !gpuDowngradedThisRun && !(typeof navigator !== 'undefined' && navigator.gpu)) {
+            diagPush('inpaint gpu skipped: no navigator.gpu, using WASM path');
+          }
+          if (directHandlers() && !gpuDowngradedThisRun && typeof navigator !== 'undefined' && navigator.gpu) {
+            try {
+              diagPush('inpaint gpu start run ' + runId + ' patches ' + patches.length);
+              r = await runGpuInpaint({
+                runId, patches: wirePatches,
+                onProgress: (frac) => parProgress('inpaint', frac),
+                diag: diagPush,
+                isCancelled: () => runs.get(runId)?.cancelled === true,
+              });
+              inpaintPath = 'gpu';
+              diagPush('inpaint gpu done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0));
+            } catch (e) {
+              checkCancelled(runId);
               gpuDowngradedThisRun = true;
               inpaintPath = 'gpu-failed-wasm';
               diagPush('inpaint gpu failed, downgrading to WASM for this run: ' + String((e && e.message) || e));
               r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
               diagPush('inpaint gpu WASM retry done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0));
             }
-          }
-        } else {
-          // Single WASM inpaint (2.1.27): the Firefox 2-worker pool
-          // (POOL1) was removed — it never beat single (83.5s pool vs
-          // 80.5s single on the standard page, 2026-11-04), and on this
-          // Mac it never ran anyway (Firefox has GPU, GPU fails, then
-          // single WASM). One big patch sets the floor no split can beat.
-          r = await callMlChecked(runId, {
-            type: MSG.ML_INPAINT, runId,
-            patches: wirePatches,
-          });
-        }
-        inpaintMs = r.ms;
-        callMs = Math.round(performance.now() - callT0);
-        splitLoadMs = (r && r.loadMs) || 0;
-        splitReadyMs = (r && r.readyMs != null) ? r.readyMs : null;
-        splitTileMax = (r && r.tileMax) || 0;
-        // BUGFIX (2.1.11): r is block-scoped (declared inside the
-        // patches block above) but the timing line below sits outside it
-        // — reading r there threw 'r is not defined' and killed the run
-        // after inpaint finished. Hoist the two timing values like
-        // splitLoadMs above, so the line below reads them, not r.
-        splitHostMs = (r && r.hostMs != null) ? r.hostMs : null;
-        splitDocMs = (r && r.docMs != null) ? r.docMs : null;
-        // MEASURE1: tile shape of this page, from the handler's count.
-        if (r && typeof r.totalTiles === 'number') diagPush('inpaint tiles total ' + r.totalTiles + ' patches ' + patches.length);
-        const pasteT0 = performance.now();
-        for (const res of r.results) {
-          const p = patches[res.id];
-          pxKeys.push(res.key);
-          const buf = await pixelTake(res.key);
-          // Use the in-memory mask copy (p.maskData): the pixel-store copy
-          // is only peeked by the handler and dropped by the pipeline
-          // finally, so it may still be there — but maskData is the copy
-          // this stage owns.
-          pasteMaskedRGBA(inpainted, w,
-            { data: new Uint8ClampedArray(buf), w: p.width, h: p.height },
-            { data: p.maskData, w: p.width, h: p.height },
-            p.x, p.y);
-        }
-        pasteMs = Math.round(performance.now() - pasteT0);
-        // DIAG (2.0.8): one line per patch — size, tile count, fast-path
-        // hit, and ms — so the fix follows the real shape, not a guess.
-        if (r && Array.isArray(r.patchStats)) {
-          for (const ps of r.patchStats) diagPush('inpaint patch ' + ps.id + ' ' + ps.w + 'x' + ps.h + ' tiles ' + ps.tiles + ' fast ' + (ps.fast ? 'yes' : 'no') + ' ms ' + ps.ms);
-        }
-        // 2.0.27: LEARN the spread from this run's merged patches.
-        // For a merged patch, the base model (no spread) predicts
-        // patchCostMs; the per-pixel part of (actual / predicted) is
-        // the measured spread for that patch. Fast-path patches never
-        // ran the model, so they carry no signal and are skipped.
-        // Only merged patches count — a single-box patch never used
-        // the spread. The median ratio of the run moves the stored
-        // spread 10% toward it (damped, clamped), so one noisy run
-        // cannot overfit it. The key is the path that actually ran
-        // (gpu, or wasm on Chrome fallback, or wasm1 on Firefox).
-        try {
-          const actualKey = inpaintPath === 'gpu' ? 'gpu' : (directHandlers() ? 'wasm1' : 'wasm');
-          const actualCost = INPAINT_COST[actualKey] || INPAINT_COST.gpu;
-          const actualTileMax = splitTileMax || (actualKey === 'gpu' ? 1024 : TILE_MAX);
-          const ratios = [];
-          if (r && Array.isArray(r.patchStats) && Array.isArray(patchCounts)) {
-            for (const ps of r.patchStats) {
-              if (ps.fast) continue;
-              if (!patchCounts[ps.id] || patchCounts[ps.id] < 2) continue;
-              const w = Number(ps.w), h = Number(ps.h), tiles = Number(ps.tiles), ms = Number(ps.ms);
-              if (!w || !h || !tiles || !ms) continue;
-              const base = patchCostMs(w, h, actualTileMax, actualCost.fixedMs, actualCost.perPxMs);
-              const fixedPart = tiles * actualCost.fixedMs;
-              const perPxPart = base - fixedPart;
-              const actualPerPx = ms - fixedPart;
-              // Only use patches where the per-pixel part beats the fixed
-              // overhead — otherwise the ratio is noise in the fixed cost.
-              if (perPxPart <= fixedPart || actualPerPx <= 0) continue;
-              const ratio = actualPerPx / perPxPart;
-              if (Number.isFinite(ratio)) ratios.push(Math.min(3, Math.max(0.5, ratio)));
+          } else if (!directHandlers() && !gpuDowngradedThisRun) {
+          // GPU1-Chrome: LaMa on WebGPU in a dedicated worker spawned by
+          // the offscreen document (the SW cannot spawn workers). Tried
+          // first on Chrome; the document decides GPU availability in its
+          // own realm (its navigator.gpu, not the SW's). Any GPU failure
+          // except user cancel (error or a hang caught by the 60s
+          // inactivity watchdog in ml-bridge.js) downgrades to WASM and
+          // retries once via the offscreen document, then sticks to WASM
+          // for the rest of this run. GPU_SKIPPED (no navigator.gpu in
+          // the doc realm, worker creation/ready failure) logs "skipped"
+          // and falls back to the single WASM path. Full error text is
+          // logged (no cut). Cancelled runs never fall back:
+          // checkCancelled throws before the downgrade.
+            try {
+              diagPush('inpaint gpu start run ' + runId + ' patches ' + patches.length);
+              r = await runChromeGpuInpaint({
+                runId, patches: wirePatches,
+                onProgress: (frac) => parProgress('inpaint', frac),
+                diag: diagPush,
+                isCancelled: () => runs.get(runId)?.cancelled === true,
+              });
+              inpaintPath = 'gpu';
+              diagPush('inpaint gpu done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0) + (r.readyMs != null ? ' readyMs ' + r.readyMs : ''));
+            } catch (e) {
+              checkCancelled(runId);
+              if (e && e.gpuSkipped) {
+                inpaintPath = 'gpu-skipped-wasm';
+                diagPush('inpaint gpu skipped: ' + String((e && e.message) || e));
+                r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
+              } else {
+                gpuDowngradedThisRun = true;
+                inpaintPath = 'gpu-failed-wasm';
+                diagPush('inpaint gpu failed, downgrading to WASM for this run: ' + String((e && e.message) || e));
+                r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
+                diagPush('inpaint gpu WASM retry done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0));
+              }
             }
+          } else {
+            // Single WASM inpaint (2.1.27): the Firefox 2-worker pool
+            // (POOL1) was removed — it never beat single (83.5s pool vs
+            // 80.5s single on the standard page, 2026-11-04), and on this
+            // Mac it never ran anyway (Firefox has GPU, GPU fails, then
+            // single WASM). One big patch sets the floor no split can beat.
+            r = await callMlChecked(runId, {
+              type: MSG.ML_INPAINT, runId,
+              patches: wirePatches,
+            });
           }
-          if (ratios.length) {
-            ratios.sort((a, b) => a - b);
-            const median = ratios[Math.floor(ratios.length / 2)];
-            const cur = (await readInpaintSpread())[actualKey] || INPAINT_COST_SPREAD;
-            const next = Math.min(INPAINT_SPREAD_MAX, Math.max(INPAINT_SPREAD_MIN, cur * (1 - INPAINT_SPREAD_LEARN) + median * INPAINT_SPREAD_LEARN));
-            if (Math.abs(next - cur) >= 0.005) {
-              const map = await readInpaintSpread();
-              map[actualKey] = Math.round(next * 100) / 100;
-              await saveInpaintSpread(map);
-              diagPush('inpaint spread ' + actualKey + ': ' + cur.toFixed(2) + ' -> ' + map[actualKey].toFixed(2) + ' (n=' + ratios.length + ' median ratio ' + median.toFixed(2) + ')');
+          inpaintMs = r.ms;
+          callMs = Math.round(performance.now() - callT0);
+          splitLoadMs = (r && r.loadMs) || 0;
+          splitReadyMs = (r && r.readyMs != null) ? r.readyMs : null;
+          splitTileMax = (r && r.tileMax) || 0;
+          // BUGFIX (2.1.11): r is block-scoped (declared inside the
+          // patches block above) but the timing line below sits outside it
+          // — reading r there threw 'r is not defined' and killed the run
+          // after inpaint finished. Hoist the two timing values like
+          // splitLoadMs above, so the line below reads them, not r.
+          splitHostMs = (r && r.hostMs != null) ? r.hostMs : null;
+          splitDocMs = (r && r.docMs != null) ? r.docMs : null;
+          // MEASURE1: tile shape of this page, from the handler's count.
+          if (r && typeof r.totalTiles === 'number') diagPush('inpaint tiles total ' + r.totalTiles + ' patches ' + patches.length);
+          const pasteT0 = performance.now();
+          for (const res of r.results) {
+            const p = patches[res.id];
+            imgPxKeys.push(res.key);
+            const buf = await pixelTake(res.key);
+            // Use the in-memory mask copy (p.maskData): the pixel-store copy
+            // is only peeked by the handler and dropped by the pipeline
+            // finally, so it may still be there — but maskData is the copy
+            // this stage owns.
+            pasteMaskedRGBA(inpainted, w,
+              { data: new Uint8ClampedArray(buf), w: p.width, h: p.height },
+              { data: p.maskData, w: p.width, h: p.height },
+              p.x, p.y);
+          }
+          pasteMs = Math.round(performance.now() - pasteT0);
+          // DIAG (2.0.8): one line per patch — size, tile count, fast-path
+          // hit, and ms — so the fix follows the real shape, not a guess.
+          if (r && Array.isArray(r.patchStats)) {
+            for (const ps of r.patchStats) diagPush('inpaint patch ' + ps.id + ' ' + ps.w + 'x' + ps.h + ' tiles ' + ps.tiles + ' fast ' + (ps.fast ? 'yes' : 'no') + ' ms ' + ps.ms);
+          }
+          // 2.0.27: LEARN the spread from this run's merged patches.
+          // For a merged patch, the base model (no spread) predicts
+          // patchCostMs; the per-pixel part of (actual / predicted) is
+          // the measured spread for that patch. Fast-path patches never
+          // ran the model, so they carry no signal and are skipped.
+          // Only merged patches count — a single-box patch never used
+          // the spread. The median ratio of the run moves the stored
+          // spread 10% toward it (damped, clamped), so one noisy run
+          // cannot overfit it. The key is the path that actually ran
+          // (gpu, or wasm on Chrome fallback, or wasm1 on Firefox).
+          try {
+            const actualKey = inpaintPath === 'gpu' ? 'gpu' : (directHandlers() ? 'wasm1' : 'wasm');
+            const actualCost = INPAINT_COST[actualKey] || INPAINT_COST.gpu;
+            const actualTileMax = splitTileMax || (actualKey === 'gpu' ? 1024 : TILE_MAX);
+            const ratios = [];
+            if (r && Array.isArray(r.patchStats) && Array.isArray(patchCounts)) {
+              for (const ps of r.patchStats) {
+                if (ps.fast) continue;
+                if (!patchCounts[ps.id] || patchCounts[ps.id] < 2) continue;
+                const w = Number(ps.w), h = Number(ps.h), tiles = Number(ps.tiles), ms = Number(ps.ms);
+                if (!w || !h || !tiles || !ms) continue;
+                const base = patchCostMs(w, h, actualTileMax, actualCost.fixedMs, actualCost.perPxMs);
+                const fixedPart = tiles * actualCost.fixedMs;
+                const perPxPart = base - fixedPart;
+                const actualPerPx = ms - fixedPart;
+                // Only use patches where the per-pixel part beats the fixed
+                // overhead — otherwise the ratio is noise in the fixed cost.
+                if (perPxPart <= fixedPart || actualPerPx <= 0) continue;
+                const ratio = actualPerPx / perPxPart;
+                if (Number.isFinite(ratio)) ratios.push(Math.min(3, Math.max(0.5, ratio)));
+              }
             }
-          }
-        } catch {}
-      }
-      const totalInpaintMs = Math.round(performance.now() - t0i);
-      if (patches.length) diagPush('inpaint split path ' + inpaintPath + ' ms prep ' + prepMs + ' load ' + splitLoadMs + ' gpu ' + inpaintMs + ' paste ' + pasteMs + ' call ' + callMs + ' total ' + totalInpaintMs + (splitReadyMs != null ? ' readyMs ' + splitReadyMs : '') + (splitTileMax ? ' tileMax ' + splitTileMax : ''));
-      // DIAG (2.1.9): split the call-vs-GPU gap. host = the SW's host
-      // check (ping) before the send; doc = the offscreen handler from
-      // entry to reply (includes the worker call); worker = the GPU
-      // worker's patch loop; load = model load. transit = call - host -
-      // doc = the SW<->doc message hops both ways. Doc overhead (handler
-      // work outside the worker) is doc - load - worker. GPU path only.
-      if (patches.length && inpaintPath === 'gpu' && splitHostMs != null) {
-        const transitMs = callMs - (splitHostMs || 0) - (splitDocMs || 0);
-        diagPush('inpaint gpu timing host ' + (splitHostMs || 0) + ' doc ' + (splitDocMs || 0) + ' worker ' + inpaintMs + ' load ' + splitLoadMs + ' call ' + callMs + ' transit ' + transitMs);
-      }
-      parProgress('inpaint', 1);
-      await emitDebug(runId, tabId, settings, 'inpaint', {
-        title: `Inpaint — ${patches.length} patches`,
-        image: settings.debugMode ? await rgbaToDataURL(inpainted, w, h) : null, ms: inpaintMs,
-      });
-      return { inpainted, inpaintMs, maskMs, totalInpaintMs };
-    };
-
-    // Firefox runs ML in-process on a single thread: WASM inpaint blocks the
-    // event loop, freezing the parallel translate branch and the UI. Run the
-    // stages sequentially there; Chrome keeps the parallel pipeline (ML is in
-    // the offscreen document on its own thread).
-    let translateOut, inpaintOut;
-    if (directHandlers()) {
-      // Firefox: translation runs on a Web Worker (own thread) and ML runs
-      // on the ML worker — the main thread only orchestrates, so it stays
-      // free to monitor and restart both. (Mask is synchronous JS on the
-      // main thread, but it is bounded and fast, not WASM.)
-      // timings.translate is the worker round-trip ONLY: t0t is set at
-      // postMessage and translateEnd at the final reply, so mask/inpaint
-      // (which run while the worker works) are NOT counted in it.
-      let t0t = 0, translateEnd = 0;
-      const workerUrl = chrome.runtime.getURL('src/background/translate-worker.js');
-      const tWorker = new Worker(workerUrl, { type: 'module' });
-      // Track for cancellation: cancelRunsForTab terminates this immediately
-      // instead of waiting for the 60s backstop or natural completion.
-      runs.get(runId).translateWorker = tWorker;
-      // Hoisted so the catch block below can cancel the 60s timer on early
-      // mask/inpaint failure — otherwise it fires pointlessly after terminate.
-      let translateTimeout = null;
-      let translateReject = null;
-      const killTranslateWorker = (err) => {
-        if (translateTimeout) { clearTimeout(translateTimeout); translateTimeout = null; }
-        try { tWorker.terminate(); } catch { /* already terminated */ }
-        // If killed externally (cancel), the promise would otherwise hang
-        // forever — no onmessage/onerror fires on a terminated worker.
-        if (err && translateReject) { const rej = translateReject; translateReject = null; rej(err); }
+            if (ratios.length) {
+              ratios.sort((a, b) => a - b);
+              const median = ratios[Math.floor(ratios.length / 2)];
+              const cur = (await readInpaintSpread())[actualKey] || INPAINT_COST_SPREAD;
+              const next = Math.min(INPAINT_SPREAD_MAX, Math.max(INPAINT_SPREAD_MIN, cur * (1 - INPAINT_SPREAD_LEARN) + median * INPAINT_SPREAD_LEARN));
+              if (Math.abs(next - cur) >= 0.005) {
+                const map = await readInpaintSpread();
+                map[actualKey] = Math.round(next * 100) / 100;
+                await saveInpaintSpread(map);
+                diagPush('inpaint spread ' + actualKey + ': ' + cur.toFixed(2) + ' -> ' + map[actualKey].toFixed(2) + ' (n=' + ratios.length + ' median ratio ' + median.toFixed(2) + ')');
+              }
+            }
+          } catch {}
+        }
+        const totalInpaintMs = Math.round(performance.now() - t0i);
+        if (patches.length) diagPush('inpaint split path ' + inpaintPath + ' ms prep ' + prepMs + ' load ' + splitLoadMs + ' gpu ' + inpaintMs + ' paste ' + pasteMs + ' call ' + callMs + ' total ' + totalInpaintMs + (splitReadyMs != null ? ' readyMs ' + splitReadyMs : '') + (splitTileMax ? ' tileMax ' + splitTileMax : ''));
+        // DIAG (2.1.9): split the call-vs-GPU gap. host = the SW's host
+        // check (ping) before the send; doc = the offscreen handler from
+        // entry to reply (includes the worker call); worker = the GPU
+        // worker's patch loop; load = model load. transit = call - host -
+        // doc = the SW<->doc message hops both ways. Doc overhead (handler
+        // work outside the worker) is doc - load - worker. GPU path only.
+        if (patches.length && inpaintPath === 'gpu' && splitHostMs != null) {
+          const transitMs = callMs - (splitHostMs || 0) - (splitDocMs || 0);
+          diagPush('inpaint gpu timing host ' + (splitHostMs || 0) + ' doc ' + (splitDocMs || 0) + ' worker ' + inpaintMs + ' load ' + splitLoadMs + ' call ' + callMs + ' transit ' + transitMs);
+        }
+        parProgress('inpaint', 1);
+        await imgEmitDebug('inpaint', {
+          title: `Inpaint — ${patches.length} patches`,
+          image: settings.debugMode ? await rgbaToDataURL(inpainted, w, h) : null, ms: inpaintMs,
+        });
+        return { inpainted, inpaintMs, maskMs, totalInpaintMs };
       };
-      // cancelRunsForTab uses this to abort the in-flight worker immediately.
-      runs.get(runId).killTranslateWorker = killTranslateWorker;
-      const translateP = new Promise((resolve, reject) => {
-        translateReject = reject;
-        // 60s backstop only: the worker's own 30s abort triggers failover
-        // inside translateBlocks, and stall (30s) + rescue (20s) needs up
-        // to ~50s — a 30s kill here would murder the rescue.
-        translateTimeout = setTimeout(() => {
-          translateTimeout = null;
-          tWorker.terminate();
-          reject(new Error('translate worker timeout'));
-        }, 60000);
-        tWorker.onmessage = (e) => {
-          // Failover notices arrive before the final ok/error — show a pill
-          // but don't settle the promise.
-          if (e.data && e.data.type === 'failover-notice') {
-            chrome.tabs.sendMessage(tabId, {
-              type: MSG.PILL_NOTICE,
-              text: `Engine ${e.data.failoverFrom} failed — retrying with ${e.data.failoverTo}`,
-              sticky: false,
-            }).catch(() => {});
-            return;
-          }
-          killTranslateWorker();
-          translateEnd = performance.now();
-          if (e.data.ok) resolve({ translated: e.data.translated, backendUsed: e.data.backendUsed });
-          else reject(new Error(e.data.error));
-        };
-        tWorker.onerror = (err) => {
-          killTranslateWorker();
-          translateEnd = performance.now();
-          reject(err instanceof Error ? err : new Error(String(err)));
-        };
-        t0t = performance.now();
-        tWorker.postMessage({
-          blocks: blocks.map(b => ({ text: b.text })),
-          settings: effSettings,
-        });
-      });
-      // Main thread: mask → inpaint (linear, WASM may block but worker continues)
-      // If mask/inpaint throws first, translateP would reject with no handler
-      // (unhandled rejection) and the worker would linger until its timeout —
-      // attach a handler and stop the worker on the way out.
-      translateP.catch(() => {});
-      let maskRes, translated;
-      try {
-        maskRes = await runMask();
-        inpaintOut = await runInpaint(maskRes);
-        // Collect translation from worker
-        translated = await translateP;
-      } catch (e) {
-        // Pass the error so translateReject fires — otherwise translateP
-        // pends forever, leaking the closure chain per failed Firefox run.
-        killTranslateWorker(e instanceof Error ? e : new Error(String(e)));
-        throw e;
-      }
-      try { tWorker.terminate(); } catch { /* already terminated by onmessage */ }
-      checkCancelled(runId);
-      blocks.forEach((b, i) => {
-        b.translation = translated.translated[i];
-        b.backendUsed = translated.backendUsed;
-      });
-      translated = translated.translated;
-      const translateMs = Math.round(translateEnd - t0t);
-      parProgress('translate', 1);
-      await emitDebug(runId, tabId, settings, 'translate', {
-        // Same as the main path: the actual backend, not the configured one.
-        title: `Translation — ${BACKEND_LABEL[blocks[0]?.backendUsed || settings.translationBackend] || settings.translationBackend}`,
-        rows: blocks.map(b => ({ text: b.text, translation: b.translation, backend: b.backendUsed || settings.translationBackend })),
-        ms: translateMs,
-      });
-      translateOut = { translateMs };
-    } else {
-      const maskP = runMask();
-      const inpaintP = maskP.then(runInpaint);
-      const translateP = runTranslate();
-      // If either branch fails, cancel the run so the other branch aborts
-      // at its next checkCancelled instead of burning CPU/network on a dead run.
-      // Record the first REAL branch failure: without it, the run catch below
-      // sees the abort flag and reports quiet 'cancelled', swallowing the
-      // actual error (inpaint/timeout failures showed no notification at all).
-      // Not recorded for user cancels (their errors must stay quiet) or for
-      // cancel-marked errors (those are the abort itself, not a failure).
-      const cancelOnFail = p => p.catch(e => {
-        const r = runs.get(runId);
-        if (r) {
-          r.cancelled = true;
-          if (!r.userCancelled && !e.cancelled && !r.branchError) r.branchError = e;
-        }
-        callMl({ type: MSG.ML_CANCEL, runId }).catch(() => {});
-        throw e;
-      });
-      [translateOut, inpaintOut] = await Promise.all([cancelOnFail(translateP), cancelOnFail(inpaintP)]);
-    }
-    timings.translate = translateOut.translateMs;
-    timings.mask = inpaintOut.maskMs;
-    timings.inpaint = inpaintOut.totalInpaintMs;
-    const { inpainted } = inpaintOut;
 
-    // ---- 8. render: translated text composited onto the image.
-    // mode 'replace' swaps the page's original <img>; 'overlay' shows it in the overlay.
-    // NOTE: the finished picture travels as a WebP data URL — raw pixel buffers
-    // don't survive chrome.tabs messaging from the service worker either.
-    checkCancelled(runId);
-    setProgress(runId, 'render', 0.96);
-    const finalDataUrl = await rgbaToDataURL(inpainted, w, h, Math.max(w, h));
-    // Same tick as the send below: a cancellation can never slip in between
-    // and let a stale render reach the tab.
-    checkCancelled(runId);
-    timings.total = Math.round(performance.now() - pipelineT0);
-    await sendRender(tabId, runId, mode, finalDataUrl, w, h, blocks, timings, settings.debugMode, { srcUrl: manualSrc });
-    // ---- 9. page cache: remember this translated page for instant revisits.
-    // Best-effort — a cache failure must never fail the run. Skipped in
-    // incognito; a cancelled run never reaches this point (it throws above).
-    try {
-      if (!(await isIncognitoTab(tabId))) {
-        // Two-tier write: Tier 1 (target-independent) stores the inpainted
-        // base + OCR'd blocks (translations stripped). Tier 2 stores the
-        // translations for this targetLang/backend.
-        const t1Key = await buildCacheKeyTier1(rgba, w, h, settings);
-        const blocksNoTrans = blocks.map(b => {
-          const { translation, ...rest } = b;
-          return rest;
+      // Firefox runs ML in-process on a single thread: WASM inpaint blocks the
+      // event loop, freezing the parallel translate branch and the UI. Run the
+      // stages sequentially there; Chrome keeps the parallel pipeline (ML is in
+      // the offscreen document on its own thread).
+      let translateOut, inpaintOut;
+      if (directHandlers()) {
+        // Firefox: translation runs on a Web Worker (own thread) and ML runs
+        // on the ML worker — the main thread only orchestrates, so it stays
+        // free to monitor and restart both. (Mask is synchronous JS on the
+        // main thread, but it is bounded and fast, not WASM.)
+        // imgTimings.translate is the worker round-trip ONLY: t0t is set at
+        // postMessage and translateEnd at the final reply, so mask/inpaint
+        // (which run while the worker works) are NOT counted in it.
+        let t0t = 0, translateEnd = 0;
+        const workerUrl = chrome.runtime.getURL('src/background/translate-worker.js');
+        const tWorker = new Worker(workerUrl, { type: 'module' });
+        // Track for cancellation: cancelRunsForTab terminates this immediately
+        // instead of waiting for the 60s backstop or natural completion.
+        runs.get(runId).translateWorker = tWorker;
+        // Hoisted so the catch block below can cancel the 60s timer on early
+        // mask/inpaint failure — otherwise it fires pointlessly after terminate.
+        let translateTimeout = null;
+        let translateReject = null;
+        const killTranslateWorker = (err) => {
+          if (translateTimeout) { clearTimeout(translateTimeout); translateTimeout = null; }
+          try { tWorker.terminate(); } catch { /* already terminated */ }
+          // If killed externally (cancel), the promise would otherwise hang
+          // forever — no onmessage/onerror fires on a terminated worker.
+          if (err && translateReject) { const rej = translateReject; translateReject = null; rej(err); }
+        };
+        // cancelRunsForTab uses this to abort the in-flight worker immediately.
+        runs.get(runId).killTranslateWorker = killTranslateWorker;
+        const translateP = new Promise((resolve, reject) => {
+          translateReject = reject;
+          // 60s backstop only: the worker's own 30s abort triggers failover
+          // inside translateBlocks, and stall (30s) + rescue (20s) needs up
+          // to ~50s — a 30s kill here would murder the rescue.
+          translateTimeout = setTimeout(() => {
+            translateTimeout = null;
+            tWorker.terminate();
+            reject(new Error('translate worker timeout'));
+          }, 60000);
+          tWorker.onmessage = (e) => {
+            // Failover notices arrive before the final ok/error — show a pill
+            // but don't settle the promise.
+            if (e.data && e.data.type === 'failover-notice') {
+              chrome.tabs.sendMessage(tabId, {
+                type: MSG.PILL_NOTICE,
+                text: `Engine ${e.data.failoverFrom} failed — retrying with ${e.data.failoverTo}`,
+                sticky: false,
+              }).catch(() => {});
+              return;
+            }
+            killTranslateWorker();
+            translateEnd = performance.now();
+            if (e.data.ok) resolve({ translated: e.data.translated, backendUsed: e.data.backendUsed });
+            else reject(new Error(e.data.error));
+          };
+          tWorker.onerror = (err) => {
+            killTranslateWorker();
+            translateEnd = performance.now();
+            reject(err instanceof Error ? err : new Error(String(err)));
+          };
+          t0t = performance.now();
+          tWorker.postMessage({
+            blocks: blocks.map(b => ({ text: b.text })),
+            settings: effSettings,
+          });
         });
-        await pageCachePut(t1Key, {
-          imageDataUrl: finalDataUrl, width: w, height: h,
-          blocks: blocksNoTrans, mode,
-          // Resolved source language ('auto' already detected above) — reused
-          // verbatim on Tier-1 hits instead of re-detecting (G10).
-          sourceLang: effSettings.sourceLang,
+        // Main thread: mask → inpaint (linear, WASM may block but worker continues)
+        // If mask/inpaint throws first, translateP would reject with no handler
+        // (unhandled rejection) and the worker would linger until its timeout —
+        // attach a handler and stop the worker on the way out.
+        translateP.catch(() => {});
+        let maskRes, translated;
+        try {
+          maskRes = await runMask();
+          inpaintOut = await runInpaint(maskRes);
+          // Collect translation from worker
+          translated = await translateP;
+        } catch (e) {
+          // Pass the error so translateReject fires — otherwise translateP
+          // pends forever, leaking the closure chain per failed Firefox run.
+          killTranslateWorker(e instanceof Error ? e : new Error(String(e)));
+          throw e;
+        }
+        try { tWorker.terminate(); } catch { /* already terminated by onmessage */ }
+        checkCancelled(runId);
+        blocks.forEach((b, i) => {
+          b.translation = translated.translated[i];
+          b.backendUsed = translated.backendUsed;
         });
-        const t2Key = buildCacheKeyTier2(t1Key, settings);
-        await pageCachePut(t2Key, {
-          translations: blocks.map(b => b.translation || ''),
-          targetLang: settings.targetLang,
-          backend: settings.translationBackend,
+        translated = translated.translated;
+        const translateMs = Math.round(translateEnd - t0t);
+        parProgress('translate', 1);
+        await imgEmitDebug('translate', {
+          // Same as the main path: the actual backend, not the configured one.
+          title: `Translation — ${BACKEND_LABEL[blocks[0]?.backendUsed || settings.translationBackend] || settings.translationBackend}`,
+          rows: blocks.map(b => ({ text: b.text, translation: b.translation, backend: b.backendUsed || settings.translationBackend })),
+          ms: translateMs,
         });
-        // No legacy v1 write: the v1 backfill duplicated the image a third
-        // time and counted as a second image in stats (its key shape differs
-        // from Tier-1's, so the distinct-image collapse missed it). The v1
-        // READ fallback stays, so entries written by older builds still serve.
+        translateOut = { translateMs };
+      } else {
+        const maskP = runMask();
+        const inpaintP = maskP.then(runInpaint);
+        const translateP = runTranslate();
+        // If either branch fails, cancel the run so the other branch aborts
+        // at its next checkCancelled instead of burning CPU/network on a dead run.
+        // Record the first REAL branch failure: without it, the run catch below
+        // sees the abort flag and reports quiet 'cancelled', swallowing the
+        // actual error (inpaint/timeout failures showed no notification at all).
+        // Not recorded for user cancels (their errors must stay quiet) or for
+        // cancel-marked errors (those are the abort itself, not a failure).
+        const cancelOnFail = p => p.catch(e => {
+          const r = runs.get(runId);
+          if (r) {
+            r.cancelled = true;
+            if (!r.userCancelled && !e.cancelled && !r.branchError) r.branchError = e;
+          }
+          callMl({ type: MSG.ML_CANCEL, runId }).catch(() => {});
+          throw e;
+        });
+        [translateOut, inpaintOut] = await Promise.all([cancelOnFail(translateP), cancelOnFail(inpaintP)]);
       }
-    } catch (e) {
-      console.warn('[ct] page-cache write failed:', String((e && e.message) || e).slice(0, 120));
+      imgTimings.translate = translateOut.translateMs;
+      imgTimings.mask = inpaintOut.maskMs;
+      imgTimings.inpaint = inpaintOut.totalInpaintMs;
+      const { inpainted } = inpaintOut;
+
+      // ---- 8. render: translated text composited onto the image.
+      // mode 'replace' swaps the page's original <img>; 'overlay' shows it in the overlay.
+      // NOTE: the finished picture travels as a WebP data URL — raw pixel buffers
+      // don't survive chrome.tabs messaging from the service worker either.
+      checkCancelled(runId);
+      imgSetProgress('render', 0.96);
+      const finalDataUrl = await rgbaToDataURL(inpainted, w, h, Math.max(w, h));
+      // Same tick as the send below: a cancellation can never slip in between
+      // and let a stale render reach the tab.
+      checkCancelled(runId);
+      imgTimings.total = Math.round(performance.now() - imgT0);
+      await sendRender(tabId, runId, mode, finalDataUrl, w, h, blocks, imgTimings, settings.debugMode, { srcUrl: manualSrc, uid: img.uid });
+      // ---- 9. page cache: remember this translated page for instant revisits.
+      // Best-effort — a cache failure must never fail the run. Skipped in
+      // incognito; a cancelled run never reaches this point (it throws above).
+      try {
+        if (!(await isIncognitoTab(tabId))) {
+          // Two-tier write: Tier 1 (target-independent) stores the inpainted
+          // base + OCR'd blocks (translations stripped). Tier 2 stores the
+          // translations for this targetLang/backend.
+          const t1Key = await buildCacheKeyTier1(rgba, w, h, settings);
+          const blocksNoTrans = blocks.map(b => {
+            const { translation, ...rest } = b;
+            return rest;
+          });
+          await pageCachePut(t1Key, {
+            imageDataUrl: finalDataUrl, width: w, height: h,
+            blocks: blocksNoTrans, mode,
+            // Resolved source language ('auto' already detected above) — reused
+            // verbatim on Tier-1 hits instead of re-detecting (G10).
+            sourceLang: effSettings.sourceLang,
+          });
+          const t2Key = buildCacheKeyTier2(t1Key, settings);
+          await pageCachePut(t2Key, {
+            translations: blocks.map(b => b.translation || ''),
+            targetLang: settings.targetLang,
+            backend: settings.translationBackend,
+          });
+          // No legacy v1 write: the v1 backfill duplicated the image a third
+          // time and counted as a second image in stats (its key shape differs
+          // from Tier-1's, so the distinct-image collapse missed it). The v1
+          // READ fallback stays, so entries written by older builds still serve.
+        }
+      } catch (e) {
+        console.warn('[ct] page-cache write failed:', String((e && e.message) || e).slice(0, 120));
+      }
+      // Fresh path done: report this image's backend for the final pill.
+      return { ok: true, doneExtra: { backendLabel: BACKEND_SHORT_LABEL[blocks?.[0]?.backendUsed || settings.translationBackend] || settings.translationBackend } };
     }
-    setProgress(runId, 'done', 1, { backendLabel: BACKEND_SHORT_LABEL[blocks?.[0]?.backendUsed || settings.translationBackend] || settings.translationBackend });
-    // 1.4.0 (M1): success-path panel log is gated on debugMode. The
-    // ungated send auto-opened the debug panel on EVERY successful run
-    // even with debugMode off. Auto-show-off + stored-for-manual-open
-    // was NOT used: no manual open path exists (the overlay only shows
-    // via debug:true messages; the pill has no open action), so a
-    // stored-but-hidden log would be unreachable without new UI (which
-    // needs James's approval — see the report-back UI question). Gating
-    // on debugMode fully fixes the pop-up for non-debug users; debug
-    // users still get the success log (auto-shown, as before). Error
-    // runs still send from the catch below (this line never runs on
-    // that path), and cancelled runs throw before reaching here, so
-    // there is no duplicate and no quiet-cancel leak.
+    for (const [imgIdx, img] of images.entries()) {
+      const imgLabel = multi ? ` — image ${imgIdx + 1}/${images.length} (${img.w}×${img.h})` : '';
+      const imgBase = imgIdx / images.length, imgSpan = 1 / images.length;
+      const imgSetProgress = (stage, frac, extra) => setProgress(runId, stage, imgBase + frac * imgSpan, extra || {});
+      const imgEmitDebug = (stage, payload) => emitDebug(runId, tabId, settings, stage, { ...payload, title: (payload.title || stage) + imgLabel });
+      const imgTimings = {};
+      const imgPxKeys = [];
+      const imgT0 = performance.now();
+      try {
+        const r = await runOneImage(img, imgSetProgress, imgEmitDebug, imgTimings, imgPxKeys, imgT0);
+        doneImgs.push(imgIdx + 1);
+        if (r && r.doneExtra) lastDoneExtra = r.doneExtra;
+      } catch (e) {
+        // Cancel and out-of-memory abort the whole run; any other per-image
+        // failure is recorded and the next picture runs.
+        if (e && (e.cancelled || isCancelled(runId))) throw e;
+        if (/Out of memory/i.test(String((e && e.message) || ''))) throw e;
+        if (e && e.fallbackUrl && !fallbackUrl) fallbackUrl = e.fallbackUrl;
+        failedImgs.push(`image ${imgIdx + 1} (${img.w}×${img.h}): ${String((e && e.message) || e).slice(0, 120)}`);
+        diagPush(`image ${imgIdx + 1} failed: ${String((e && e.message) || e).slice(0, 200)}`);
+      } finally {
+        for (const k of imgPxKeys.splice(0)) await pixelDrop(k);
+      }
+    }
+    if (!doneImgs.length) {
+      const err = new Error('no picture could be translated (' + failedImgs.join('; ').slice(0, 400) + ')');
+      if (fallbackUrl) err.fallbackUrl = fallbackUrl;
+      throw err;
+    }
+    timings.total = Math.round(performance.now() - pipelineT0);
+    setProgress(runId, 'done', 1, lastDoneExtra || { backendLabel: settings.translationBackend });
+    // Surface the outcome on the PAGE too: runs take minutes and the popup is
+    // usually closed by the time the last picture finishes, so without this a
+    // partial run (skips, per-image failures, ignored tiny images) is silent.
+    try {
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'ct/run-summary', runId, images: doneImgs.length,
+        failed: failedImgs, ignored,
+      });
+    } catch { /* content script may have been removed mid-run */ }
     if (settings.debugMode) await sendDiagLog(tabId, runId);
-    result = { runId, ok: true };
+    result = { runId, ok: true, images: doneImgs.length, failed: failedImgs };
   } catch (e) {
     let msg;
     // A user-cancelled run stays 'cancelled' even if the in-flight work

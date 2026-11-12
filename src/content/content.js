@@ -310,6 +310,52 @@
     };
   }
 
+  // Multi-pic: every qualifying <img> gets a stable uid (data-ct-uid). The
+  // worker translates each picture and replaces it by uid, so any layout works
+  // (long strips, galleries, grids). The uid prefix is random per content
+  // script load, so a re-injection never collides with uids already in the DOM.
+  const IMG_UID_PREFIX = 'ct' + Math.random().toString(36).slice(2, 8) + '_';
+  let imgUidSeq = 0;
+  function ensureImgUid(im) {
+    if (!im.dataset.ctUid) im.dataset.ctUid = IMG_UID_PREFIX + (++imgUidSeq);
+    return im.dataset.ctUid;
+  }
+  function imgElByUid(uid) {
+    if (!uid) return null;
+    // allImages() descends into shadow roots — querySelector does not.
+    const el = allImages().find(im => im.dataset.ctUid === uid);
+    return el && el.isConnected ? el : null;
+  }
+  // One <img> as the worker sees it. Displayed size is what the gate uses
+  // (2.1.28), so w/h are on-screen, not file size. Already translated in
+  // place? Report the ORIGINAL url (same reason as findMainImage).
+  function describeImage(im) {
+    const cur = realSrc(im);
+    const wasTranslated = !!im.dataset.ctOriginal && /^data:/i.test(cur);
+    const r = im.getBoundingClientRect();
+    return {
+      uid: ensureImgUid(im),
+      src: wasTranslated ? im.dataset.ctOriginal : cur,
+      w: Math.round(r.width), h: Math.round(r.height),
+      translated: wasTranslated,
+    };
+  }
+  // Every qualifying picture on the page, top to bottom in the layout
+  // (not biggest first — James's order). The worker applies the minimum
+  // image size and the per-run cap; this only skips tiny/hidden images.
+  function collectPageImages() {
+    const imgs = allImages().filter(im => {
+      if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
+      const r = im.getBoundingClientRect();
+      return r.width >= 120 && r.height >= 120;
+    });
+    imgs.sort((a, b) => {
+      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      return (ra.top - rb.top) || (ra.left - rb.left);
+    });
+    return imgs.map(describeImage);
+  }
+
   // The image the user right-clicked ("Send to comic-translate-4-free"): match
   // by live src, by the translated data URL now shown, or by the stashed
   // original (re-send of an already-translated image). No size filter — the
@@ -325,10 +371,40 @@
     const cur = realSrc(im);
     const wasTranslated = !!im.dataset.ctOriginal && /^data:/i.test(cur);
     return {
+      uid: ensureImgUid(im),
       src: wasTranslated ? im.dataset.ctOriginal : cur,
-      w: im.naturalWidth, h: im.naturalHeight,
+      w: Math.round(im.getBoundingClientRect().width), h: Math.round(im.getBoundingClientRect().height),
       translated: wasTranslated,
     };
+  }
+
+  // Canvas capture for one <img> element. Throws (tainted canvas) when the
+  // image host sends no CORS headers — the worker then tries a direct fetch.
+  // NOTE: raw pixel buffers CANNOT travel via extension messaging — Chrome
+  // silently turns ArrayBuffers into {} in both directions (verified). So
+  // the pixels go as a WebP data URL string, the same trick the render path
+  // uses for the translated image.
+  // Async blob encode (not toDataURL): toDataURL is fully synchronous and
+  // freezes the page for 1-3s on multi-MP images. Note: HTMLCanvasElement
+  // has toBlob (callback), not convertToBlob (that's OffscreenCanvas only).
+  async function captureElementPixels(im) {
+    // Canvas guard: natural size can exceed browser limits (e.g. 2000x15000).
+    // Downscale to fit — the pipeline downscales to 6.5MP anyway.
+    const s = renderScale(im.naturalWidth, im.naturalHeight);
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(im.naturalWidth * s));
+    c.height = Math.max(1, Math.round(im.naturalHeight * s));
+    const cx = c.getContext('2d');
+    cx.drawImage(im, 0, 0, c.width, c.height);
+    const blob = await new Promise((resolve, reject) =>
+      c.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/webp', 0.95));
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error('read failed'));
+      reader.readAsDataURL(blob);
+    });
+    return { dataUrl, w: c.width, h: c.height };
   }
 
   // Direct pixels via page canvas. With srcUrl, captures that specific image
@@ -347,31 +423,14 @@
       im = mainImgEl && mainImgEl.isConnected ? mainImgEl : null;
     }
     if (!im) throw new Error(srcUrl ? 'image not found on page' : 'no main image');
-    // Canvas guard: natural size can exceed browser limits (e.g. 2000x15000).
-    // Downscale to fit — the pipeline downscales to 6.5MP anyway.
-    const s = renderScale(im.naturalWidth, im.naturalHeight);
-    const c = document.createElement('canvas');
-    c.width = Math.max(1, Math.round(im.naturalWidth * s));
-    c.height = Math.max(1, Math.round(im.naturalHeight * s));
-    const cx = c.getContext('2d');
-    cx.drawImage(im, 0, 0, c.width, c.height);
-    // NOTE: raw pixel buffers CANNOT travel via extension messaging — Chrome
-    // silently turns ArrayBuffers into {} in both directions (verified). So
-    // the pixels go as a WebP data URL string, the same trick the render path
-    // uses for the translated image. Throws (tainted canvas) when the image
-    // host sends no CORS headers — the pipeline then tries a direct fetch.
-    // Async blob encode (not toDataURL): toDataURL is fully synchronous and
-    // freezes the page for 1-3s on multi-MP images. Note: HTMLCanvasElement
-    // has toBlob (callback), not convertToBlob (that's OffscreenCanvas only).
-    const blob = await new Promise((resolve, reject) =>
-      c.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/webp', 0.95));
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(reader.error || new Error('read failed'));
-      reader.readAsDataURL(blob);
-    });
-    return { dataUrl, w: c.width, h: c.height };
+    return captureElementPixels(im);
+  }
+
+  // Multi-pic: pixels for the <img> a run named by uid.
+  async function imagePixelsByUid(uid) {
+    const im = imgElByUid(uid);
+    if (!im) throw new Error('image left the page before translation finished — reload the page to retry');
+    return captureElementPixels(im);
   }
 
   function replaceMainImage(dataUrl) {
@@ -384,6 +443,21 @@
     // points at a previous picture. Never overwrite with a data: URL —
     // on a re-render the element shows the old translation, and the
     // existing marker is the true original.
+    const cur = im.currentSrc || im.src;
+    if (cur && !/^data:/i.test(cur)) im.dataset.ctOriginal = cur;
+    im.removeAttribute('srcset');
+    im.src = dataUrl;
+    return true;
+  }
+
+  // Multi-pic: swap the exact <img> a run named by uid. The stored element
+  // can go stale over a long pipeline (page re-rendered the <img>); uid
+  // lookup re-queries, so that case is covered too.
+  function replaceImageByUid(uid, dataUrl) {
+    const im = imgElByUid(uid);
+    if (!im) return false;
+    // Always refresh the marker: on SPA-reused elements the old marker
+    // points at a previous picture. Never overwrite with a data: URL.
     const cur = im.currentSrc || im.src;
     if (cur && !/^data:/i.test(cur)) im.dataset.ctOriginal = cur;
     im.removeAttribute('srcset');
@@ -821,6 +895,36 @@
       );
       return true; // async response
     }
+    if (msg.type === 'ct/list-images') {
+      // Multi-pic inventory: every qualifying picture, top to bottom.
+      try { sendResponse({ ok: true, images: collectPageImages(), total: allImages().length }); }
+      catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
+      return false;
+    }
+    if (msg.type === 'ct/get-image-pixels-by-uid') {
+      imagePixelsByUid(msg.uid).then(
+        r => sendResponse({ ok: true, ...r }),
+        e => sendResponse({ ok: false, error: String((e && e.message) || e) })
+      );
+      return true; // async response
+    }
+    if (msg.type === 'ct/run-summary') {
+      // End-of-run report from the worker: the popup is usually closed by
+      // the time the last picture finishes, so the page pill carries the
+      // outcome (translated / failed / tiny images skipped).
+      const n = (msg && msg.images) || 0;
+      const failed = (msg && msg.failed) || [];
+      const ignored = (msg && msg.ignored) || 0;
+      if (failed.length) {
+        showPillError(`run finished — ${n} translated, ${failed.length} not: ` +
+          failed.slice(0, 2).join('; ') + (failed.length > 2 ? ' …' : '') +
+          ' — full list in the popup');
+      } else if (n > 1 || ignored) {
+        showPill(`comic-translate-4-free — done ✓ (${n} translated` +
+          (ignored ? `, ${ignored} tiny/hidden images skipped` : '') + ')');
+      }
+      return false;
+    }
     if (msg.type === 'ct/fetch-image-bytes') {
       // Download the image inside the PAGE (not the service worker): the
       // browser applies the page's real referrer policy and cookies, exactly
@@ -956,8 +1060,9 @@
           if (mode === 'replace') {
             // In-place: swap the page's original <img> for the translated one.
             // No overlay mask — the translation lives in the page itself.
-            // The manual-send path names the exact <img> (msg.srcUrl); the
-            // auto path replaces the detected main image.
+            // The multi-pic path names the exact <img> (msg.uid); the
+            // manual-send path names it by src (msg.srcUrl); the auto path
+            // replaces the detected main image.
             // Async blob encode (not toDataURL): toDataURL is fully synchronous
             // and freezes the page for 1-3s on multi-MP images.
             // Note: HTMLCanvasElement has toBlob (callback), not convertToBlob
@@ -970,8 +1075,9 @@
               reader.onerror = () => reject(reader.error || new Error('read failed'));
               reader.readAsDataURL(blob);
             });
-            replaced = msg.srcUrl ? replaceImageBySrc(msg.srcUrl, dataUrl)
-                                  : replaceMainImage(dataUrl);
+            replaced = msg.uid ? replaceImageByUid(msg.uid, dataUrl)
+              : msg.srcUrl ? replaceImageBySrc(msg.srcUrl, dataUrl)
+              : replaceMainImage(dataUrl);
             if (replaced) {
               if (overlay) overlay.style.display = 'none';
             } else {
