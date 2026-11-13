@@ -20,7 +20,7 @@ import {
   pageCacheGet, pageCachePut,
   pageCacheStats, clearPageCache,
 } from '../shared/page-cache.js';
-import { baseDomain, displayHost, hostOf, isSiteAllowed, imageHostOrigins } from '../shared/site-access.js';
+import { baseDomain, displayHost, hostOf, isSiteAllowed, imageHostOrigins, originAccessPatterns } from '../shared/site-access.js';
 
 // Translated-page cache is session-scoped: initPageCache() wipes the store on
 // every browser startup (via a chrome.storage.session marker) and the
@@ -1172,6 +1172,30 @@ async function runPipeline(tabId, opts = {}) {
     // bad picture never kills the rest of the run.
     const { images, skipped, ignored } = await getPipelineImages(tabId, settings, tabUrl, { srcUrl: manualSrc });
     if (skipped.length) diagPush('skipping page images: ' + skipped.join(' | ').slice(0, 300));
+    // Permission gate: check EVERY picture's host before the run starts.
+    // A picture whose host has no permission fails the background-tab read
+    // and is lost for that run — there is no second chance, so the run must
+    // not start until every host is permitted. Record the missing hosts (the
+    // popup offers them) and stop with a clear error telling the user to
+    // grant access first, then run again.
+    const missingHosts = await checkImageHostPermissions(images);
+    if (missingHosts.length) {
+      for (const h of missingHosts) await recordMissingHost('https://' + h + '/');
+      diagPush('permission gate: missing host permission for ' + missingHosts.join(', '));
+      const label = displayHost(missingHosts[0]);
+      try {
+        await chrome.tabs.sendMessage(tabId, {
+          type: MSG.PILL_NOTICE,
+          text: `Pictures on ${label} need permission — open the popup and tap Grant access, then run translate again.`,
+          sticky: true,
+        });
+      } catch { /* pill is best-effort */ }
+      const gateErr = new Error(
+        `Pictures on ${label} need permission — open the extension popup and tap "Grant access", then run translate again. (${missingHosts.length} host${missingHosts.length > 1 ? 's' : ''} missing permission)`,
+      );
+      gateErr.grantHost = missingHosts[0];
+      throw gateErr;
+    }
     const doneImgs = [], failedImgs = [];
     // Skipped pictures (below min size, over the cap) count as "not
     // translated" in the run summary, so the user knows why some pictures
@@ -2423,6 +2447,38 @@ async function recordMissingHost(imageUrl) {
       await chrome.storage.local.set({ [MISSING_HOSTS_KEY]: list.slice(-10) });
     }
   } catch { /* recording must never break the run */ }
+}
+
+// Permission gate (James, 2026-11-12): check permission for EVERY picture's
+// host BEFORE the run starts — you do not get a second chance. A picture
+// whose host has no permission fails the background-tab read and is lost
+// for that run, so the run must not start until every host is permitted.
+// The hosts come from the inventory's real picture URLs (src), not a guess.
+// Same rule as the popup's hasOriginAccess: an exact-host grant OR a
+// base-domain grant counts. Fail open: if the hosts cannot be learned or
+// the check itself errors, the run proceeds — the per-image fallback still
+// records failures for the popup grant.
+async function checkImageHostPermissions(images) {
+  const hosts = [];
+  for (const im of images || []) {
+    try {
+      const src = im && im.src;
+      if (!src || !/^https?:\/\//i.test(src)) continue;
+      const h = new URL(src).hostname.toLowerCase();
+      if (h && !hosts.includes(h)) hosts.push(h);
+    } catch { /* unparsable src — skip it, the run fails open on it */ }
+  }
+  const missing = [];
+  for (const h of hosts) {
+    let has = false;
+    try {
+      for (const p of originAccessPatterns(h)) {
+        if (await chrome.permissions.contains({ origins: [p] }).catch(() => false)) { has = true; break; }
+      }
+    } catch { has = true; /* check errored — fail open, do not block the run */ }
+    if (!has) missing.push(h);
+  }
+  return missing;
 }
 async function fallbackCaptureViaTab(origTabId, imageUrl) {
   const notice = (text, sticky) =>
