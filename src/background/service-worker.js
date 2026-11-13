@@ -901,12 +901,18 @@ function setProgress(runId, stage, progress, extra = {}) {
 }
 
 function broadcastError(runId, error, grant) {
-  // The failed run's image host is kept on currentRun so the popup can offer
-  // a one-click grant for exactly that host (ct/get-status -> refreshSite).
+  // The failed run's image hosts are kept on currentRun so the popup can
+  // offer a one-click grant for ALL of them at once (ct/get-status ->
+  // refreshSite). One ask, every pic: the grant must cover every host the
+  // run needs, not just the first one, or the user has to grant again for
+  // the next host. grant.hosts is the full list; grant.host is the first
+  // (kept for the single-host fallback and the label).
   currentRun = { runId, stage: 'error', progress: 0, error,
-    ...(grant && grant.host ? { grantHost: grant.host, grantLabel: grant.label || grant.host } : {}) };
+    ...(grant && grant.host ? { grantHost: grant.host, grantLabel: grant.label || grant.host } : {}),
+    ...(grant && Array.isArray(grant.hosts) && grant.hosts.length ? { grantHosts: grant.hosts } : {}) };
   const payload = { type: MSG.RUN_PROGRESS, runId, stage: 'error', error };
   if (grant && grant.host) { payload.grantHost = grant.host; payload.grantLabel = grant.label || grant.host; }
+  if (grant && Array.isArray(grant.hosts) && grant.hosts.length) payload.grantHosts = grant.hosts;
   chrome.runtime.sendMessage(payload).catch(() => {});
   const tabId = runs.get(runId)?.tabId;
   if (tabId != null) {
@@ -1194,6 +1200,7 @@ async function runPipeline(tabId, opts = {}) {
         `Pictures on ${label} need permission — open the extension popup and tap "Grant access", then run translate again. (${missingHosts.length} host${missingHosts.length > 1 ? 's' : ''} missing permission)`,
       );
       gateErr.grantHost = missingHosts[0];
+      gateErr.grantHosts = missingHosts;
       throw gateErr;
     }
     const doneImgs = [], failedImgs = [];
@@ -2052,7 +2059,7 @@ async function runPipeline(tabId, opts = {}) {
     } else {
       const err = branchError || e;
       msg = String((err && err.message) || err);
-      broadcastError(runId, msg, err && err.grantHost ? { host: err.grantHost, label: displayHost(err.grantHost) } : null);
+      broadcastError(runId, msg, err && err.grantHost ? { host: err.grantHost, label: displayHost(err.grantHost), hosts: err.grantHosts || null } : null);
       try {
         await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
         // Show the debug panel on failure too (emitDebug sets debug:true and

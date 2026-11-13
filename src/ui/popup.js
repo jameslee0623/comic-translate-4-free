@@ -223,6 +223,15 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
       if (lh && lh !== currentHost && !cachedImageHosts.includes(lh)) cachedImageHosts.push(lh);
     }
   } catch { /* no recorded hosts — the content-script list is enough */ }
+  // The last failed run (the permission gate) named EVERY host that needs a
+  // grant, not just the first. Merge the full list in so the one grant click
+  // covers every picture on the page — ask once, not once per host.
+  if (lastStatus && Array.isArray(lastStatus.grantHosts)) {
+    for (const h of lastStatus.grantHosts) {
+      const lh = String(h || '').toLowerCase();
+      if (lh && lh !== currentHost && !cachedImageHosts.includes(lh)) cachedImageHosts.push(lh);
+    }
+  }
   const list = settings.siteWhitelist || [];
   const btn = $('whitelistBtn');
   if (!currentHost) {
@@ -284,7 +293,10 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
   // The last failed run named the exact image host that needs a grant (the
   // pill's one-click grant can't work on Firefox — the content-script click
   // gesture doesn't reach the worker — so it points here). Offer it directly;
-  // more reliable than the find-image heuristic above.
+  // more reliable than the find-image heuristic above. The click grants ALL
+  // hosts the run needs (requestSiteAccessNow covers every host in
+  // cachedImageHosts, which now includes the run's full grantHosts list) —
+  // one ask for every picture, not one ask per host.
   if (grantRow.style.display === 'none' && lastStatus && lastStatus.stage === 'error' &&
       lastStatus.grantHost && chrome.permissions && chrome.permissions.request) {
     const gh = lastStatus.grantHost;
@@ -294,8 +306,9 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
       $('grantBtn').textContent = ctMsg('grant_access_to', [gl]) || `Grant access to ${gl}`;
       $('grantBtn').onclick = () => {
         // Synchronous in the click — no awaits before permissions.request().
-        chrome.permissions.request({ origins: imageHostOrigins(gh) })
-          .catch(() => false).then(() => refreshSite(settings));
+        // requestSiteAccessNow grants the page host plus every picture host
+        // in cachedImageHosts (including the failed run's full grantHosts).
+        requestSiteAccessNow(currentHost).then(() => refreshSite(settings));
       };
     }
   }
@@ -450,7 +463,17 @@ chrome.runtime.onMessage.addListener(msg => {
   if (msg.type === 'ct/run-progress') {
     setStatus(STAGE_LABEL[msg.stage] || msg.stage);
     setProgress(msg.progress);
-    if (msg.stage === 'error') $('error').textContent = msg.error || 'unknown error';
+    if (msg.stage === 'error') {
+      $('error').textContent = msg.error || 'unknown error';
+      // A failed run may carry hosts that need a grant (the permission
+      // gate). Re-check the grant row now so the button appears without
+      // reopening the popup — refreshSite merges the run's grantHosts
+      // into the grant list, so one click covers every picture.
+      refreshStatus().then(async () => {
+        const settings = await readSettingsRaw().catch(() => null);
+        refreshSite(settings || {});
+      }).catch(() => {});
+    }
     else if (msg.stage === 'done') $('error').textContent = '';
     setRunning(msg.stage && !['done', 'idle', 'error', 'cancelled'].includes(msg.stage));
   }
