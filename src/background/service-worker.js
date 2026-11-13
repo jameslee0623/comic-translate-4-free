@@ -43,11 +43,11 @@ function diagPush(line) {
     else if (typeof console.debug === 'function') console.debug('[ct-diag] ' + line);
     else console.log('[ct-diag] ' + line);
     diagLogBuf.push('[ct-diag] ' + line);
-    // 2.1.48: keep 1000 lines, not 200. A multi-pic run makes ~15 lines per
-    // picture, so a 14-picture run already pushes the early inventory-diag
-    // lines out of a 200-line buffer before the user can copy them. 1000
-    // covers the 50-picture cap (50 x 15 + diag ~= 800).
-    if (diagLogBuf.length > 1000) diagLogBuf.shift();
+    // 2.1.49: keep 2000 lines, not 200. A multi-pic run makes ~15 lines per
+    // picture (up to ~33 for a dense one), so even a 50-picture run
+    // (~1700 lines worst case) keeps the early inventory-diag lines. The
+    // run-end missed accounting is written last, so it survives regardless.
+    if (diagLogBuf.length > 2000) diagLogBuf.shift();
   } catch {}
 }
 
@@ -401,13 +401,23 @@ async function getPipelineImages(tabId, settings, tabUrl, opts = {}) {
   // the file size, so a picture that displays big runs even if its file is small.
   const eligible = list.filter(im => Math.max(im.w || 0, im.h || 0) >= minSize);
   const skipped = [];
+  // Per-picture skip detail (not just the aggregate count): the run-end
+  // accounting lists EVERY picture not translated, with its size, host and
+  // reason — so a run that misses 6 of 30 names all 6, not just the ones
+  // that failed capture. Written at the end of the run, so it can never be
+  // pushed out of the log buffer.
+  const skippedDetail = [];
+  for (const im of list) {
+    if (Math.max(im.w || 0, im.h || 0) < minSize) skippedDetail.push({ w: im.w || 0, h: im.h || 0, src: im.src || '', reason: `below min size ${minSize}px` });
+  }
   if (list.length - eligible.length) skipped.push(`${list.length - eligible.length} below the minimum image size of ${minSize}px (change it in Settings)`);
   const picked = eligible.slice(0, MAX_IMAGES_PER_PAGE);
+  for (const im of eligible.slice(MAX_IMAGES_PER_PAGE)) skippedDetail.push({ w: im.w || 0, h: im.h || 0, src: im.src || '', reason: `over ${MAX_IMAGES_PER_PAGE}-image per-run cap` });
   if (eligible.length - picked.length) skipped.push(`${eligible.length - picked.length} over the ${MAX_IMAGES_PER_PAGE}-image per-run cap`);
   if (!picked.length) throw new Error(`no usable pictures on this page (${skipped.join('; ')}).`);
   // Pictures the inventory never considered (icons, spacers, hidden or
   // still-loading <img>) — reported so untranslated ones are accounted for.
-  return { images: picked, skipped, ignored: Math.max(0, total - list.length) };
+  return { images: picked, skipped, skippedDetail, ignored: Math.max(0, total - list.length) };
 }
 
 // One picture's pixels, loaded just before its stages run and released after.
@@ -1191,7 +1201,7 @@ async function runPipeline(tabId, opts = {}) {
     // Each one then runs the full pipeline; per-image stage progress maps onto
     // its slice of the overall run, debug titles carry the image index, and one
     // bad picture never kills the rest of the run.
-    const { images, skipped, ignored } = await getPipelineImages(tabId, settings, tabUrl, { srcUrl: manualSrc });
+    const { images, skipped, skippedDetail, ignored } = await getPipelineImages(tabId, settings, tabUrl, { srcUrl: manualSrc });
     if (skipped.length) diagPush('skipping page images: ' + skipped.join(' | ').slice(0, 300));
     // Permission gate: check EVERY picture's host before the run starts.
     // A picture whose host has no permission fails the background-tab read
@@ -1226,6 +1236,9 @@ async function runPipeline(tabId, opts = {}) {
       diagPush('permission gate: all hosts permitted: ' + (gateHosts.join(', ') || 'none'));
     }
     const doneImgs = [], failedImgs = [];
+    // Per-picture failure detail for the run-end missed accounting (size,
+    // host, reason) — failedImgs only carries the message string.
+    const missedDetail = [];
     // Skipped pictures (below min size, over the cap) count as "not
     // translated" in the run summary, so the user knows why some pictures
     // on the page did not change.
@@ -2041,6 +2054,7 @@ async function runPipeline(tabId, opts = {}) {
         if (!recovered) {
           if (e && e.fallbackUrl && !fallbackUrl) fallbackUrl = e.fallbackUrl;
           failedImgs.push(`image ${imgIdx + 1} (${img.w}×${img.h}): ${String((e && e.message) || e).slice(0, 120)}`);
+          missedDetail.push({ idx: imgIdx + 1, w: img.w || 0, h: img.h || 0, src: img.src || '', reason: String((e && e.message) || e).slice(0, 120) });
           diagPush(`image ${imgIdx + 1} failed: ${String((e && e.message) || e).slice(0, 200)}`);
         }
       } finally {
@@ -2054,6 +2068,18 @@ async function runPipeline(tabId, opts = {}) {
     }
     timings.total = Math.round(performance.now() - pipelineT0);
     setProgress(runId, 'done', 1, lastDoneExtra || { backendLabel: settings.translationBackend });
+    // Complete missed accounting, written LAST so it can never be pushed
+    // out of the log buffer: every picture not translated, with size, host
+    // and reason. The skipped (below-min / over-cap) pictures never reach
+    // the per-image loop, so they only exist in skippedDetail; the capture
+    // failures are in missedDetail. Together they name all of them — a run
+    // that misses 6 of 30 lists all 6, not just the ones that failed
+    // capture.
+    try {
+      const missed = [...(skippedDetail || []), ...missedDetail];
+      diagPush(`missed ${missed.length} of ${images.length + missed.length} picked pictures (${doneImgs.length} translated):`);
+      for (const m of missed) diagPush(`missed ${m.idx ? '#' + m.idx + ' ' : ''}${m.w}x${m.h} ${hostOf(m.src) || '?'} ${m.reason}`);
+    } catch { /* accounting is best-effort — the run already succeeded */ }
     // Surface the outcome on the PAGE too: runs take minutes and the popup is
     // usually closed by the time the last picture finishes, so without this a
     // partial run (skips, per-image failures, ignored tiny images) is silent.
