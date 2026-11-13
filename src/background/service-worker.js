@@ -1213,6 +1213,13 @@ async function runPipeline(tabId, opts = {}) {
       gateErr.grantHost = missingHosts[0];
       gateErr.grantHosts = missingHosts;
       throw gateErr;
+    } else {
+      // Gate passed — log which hosts were checked, so a pass is visible
+      // in the log too (not only a block). Without this, a run that
+      // translates 8 of 30 shows no gate line at all, and permission for
+      // the listed hosts cannot be confirmed from the log.
+      const gateHosts = [...new Set((images || []).map(im => { try { return new URL(im.src).hostname.toLowerCase(); } catch { return ''; } }).filter(Boolean))];
+      diagPush('permission gate: all hosts permitted: ' + (gateHosts.join(', ') || 'none'));
     }
     const doneImgs = [], failedImgs = [];
     // Skipped pictures (below min size, over the cap) count as "not
