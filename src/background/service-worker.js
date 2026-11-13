@@ -1271,6 +1271,7 @@ async function runPipeline(tabId, opts = {}) {
           // dims. A mismatch means the entry was stored at different dims
           // (e.g. before the R3 normalization) — treat as miss and overwrite.
           if (tier1Entry && (tier1Entry.width !== w || tier1Entry.height !== h)) {
+            diagPush(`page-cache MISS tier1 ${tier1Key.split('~')[1]?.slice(0, 12)} dims ${tier1Entry.width}x${tier1Entry.height} != ${w}x${h} (tier ${tier})`);
             tier1Entry = null;
           }
           if (tier1Entry) {
@@ -1278,6 +1279,7 @@ async function runPipeline(tabId, opts = {}) {
             const tier2Entry = await pageCacheGet(tier2Key);
             if (tier2Entry && tier2Entry.translations) {
               // Full hit: apply cached translations to the Tier-1 blocks.
+              diagPush(`page-cache HIT tier1+2 ${tier1Key.split('~')[1]?.slice(0, 12)} image ${w}x${h} (tier ${tier})`);
               const blocks = tier1Entry.blocks.map((b, i) => ({
                 ...b, translation: tier2Entry.translations[i] || '',
               }));
@@ -1285,11 +1287,14 @@ async function runPipeline(tabId, opts = {}) {
             } else {
               // Tier-1 hit, Tier-2 miss: translate the OCR'd blocks only.
               // (Falls through to the translate-only path below.)
+              diagPush(`page-cache HIT tier1 only ${tier1Key.split('~')[1]?.slice(0, 12)} image ${w}x${h} (tier ${tier})`);
               cacheHit = { tier1Only: true, entry: tier1Entry, tier2Key };
             }
           } else {
             // No Tier 1: try the legacy v1 key for backward compatibility.
+            diagPush(`page-cache MISS tier1 ${tier1Key.split('~')[1]?.slice(0, 12)} image ${w}x${h} (tier ${tier})`);
             cacheHit = await pageCacheGet(await buildCacheKey(rgba, w, h, settings));
+            if (cacheHit) diagPush(`page-cache HIT legacy v1 image ${w}x${h} (tier ${tier})`);
           }
         }
       } catch (e) {
