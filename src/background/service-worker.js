@@ -43,7 +43,11 @@ function diagPush(line) {
     else if (typeof console.debug === 'function') console.debug('[ct-diag] ' + line);
     else console.log('[ct-diag] ' + line);
     diagLogBuf.push('[ct-diag] ' + line);
-    if (diagLogBuf.length > 200) diagLogBuf.shift();
+    // 2.1.49: keep 2000 lines, not 200. A multi-pic run makes ~15 lines per
+    // picture (up to ~33 for a dense one), so even a 50-picture run
+    // (~1700 lines worst case) keeps the early inventory-diag lines. The
+    // run-end missed accounting is written last, so it survives regardless.
+    if (diagLogBuf.length > 2000) diagLogBuf.shift();
   } catch {}
 }
 
@@ -145,7 +149,6 @@ initPageCache();
 
 // DIAGNOSTIC (temporary): proves this build loaded, so a paste without
 // this line means the old build ran, not this diagnostic.
-diagPush('diagnostic loaded');
 
 // Content script path for scripting.executeScript.
 // Chrome: service worker, paths relative to extension root.
@@ -376,6 +379,17 @@ async function getPipelineImages(tabId, settings, tabUrl, opts = {}) {
     const r = await chrome.tabs.sendMessage(tabId, { type: 'ct/list-images' });
     list = r?.images || [];
     total = r?.total || list.length;
+    if (r?.diag) for (const l of String(r.diag).split('\n')) diagPush('inventory-diag ' + l);
+    // Permission for EVERY big picture's host — including the ones that did
+    // not make the inventory — so a missing grant on a 403 CDN host is
+    // visible in the same log, not just the gate's view of the listed ones.
+    if (Array.isArray(r?.bigSrcs) && r.bigSrcs.length) {
+      try {
+        const missing = await checkImageHostPermissions(r.bigSrcs.map(src => ({ src })));
+        const hosts = [...new Set(r.bigSrcs.map(s => { try { return new URL(s).hostname.toLowerCase(); } catch { return ''; } }).filter(Boolean))];
+        diagPush('inventory-diag big-pic hosts: ' + hosts.join(', ') + ' — missing permission: ' + (missing.length ? missing.join(', ') : 'none'));
+      } catch (e) { diagPush('inventory-diag host permission check failed: ' + String((e && e.message) || e).slice(0, 80)); }
+    }
   } catch { list = []; }
   if (!list.length) {
     throw new Error('no pictures found on this page — the extension translates the page\'s own pictures, not a screenshot of the page');
@@ -386,13 +400,23 @@ async function getPipelineImages(tabId, settings, tabUrl, opts = {}) {
   // the file size, so a picture that displays big runs even if its file is small.
   const eligible = list.filter(im => Math.max(im.w || 0, im.h || 0) >= minSize);
   const skipped = [];
+  // Per-picture skip detail (not just the aggregate count): the run-end
+  // accounting lists EVERY picture not translated, with its size, host and
+  // reason — so a run that misses 6 of 30 names all 6, not just the ones
+  // that failed capture. Written at the end of the run, so it can never be
+  // pushed out of the log buffer.
+  const skippedDetail = [];
+  for (const im of list) {
+    if (Math.max(im.w || 0, im.h || 0) < minSize) skippedDetail.push({ w: im.w || 0, h: im.h || 0, src: im.src || '', reason: `below min size ${minSize}px` });
+  }
   if (list.length - eligible.length) skipped.push(`${list.length - eligible.length} below the minimum image size of ${minSize}px (change it in Settings)`);
   const picked = eligible.slice(0, MAX_IMAGES_PER_PAGE);
+  for (const im of eligible.slice(MAX_IMAGES_PER_PAGE)) skippedDetail.push({ w: im.w || 0, h: im.h || 0, src: im.src || '', reason: `over ${MAX_IMAGES_PER_PAGE}-image per-run cap` });
   if (eligible.length - picked.length) skipped.push(`${eligible.length - picked.length} over the ${MAX_IMAGES_PER_PAGE}-image per-run cap`);
   if (!picked.length) throw new Error(`no usable pictures on this page (${skipped.join('; ')}).`);
   // Pictures the inventory never considered (icons, spacers, hidden or
   // still-loading <img>) — reported so untranslated ones are accounted for.
-  return { images: picked, skipped, ignored: Math.max(0, total - list.length) };
+  return { images: picked, skipped, skippedDetail, ignored: Math.max(0, total - list.length) };
 }
 
 // One picture's pixels, loaded just before its stages run and released after.
@@ -812,10 +836,8 @@ function keepAliveStart(runId) {
       const port = chrome.runtime.connect({ name: 'ct-keepalive' });
       port.onDisconnect.addListener(() => {
         keepAlivePorts.delete(runId);
-        diagPush('keepalive port disconnected run ' + runId);
       });
       keepAlivePorts.set(runId, port);
-      diagPush('keepalive started run ' + runId);
     }
   } catch {}
   try {
@@ -857,9 +879,8 @@ if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onConnect)
   chrome.runtime.onConnect.addListener((port) => {
     if (!port || (port.name !== 'ct-keepalive' && port.name !== 'ct-keepalive-tab' && port.name !== 'ct-bench-keepalive')) return;
     keepAliveIncoming.add(port);
-    diagPush('keepalive port connected name ' + port.name);
+    port.onDisconnect.addListener(() => { keepAliveIncoming.delete(port); });
     try { port.onMessage.addListener(() => { /* heartbeat activity only */ }); } catch {}
-    port.onDisconnect.addListener(() => { keepAliveIncoming.delete(port); diagPush('keepalive port disconnected name ' + port.name); });
   });
 }
 if (typeof chrome !== 'undefined' && chrome.alarms && chrome.alarms.onAlarm) {
@@ -941,7 +962,6 @@ async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timing
   // DIAGNOSTIC (temporary): delivery is the decisive step — log the
   // attempt, any send failure, and the reply, so the log shows whether
   // the run finished inpaint and failed only at delivery.
-  diagPush('sendRender attempt run ' + runId + ' tab ' + tabId + ' mode ' + mode);
   let renderRes;
   try {
     renderRes = await chrome.tabs.sendMessage(tabId, {
@@ -955,7 +975,6 @@ async function sendRender(tabId, runId, mode, imageDataUrl, w, h, blocks, timing
     diagPush('sendRender send failed run ' + runId + ' tab ' + tabId + ': ' + String((e && e.message) || e));
     throw e;
   }
-  diagPush('sendRender reply run ' + runId + ' tab ' + tabId + ': ' + JSON.stringify(renderRes && { ok: renderRes.ok, replaced: renderRes.replaced, error: renderRes.error }));
   // Surface a content-side render failure instead of silently reporting
   // "done" while the original image is still on the page.
   if (!renderRes || renderRes.ok === false) {
@@ -1079,7 +1098,6 @@ async function runPipeline(tabId, opts = {}) {
     chrome.storage.local.get('benchTrace').then((saved) => {
       const arr = (saved && Array.isArray(saved.benchTrace)) ? saved.benchTrace : [];
       const kept = arr.filter((e) => e && !benchTraceIsRetired(e.line));
-      for (const e of kept.slice(-10)) { try { diagPush('threads bench trace: ' + e.line); } catch {} }
       const trimmed = kept.slice(-5);
       if (trimmed.length !== arr.length) {
         try { chrome.storage.local.set({ benchTrace: trimmed }); } catch {}
@@ -1105,17 +1123,11 @@ async function runPipeline(tabId, opts = {}) {
     // describe the realm actually running WASM, not the background page.
     try {
       const d = await callMl({ type: MSG.ML_DIAG, runId }, { tabId });
-      diagPush('thread-info context ' + (d && d.context != null ? d.context : 'unknown')
-        + ' sharedArrayBuffer ' + (d && d.sharedArrayBuffer ? 'yes' : 'no')
-        + ' crossOriginIsolated ' + (d && d.crossOriginIsolated != null ? String(d.crossOriginIsolated) : 'unknown')
-        + ' hardwareConcurrency ' + (d && d.hardwareConcurrency != null ? d.hardwareConcurrency : 'unknown')
-        + ' numThreads ' + (d && d.numThreads != null ? d.numThreads : 'unknown'));
       // First-startup detection, ML-realm number: if onInstalled missed
       // it (or the SW number differed), this first run saves it. Only
       // saves when missing or changed, never blocks the run.
       saveDetectedCores(d && d.hardwareConcurrency, 'thread-info');
     } catch (e) {
-      diagPush('thread-info failed: ' + String((e && e.message) || e).slice(0, 120));
     }
     // Chrome GPU1 (2.0.7): warm the shared GPU worker NOW, at pipeline
     // start, so the ~6s LaMa load overlaps detect/OCR/translate instead
@@ -1126,7 +1138,6 @@ async function runPipeline(tabId, opts = {}) {
     // listening. Firefox already preloads above (awaited, for heap
     // reasons), so this is Chrome-only.
     if (!directHandlers()) {
-      diagPush('inpaint gpu warmup start run ' + runId);
       try {
         const p = chrome.runtime.sendMessage({ type: MSG.ML_GPU_WARMUP, runId });
         if (p && p.catch) p.catch(() => {});
@@ -1176,7 +1187,7 @@ async function runPipeline(tabId, opts = {}) {
     // Each one then runs the full pipeline; per-image stage progress maps onto
     // its slice of the overall run, debug titles carry the image index, and one
     // bad picture never kills the rest of the run.
-    const { images, skipped, ignored } = await getPipelineImages(tabId, settings, tabUrl, { srcUrl: manualSrc });
+    const { images, skipped, skippedDetail, ignored } = await getPipelineImages(tabId, settings, tabUrl, { srcUrl: manualSrc });
     if (skipped.length) diagPush('skipping page images: ' + skipped.join(' | ').slice(0, 300));
     // Permission gate: check EVERY picture's host before the run starts.
     // A picture whose host has no permission fails the background-tab read
@@ -1202,8 +1213,18 @@ async function runPipeline(tabId, opts = {}) {
       gateErr.grantHost = missingHosts[0];
       gateErr.grantHosts = missingHosts;
       throw gateErr;
+    } else {
+      // Gate passed — log which hosts were checked, so a pass is visible
+      // in the log too (not only a block). Without this, a run that
+      // translates 8 of 30 shows no gate line at all, and permission for
+      // the listed hosts cannot be confirmed from the log.
+      const gateHosts = [...new Set((images || []).map(im => { try { return new URL(im.src).hostname.toLowerCase(); } catch { return ''; } }).filter(Boolean))];
+      diagPush('permission gate: all hosts permitted: ' + (gateHosts.join(', ') || 'none'));
     }
     const doneImgs = [], failedImgs = [];
+    // Per-picture failure detail for the run-end missed accounting (size,
+    // host, reason) — failedImgs only carries the message string.
+    const missedDetail = [];
     // Skipped pictures (below min size, over the cap) count as "not
     // translated" in the run summary, so the user knows why some pictures
     // on the page did not change.
@@ -1439,7 +1460,6 @@ async function runPipeline(tabId, opts = {}) {
           // DIAG (2.0.9): OCR split + slowest crops, so one Mac run shows
           // whether OCR time is one long crop, even per-crop cost, or the
           // Baberu load — the fix depends on which it is.
-          diagPush('ocr split ms prep ' + ocrPrepMs + ' load ' + ((r && r.loadMs) || 0) + ' run ' + ocrMs + ' call ' + ocrCallMs);
           const cropById = new Map(crops.map(c => [c.id, c]));
           let ocrChars = 0, ocrSkipped = 0;
           const ocrSlow = [];
@@ -1450,8 +1470,6 @@ async function runPipeline(tabId, opts = {}) {
             ocrSlow.push({ id: res.id, w: cc ? cc.width : 0, h: cc ? cc.height : 0, chars: res.chars || 0, chunks: res.chunks || 0, skipped: !!res.skipped, ms: res.ms || 0 });
           }
           ocrSlow.sort((a, b) => b.ms - a.ms);
-          diagPush('ocr crops ' + r.results.length + ' skipped ' + ocrSkipped + ' chars ' + ocrChars);
-          for (const s of ocrSlow.slice(0, 5)) diagPush('ocr slow crop ' + s.id + ' ' + s.w + 'x' + s.h + ' chars ' + s.chars + ' chunks ' + s.chunks + ' skipped ' + (s.skipped ? 'yes' : 'no') + ' ms ' + s.ms);
         }
         imgTimings.ocr = ocrMs;
         imgSetProgress('ocr', 0.55);
@@ -1592,7 +1610,6 @@ async function runPipeline(tabId, opts = {}) {
           ...(directHandlers() ? INPAINT_COST.wasm1 : INPAINT_COST.gpu),
           spread: mergeSpread,
         });
-        diagPush('inpaint merge cost: ' + entries.length + ' boxes -> ' + patchBoxes.length + ' patches, predicted ' + Math.round(predictedMs) + 'ms (spread ' + mergeSpread.toFixed(2) + ')');
         const patches = [];
         for (const [i, pb] of patchBoxes.entries()) {
           checkCancelled(runId);
@@ -1614,7 +1631,6 @@ async function runPipeline(tabId, opts = {}) {
         const inpainted = new Uint8ClampedArray(rgba);
         let inpaintMs = 0;
         if (patches.length) {
-          diagPush('inpaint start run ' + runId + ' patches ' + patches.length);
           const wirePatches = patches.map(({ id, key, maskKey, width, height }) => ({ id, key, maskKey, width, height }));
           let r;
           // GPU1 (Firefox only): LaMa on WebGPU in a dedicated worker,
@@ -1631,11 +1647,9 @@ async function runPipeline(tabId, opts = {}) {
           // skipped, so a missing navigator.gpu is visible, not silent.
           const callT0 = performance.now();
           if (directHandlers() && !gpuDowngradedThisRun && !(typeof navigator !== 'undefined' && navigator.gpu)) {
-            diagPush('inpaint gpu skipped: no navigator.gpu, using WASM path');
           }
           if (directHandlers() && !gpuDowngradedThisRun && typeof navigator !== 'undefined' && navigator.gpu) {
             try {
-              diagPush('inpaint gpu start run ' + runId + ' patches ' + patches.length);
               r = await runGpuInpaint({
                 runId, patches: wirePatches,
                 onProgress: (frac) => parProgress('inpaint', frac),
@@ -1643,14 +1657,12 @@ async function runPipeline(tabId, opts = {}) {
                 isCancelled: () => runs.get(runId)?.cancelled === true,
               });
               inpaintPath = 'gpu';
-              diagPush('inpaint gpu done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0));
             } catch (e) {
               checkCancelled(runId);
               gpuDowngradedThisRun = true;
               inpaintPath = 'gpu-failed-wasm';
               diagPush('inpaint gpu failed, downgrading to WASM for this run: ' + String((e && e.message) || e));
               r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
-              diagPush('inpaint gpu WASM retry done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0));
             }
           } else if (!directHandlers() && !gpuDowngradedThisRun) {
           // GPU1-Chrome: LaMa on WebGPU in a dedicated worker spawned by
@@ -1666,7 +1678,6 @@ async function runPipeline(tabId, opts = {}) {
           // logged (no cut). Cancelled runs never fall back:
           // checkCancelled throws before the downgrade.
             try {
-              diagPush('inpaint gpu start run ' + runId + ' patches ' + patches.length);
               r = await runChromeGpuInpaint({
                 runId, patches: wirePatches,
                 onProgress: (frac) => parProgress('inpaint', frac),
@@ -1674,7 +1685,6 @@ async function runPipeline(tabId, opts = {}) {
                 isCancelled: () => runs.get(runId)?.cancelled === true,
               });
               inpaintPath = 'gpu';
-              diagPush('inpaint gpu done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0) + (r.readyMs != null ? ' readyMs ' + r.readyMs : ''));
             } catch (e) {
               checkCancelled(runId);
               if (e && e.gpuSkipped) {
@@ -1686,7 +1696,6 @@ async function runPipeline(tabId, opts = {}) {
                 inpaintPath = 'gpu-failed-wasm';
                 diagPush('inpaint gpu failed, downgrading to WASM for this run: ' + String((e && e.message) || e));
                 r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
-                diagPush('inpaint gpu WASM retry done ms ' + r.ms + ' totalTiles ' + (r.totalTiles || 0));
               }
             }
           } else {
@@ -1713,7 +1722,6 @@ async function runPipeline(tabId, opts = {}) {
           splitHostMs = (r && r.hostMs != null) ? r.hostMs : null;
           splitDocMs = (r && r.docMs != null) ? r.docMs : null;
           // MEASURE1: tile shape of this page, from the handler's count.
-          if (r && typeof r.totalTiles === 'number') diagPush('inpaint tiles total ' + r.totalTiles + ' patches ' + patches.length);
           const pasteT0 = performance.now();
           for (const res of r.results) {
             const p = patches[res.id];
@@ -1732,7 +1740,6 @@ async function runPipeline(tabId, opts = {}) {
           // DIAG (2.0.8): one line per patch — size, tile count, fast-path
           // hit, and ms — so the fix follows the real shape, not a guess.
           if (r && Array.isArray(r.patchStats)) {
-            for (const ps of r.patchStats) diagPush('inpaint patch ' + ps.id + ' ' + ps.w + 'x' + ps.h + ' tiles ' + ps.tiles + ' fast ' + (ps.fast ? 'yes' : 'no') + ' ms ' + ps.ms);
           }
           // 2.0.27: LEARN the spread from this run's merged patches.
           // For a merged patch, the base model (no spread) predicts
@@ -1775,13 +1782,11 @@ async function runPipeline(tabId, opts = {}) {
                 const map = await readInpaintSpread();
                 map[actualKey] = Math.round(next * 100) / 100;
                 await saveInpaintSpread(map);
-                diagPush('inpaint spread ' + actualKey + ': ' + cur.toFixed(2) + ' -> ' + map[actualKey].toFixed(2) + ' (n=' + ratios.length + ' median ratio ' + median.toFixed(2) + ')');
               }
             }
           } catch {}
         }
         const totalInpaintMs = Math.round(performance.now() - t0i);
-        if (patches.length) diagPush('inpaint split path ' + inpaintPath + ' ms prep ' + prepMs + ' load ' + splitLoadMs + ' gpu ' + inpaintMs + ' paste ' + pasteMs + ' call ' + callMs + ' total ' + totalInpaintMs + (splitReadyMs != null ? ' readyMs ' + splitReadyMs : '') + (splitTileMax ? ' tileMax ' + splitTileMax : ''));
         // DIAG (2.1.9): split the call-vs-GPU gap. host = the SW's host
         // check (ping) before the send; doc = the offscreen handler from
         // entry to reply (includes the worker call); worker = the GPU
@@ -1790,7 +1795,6 @@ async function runPipeline(tabId, opts = {}) {
         // work outside the worker) is doc - load - worker. GPU path only.
         if (patches.length && inpaintPath === 'gpu' && splitHostMs != null) {
           const transitMs = callMs - (splitHostMs || 0) - (splitDocMs || 0);
-          diagPush('inpaint gpu timing host ' + (splitHostMs || 0) + ' doc ' + (splitDocMs || 0) + ' worker ' + inpaintMs + ' load ' + splitLoadMs + ' call ' + callMs + ' transit ' + transitMs);
         }
         parProgress('inpaint', 1);
         await imgEmitDebug('inpaint', {
@@ -2019,6 +2023,7 @@ async function runPipeline(tabId, opts = {}) {
         if (!recovered) {
           if (e && e.fallbackUrl && !fallbackUrl) fallbackUrl = e.fallbackUrl;
           failedImgs.push(`image ${imgIdx + 1} (${img.w}×${img.h}): ${String((e && e.message) || e).slice(0, 120)}`);
+          missedDetail.push({ idx: imgIdx + 1, w: img.w || 0, h: img.h || 0, src: img.src || '', reason: String((e && e.message) || e).slice(0, 120) });
           diagPush(`image ${imgIdx + 1} failed: ${String((e && e.message) || e).slice(0, 200)}`);
         }
       } finally {
@@ -2032,6 +2037,18 @@ async function runPipeline(tabId, opts = {}) {
     }
     timings.total = Math.round(performance.now() - pipelineT0);
     setProgress(runId, 'done', 1, lastDoneExtra || { backendLabel: settings.translationBackend });
+    // Complete missed accounting, written LAST so it can never be pushed
+    // out of the log buffer: every picture not translated, with size, host
+    // and reason. The skipped (below-min / over-cap) pictures never reach
+    // the per-image loop, so they only exist in skippedDetail; the capture
+    // failures are in missedDetail. Together they name all of them — a run
+    // that misses 6 of 30 lists all 6, not just the ones that failed
+    // capture.
+    try {
+      const missed = [...(skippedDetail || []), ...missedDetail];
+      diagPush(`missed ${missed.length} of ${images.length + missed.length} picked pictures (${doneImgs.length} translated):`);
+      for (const m of missed) diagPush(`missed ${m.idx ? '#' + m.idx + ' ' : ''}${m.w}x${m.h} ${hostOf(m.src) || '?'} ${m.reason}`);
+    } catch { /* accounting is best-effort — the run already succeeded */ }
     // Surface the outcome on the PAGE too: runs take minutes and the popup is
     // usually closed by the time the last picture finishes, so without this a
     // partial run (skips, per-image failures, ignored tiny images) is silent.
@@ -2265,7 +2282,6 @@ async function saveDetectedCores(cores, source) {
     const prev = got && got.detectedCores;
     if (prev && prev.cores === cores) return;
     await chrome.storage.local.set({ detectedCores: { cores, detectedAt: new Date().toISOString(), source } });
-    diagPush('detected cores ' + cores + ' saved (' + source + ')');
   } catch { /* silent, never fails install or a run */ }
 }
 
@@ -2296,7 +2312,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // without asking the user.
   try {
     const inFlight = [...runs].some(([, r]) => r.tabId === tabId && !r.cancelled);
-    if (inFlight) diagPush('tab updated tab ' + tabId + ' status ' + (changeInfo && changeInfo.status) + ' at ' + new Date().toISOString());
   } catch {}
   if (!changeInfo || changeInfo.status !== 'complete') return;
   (async () => {

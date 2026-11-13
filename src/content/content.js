@@ -493,8 +493,62 @@
     return { loaded, total, ms: Date.now() - t0, steps, directTriggered, scrolled };
   }
 
+  // Diagnostic for the last inventory, read by the ct/list-images handler.
+  // Lists every big picture (natural size >= 500px) with its shown size and
+  // whether it made the inventory — so a browser that shows a picture big
+  // but does not list it is visible in the diag log.
+  let lastInventoryDiag = '';
+  // Full src URLs of every big picture (in the list and excluded), so the
+  // worker can check host permission for ALL of them — not just the ones
+  // that made the inventory.
+  let lastBigSrcs = [];
   function collectPageImages() {
-    const imgs = allImages().filter(im => {
+    const all = allImages();
+    // Diagnostic — best-effort only. It must NEVER break the inventory:
+    // if any read throws, the diag is replaced by an error note and the
+    // filter below still runs.
+    try {
+      const reasons = { notConn: 0, notComplete: 0, noNat: 0, dispSmall: 0 };
+      const bigLines = [];
+      lastBigSrcs = [];
+      let nBig = 0, nBigIn = 0;
+      for (const im of all) {
+        // Big is decided FIRST, from natural size OR width/height attributes.
+        // On a 403 site a picture that failed to load has natural size 0, but
+        // its width="1410" height="1000" attributes still say it is big — and
+        // its src/host must reach the permission check, or the 403 pictures
+        // stay invisible. (An earlier version checked natural size first and
+        // skipped failed pictures before ever calling them big.)
+        let attrW = 0, attrH = 0;
+        try {
+          attrW = parseInt(im.getAttribute('width') || '0', 10) || 0;
+          attrH = parseInt(im.getAttribute('height') || '0', 10) || 0;
+        } catch { /* attributes unreadable — treat as 0 */ }
+        const isBig = Math.max(im.naturalWidth || 0, im.naturalHeight || 0) >= 500 || Math.max(attrW, attrH) >= 500;
+        const r = im.getBoundingClientRect();
+        const inList = !!(im.isConnected && im.complete && im.naturalWidth && r.width >= 120 && r.height >= 120);
+        if (!im.isConnected) reasons.notConn++;
+        else if (!im.complete) reasons.notComplete++;
+        else if (!im.naturalWidth) reasons.noNat++;
+        else if (!inList) reasons.dispSmall++;
+        if (isBig) {
+          nBig++;
+          if (inList) nBigIn++;
+          const src = im.currentSrc || im.src || '';
+          lastBigSrcs.push(src);
+          let loading = '';
+          try { loading = (typeof im.getAttribute === 'function' && im.getAttribute('loading')) || ''; } catch { /* ignore */ }
+          bigLines.push(`big nat ${im.naturalWidth || 0}x${im.naturalHeight || 0} attr ${attrW}x${attrH} disp ${Math.round(r.width)}x${Math.round(r.height)} complete ${im.complete} loading ${loading || '-'} in ${inList ? 'Y' : 'N'} ${src.slice(0, 60)}`);
+        }
+      }
+      const docImgs = (typeof document !== 'undefined' && document.images) ? document.images.length : 0;
+      const vpW = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 0;
+      const vpH = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 0;
+      lastInventoryDiag = `inventory total ${all.length} (document.images ${docImgs}) viewport ${vpW}x${vpH} big-pics ${nBigIn}/${nBig} in list; excluded notConn ${reasons.notConn} notComplete ${reasons.notComplete} noNat ${reasons.noNat} dispSmall ${reasons.dispSmall}\n` + bigLines.join('\n');
+    } catch (e) {
+      lastInventoryDiag = 'inventory diag failed: ' + String((e && e.message) || e).slice(0, 120);
+    }
+    const imgs = all.filter(im => {
       if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
       const r = im.getBoundingClientRect();
       return r.width >= 120 && r.height >= 120;
@@ -1066,7 +1120,7 @@
     }
     if (msg.type === 'ct/list-images') {
       // Multi-pic inventory: every qualifying picture, top to bottom.
-      try { sendResponse({ ok: true, images: collectPageImages(), total: allImages().length }); }
+      try { const images = collectPageImages(); sendResponse({ ok: true, images, total: allImages().length, diag: lastInventoryDiag, bigSrcs: lastBigSrcs }); }
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
       return false;
     }
