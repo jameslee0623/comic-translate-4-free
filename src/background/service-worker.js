@@ -1161,7 +1161,7 @@ async function runPipeline(tabId, opts = {}) {
           chrome.tabs.sendMessage(tabId, { type: 'ct/force-load-images' }),
           new Promise((_, rej) => setTimeout(() => rej(new Error('force-load timeout')), 20000)),
         ]);
-        diagPush('force-load images: ' + (r && r.ok ? (r.loaded + '/' + r.total + ' loaded in ' + r.ms + 'ms (' + r.steps + ' scroll steps)') : 'failed: ' + String((r && r.error) || 'no reply').slice(0, 80)));
+        diagPush('force-load images: ' + (r && r.ok ? (r.loaded + '/' + r.total + ' loaded in ' + r.ms + 'ms (direct ' + (r.directTriggered || 0) + ', ' + (r.scrolled ? r.steps + ' scroll steps' : 'no scroll')) : 'failed: ' + String((r && r.error) || 'no reply').slice(0, 80)));
       } catch (e) {
         diagPush('force-load images skipped: ' + String((e && e.message) || e).slice(0, 80));
       }

@@ -345,57 +345,121 @@
   // image size and the per-run cap; this only skips tiny/hidden images.
   // Force every picture on the page to load (auto-translate only). Lazy
   // pictures below the fold have complete=false / naturalWidth=0 until
-  // they enter the viewport, so the inventory would skip them. Scroll
-  // through the page in viewport steps to trigger every lazy-load
-  // (native loading=lazy, IntersectionObserver, scroll handlers), then
-  // jump back to where the user was BEFORE waiting for the downloads —
-  // the fetches keep running in the background once triggered, so the
-  // user is only displaced for the brief scroll-through, not the whole
-  // download wait. The budgets below are time limits so a huge /
-  // infinite-scroll page can never hang the run — after the budget,
-  // translate whatever loaded. Returns { loaded, total, ms, steps }.
+  // they load, so the inventory would skip them. This tries, in order:
+  // Phase 0 (no scroll): tell each picture to load directly — native
+  // loading=lazy becomes eager, a placeholder src is replaced by the
+  // real URL from data-src/data-original/data-lazy-src, data-srcset
+  // becomes srcset. This covers most lazy-load patterns with no scroll
+  // at all. Phase 1 (scroll fallback, only for pictures still not
+  // loaded — e.g. a JS observer that holds the URL in code, not in the
+  // DOM): scroll through the page in viewport steps so each picture
+  // enters the viewport, then jump back to where the user was BEFORE
+  // waiting for the downloads — the fetches keep running in the
+  // background once triggered, so the user is only displaced for the
+  // brief scroll-through, not the whole download wait. The budgets below
+  // are time limits so a huge / infinite-scroll page can never hang the
+  // run — after the budget, translate whatever loaded. Returns
+  // { loaded, total, ms, steps, directTriggered, scrolled }.
   async function forceLoadAllImages() {
     const t0 = Date.now();
-    const BUDGET_MS = 15000; // whole force-load (scroll + wait) must fit in this
+    const BUDGET_MS = 15000; // whole force-load must fit in this
+    const DIRECT_WAIT_MS = 5000; // longest to wait for direct triggers
+    const DIRECT_STALL_MS = 1000; // no picture finished in this long: rest need scroll
     const STEP_WAIT_MS = 60; // let the lazy-load observer fire after each scroll step
     const MAX_STEPS = 200; // taller than this is effectively infinite scroll
     const startY = window.scrollY || 0, startX = window.scrollX || 0;
     const vh = Math.max(1, window.innerHeight || 800);
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const pageHeight = () => document.documentElement.scrollHeight || document.body.scrollHeight || 0;
-    let steps = 0;
-    // Phase 1: scroll through to trigger the loads. Restore the scroll
-    // position as soon as the scroll-through is done, even if the
-    // scroll loop itself throws.
-    try {
-      let lastH = 0;
-      for (;;) {
-        const h = pageHeight();
-        const maxY = Math.max(0, h - vh);
-        const y = Math.min(maxY, steps * vh);
-        window.scrollTo({ top: y, left: 0, behavior: 'instant' });
-        steps++;
-        await sleep(STEP_WAIT_MS);
-        const h2 = pageHeight();
-        // At the bottom and nothing new appeared: done scrolling.
-        if (y >= maxY && h2 <= lastH) break;
-        lastH = Math.max(lastH, h2);
-        if (steps >= MAX_STEPS || Date.now() - t0 >= BUDGET_MS) break;
+    const countPending = () => {
+      let n = 0;
+      for (const im of allImages()) if (im.isConnected && !im.complete) n++;
+      return n;
+    };
+    let steps = 0, directTriggered = 0, scrolled = false;
+    // Which pictures the direct phase actually triggered. A picture
+    // still loading after the direct wait that WAS triggered is just
+    // slow (or broken) — the scroll cannot help it. Only a picture
+    // the direct phase could not trigger at all needs the scroll.
+    const triggered = new Set();
+    // Phase 0: trigger every picture to load directly, without moving
+    // the viewport. Skip pictures already loaded, and never touch a
+    // translated picture (its src is our rendered data URL, complete).
+    for (const im of allImages()) {
+      if (!im.isConnected || im.complete || im.dataset.ctOriginal) continue;
+      const cur = im.src || '';
+      const real = realSrc(im);
+      if (im.loading === 'lazy') {
+        try { im.loading = 'eager'; } catch {}
+        directTriggered++; triggered.add(im);
       }
-    } finally {
-      try { window.scrollTo({ top: startY, left: startX, behavior: 'instant' }); } catch {}
+      // A placeholder src with a real URL in a data attribute: point src
+      // at the real URL so the browser fetches it now.
+      if (real && real !== cur && (isPlaceholderUrl(cur) || !cur)) {
+        try { im.src = real; } catch {}
+        directTriggered++; triggered.add(im);
+      }
+      // Responsive lazy-load: point srcset at the real set.
+      const ds = im.dataset.srcset || im.getAttribute('data-srcset');
+      if (ds && ds !== (im.srcset || '')) {
+        try { im.srcset = ds; } catch {}
+        directTriggered++; triggered.add(im);
+      }
+    }
+    // Wait for the direct triggers to finish: stop when all are loaded,
+    // when nothing finished for DIRECT_STALL_MS (the rest were never
+    // triggered and need the scroll), or at DIRECT_WAIT_MS.
+    {
+      let lastPending = Infinity, stallSince = Date.now();
+      for (;;) {
+        const pending = countPending();
+        if (!pending) break;
+        if (pending < lastPending) { lastPending = pending; stallSince = Date.now(); }
+        else if (Date.now() - stallSince >= DIRECT_STALL_MS) break;
+        if (Date.now() - t0 >= DIRECT_WAIT_MS) break;
+        await sleep(200);
+      }
+    }
+    // Phase 1: scroll fallback, only for pictures the direct phase
+    // could not trigger (a JS observer holding the URL in code). A
+    // picture that was triggered but is still loading is just slow or
+    // broken — the scroll cannot help it, so it does not scroll.
+    // Restore the scroll position as soon as the scroll-through is
+    // done, even if the scroll loop itself throws.
+    const needsScroll = () => {
+      for (const im of allImages()) {
+        if (im.isConnected && !im.complete && !triggered.has(im)) return true;
+      }
+      return false;
+    };
+    if (needsScroll()) {
+      scrolled = true;
+      try {
+        let lastH = 0;
+        for (;;) {
+          const h = pageHeight();
+          const maxY = Math.max(0, h - vh);
+          const y = Math.min(maxY, steps * vh);
+          window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+          steps++;
+          await sleep(STEP_WAIT_MS);
+          const h2 = pageHeight();
+          // At the bottom and nothing new appeared: done scrolling.
+          if (y >= maxY && h2 <= lastH) break;
+          lastH = Math.max(lastH, h2);
+          if (steps >= MAX_STEPS || Date.now() - t0 >= BUDGET_MS) break;
+        }
+      } finally {
+        try { window.scrollTo({ top: startY, left: startX, behavior: 'instant' }); } catch {}
+      }
     }
     // Phase 2: wait for the triggered loads to finish. The user is
-    // already back at the top, so this wait is invisible — the pictures
-    // download in the background. Poll until all are complete (or
-    // errored — complete is true then too), or the budget runs out;
-    // then translate whatever loaded.
+    // already back at the top (or never moved), so this wait is
+    // invisible — the pictures download in the background. Poll until
+    // all are complete (or errored — complete is true then too), or the
+    // budget runs out; then translate whatever loaded.
     for (;;) {
-      let pending = 0;
-      for (const im of allImages()) {
-        if (im.isConnected && !im.complete) pending++;
-      }
-      if (!pending) break;
+      if (!countPending()) break;
       if (Date.now() - t0 >= BUDGET_MS) break;
       await sleep(200);
     }
@@ -405,7 +469,7 @@
       total++;
       if (im.complete && im.naturalWidth) loaded++;
     }
-    return { loaded, total, ms: Date.now() - t0, steps };
+    return { loaded, total, ms: Date.now() - t0, steps, directTriggered, scrolled };
   }
 
   function collectPageImages() {
