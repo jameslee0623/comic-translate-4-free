@@ -1108,17 +1108,22 @@ async function runPipeline(tabId, opts = {}) {
     // pixels are loaded just before its stages run; its pixel-bus keys are
     // dropped by the caller after each image, so only one image's bytes are
     // ever live alongside the WASM sessions.
-    async function runOneImage(img, imgSetProgress, imgEmitDebug, imgTimings, imgPxKeys, imgT0) {
+    async function runOneImage(img, imgSetProgress, imgEmitDebug, imgTimings, imgPxKeys, imgT0, preCaptured) {
       // ---- 1. capture: the page's own picture (min-size gated), else viewport
       imgSetProgress('capture', 0.02);
       let t0 = performance.now();
       let rgba, w, h, mode, tier, attempts;
-      if (opts.preCaptured) {
+      // Per-image preCaptured wins (auto 403 fallback, one image at a time);
+      // the run-level opts.preCaptured is the manual-send fallback for the
+      // whole run. Either way the pixels were read from a background tab
+      // where the image is same-origin, so skip the download tiers.
+      const pre = preCaptured || opts.preCaptured;
+      if (pre) {
         // 403 fallback: pixels were read from a background tab where the image
         // is same-origin. Skip the download tiers entirely; the rest of the
         // pipeline (detect → OCR → translate → inpaint → render) runs normally
         // on the original tab, replacing the picture in place.
-        ({ rgba, w, h } = opts.preCaptured);
+        ({ rgba, w, h } = pre);
         mode = 'replace';
         tier = 'fallback-tab';
       } else {
@@ -1868,9 +1873,28 @@ async function runPipeline(tabId, opts = {}) {
         // failure is recorded and the next picture runs.
         if (e && (e.cancelled || isCancelled(runId))) throw e;
         if (/Out of memory/i.test(String((e && e.message) || ''))) throw e;
-        if (e && e.fallbackUrl && !fallbackUrl) fallbackUrl = e.fallbackUrl;
-        failedImgs.push(`image ${imgIdx + 1} (${img.w}×${img.h}): ${String((e && e.message) || e).slice(0, 120)}`);
-        diagPush(`image ${imgIdx + 1} failed: ${String((e && e.message) || e).slice(0, 200)}`);
+        // 403 auto fallback (auto path only — manual send has its own
+        // fallback in the handler, so it must not double-attempt): the
+        // image server refused the download, but a background tab reads it
+        // same-origin. Try it once for this image; the original 403 error
+        // is recorded only if the tab read fails too.
+        let recovered = false;
+        if (e && e.fallbackUrl && !manualSrc) {
+          try {
+            const pre = await fallbackCaptureViaTab(tabId, e.fallbackUrl);
+            const r2 = await runOneImage(img, imgSetProgress, imgEmitDebug, imgTimings, imgPxKeys, imgT0, pre);
+            doneImgs.push(imgIdx + 1);
+            if (r2 && r2.doneExtra) lastDoneExtra = r2.doneExtra;
+            recovered = true;
+          } catch (e2) {
+            console.warn('[ct] auto fallback capture failed for image ' + (imgIdx + 1) + ':', String((e2 && e2.message) || e2).slice(0, 120));
+          }
+        }
+        if (!recovered) {
+          if (e && e.fallbackUrl && !fallbackUrl) fallbackUrl = e.fallbackUrl;
+          failedImgs.push(`image ${imgIdx + 1} (${img.w}×${img.h}): ${String((e && e.message) || e).slice(0, 120)}`);
+          diagPush(`image ${imgIdx + 1} failed: ${String((e && e.message) || e).slice(0, 200)}`);
+        }
       } finally {
         for (const k of imgPxKeys.splice(0)) await pixelDrop(k);
       }
