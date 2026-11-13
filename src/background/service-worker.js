@@ -43,7 +43,11 @@ function diagPush(line) {
     else if (typeof console.debug === 'function') console.debug('[ct-diag] ' + line);
     else console.log('[ct-diag] ' + line);
     diagLogBuf.push('[ct-diag] ' + line);
-    if (diagLogBuf.length > 200) diagLogBuf.shift();
+    // 2.1.48: keep 1000 lines, not 200. A multi-pic run makes ~15 lines per
+    // picture, so a 14-picture run already pushes the early inventory-diag
+    // lines out of a 200-line buffer before the user can copy them. 1000
+    // covers the 50-picture cap (50 x 15 + diag ~= 800).
+    if (diagLogBuf.length > 1000) diagLogBuf.shift();
   } catch {}
 }
 
