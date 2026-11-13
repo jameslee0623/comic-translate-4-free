@@ -493,8 +493,31 @@
     return { loaded, total, ms: Date.now() - t0, steps, directTriggered, scrolled };
   }
 
+  // Diagnostic for the last inventory, read by the ct/list-images handler.
+  // Lists every big picture (natural size >= 500px) with its shown size and
+  // whether it made the inventory — so a browser that shows a picture big
+  // but does not list it is visible in the diag log.
+  let lastInventoryDiag = '';
   function collectPageImages() {
-    const imgs = allImages().filter(im => {
+    const all = allImages();
+    const reasons = { notConn: 0, notComplete: 0, noNat: 0, dispSmall: 0 };
+    const bigLines = [];
+    let nBig = 0, nBigIn = 0;
+    for (const im of all) {
+      if (!im.isConnected) { reasons.notConn++; continue; }
+      if (!im.complete) { reasons.notComplete++; continue; }
+      if (!im.naturalWidth) { reasons.noNat++; continue; }
+      const r = im.getBoundingClientRect();
+      const inList = r.width >= 120 && r.height >= 120;
+      if (!inList) reasons.dispSmall++;
+      if (Math.max(im.naturalWidth, im.naturalHeight) >= 500) {
+        nBig++;
+        if (inList) nBigIn++;
+        bigLines.push(`big nat ${im.naturalWidth}x${im.naturalHeight} disp ${Math.round(r.width)}x${Math.round(r.height)} complete ${im.complete} in ${inList ? 'Y' : 'N'} ${(im.currentSrc || im.src || '').slice(0, 60)}`);
+      }
+    }
+    lastInventoryDiag = `inventory total ${all.length} big-pics ${nBigIn}/${nBig} in list; excluded notConn ${reasons.notConn} notComplete ${reasons.notComplete} noNat ${reasons.noNat} dispSmall ${reasons.dispSmall}\n` + bigLines.join('\n');
+    const imgs = all.filter(im => {
       if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
       const r = im.getBoundingClientRect();
       return r.width >= 120 && r.height >= 120;
@@ -1066,7 +1089,7 @@
     }
     if (msg.type === 'ct/list-images') {
       // Multi-pic inventory: every qualifying picture, top to bottom.
-      try { sendResponse({ ok: true, images: collectPageImages(), total: allImages().length }); }
+      try { const images = collectPageImages(); sendResponse({ ok: true, images, total: allImages().length, diag: lastInventoryDiag }); }
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
       return false;
     }

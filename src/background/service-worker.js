@@ -376,6 +376,7 @@ async function getPipelineImages(tabId, settings, tabUrl, opts = {}) {
     const r = await chrome.tabs.sendMessage(tabId, { type: 'ct/list-images' });
     list = r?.images || [];
     total = r?.total || list.length;
+    if (r?.diag) for (const l of String(r.diag).split('\n')) diagPush('inventory-diag ' + l);
   } catch { list = []; }
   if (!list.length) {
     throw new Error('no pictures found on this page — the extension translates the page\'s own pictures, not a screenshot of the page');
