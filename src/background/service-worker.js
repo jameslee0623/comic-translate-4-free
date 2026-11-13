@@ -2402,6 +2402,28 @@ async function handleTranslateImage(tabId, srcUrl) {
 // background tab, read its pixels via the canvas tier (same-origin there —
 // no download, no bot-protection fight), close the tab, and hand the pixels
 // back so the normal pipeline runs on the original tab.
+//
+// Hosts whose pictures fail the background-tab read with "Missing host
+// permission for the tab" are recorded here: the popup offers a one-click
+// grant for them. The content-script host list alone can miss them (an old
+// content script in the tab, or a host that only appears on a later
+// picture), and a multi-pic run that partly succeeds never sets
+// lastStatus.grantHost, so without this the popup never offers the grant
+// and those pictures keep failing.
+const MISSING_HOSTS_KEY = 'ct-missing-hosts';
+async function recordMissingHost(imageUrl) {
+  try {
+    const host = new URL(imageUrl).hostname.toLowerCase();
+    if (!host) return;
+    const got = await chrome.storage.local.get(MISSING_HOSTS_KEY);
+    const list = Array.isArray(got[MISSING_HOSTS_KEY]) ? got[MISSING_HOSTS_KEY] : [];
+    if (!list.includes(host)) {
+      list.push(host);
+      // Cap the list: it is a hint for the popup, not a log.
+      await chrome.storage.local.set({ [MISSING_HOSTS_KEY]: list.slice(-10) });
+    }
+  } catch { /* recording must never break the run */ }
+}
 async function fallbackCaptureViaTab(origTabId, imageUrl) {
   const notice = (text, sticky) =>
     chrome.tabs.sendMessage(origTabId, { type: MSG.PILL_NOTICE, text, sticky }).catch(() => {});
@@ -2437,6 +2459,13 @@ async function fallbackCaptureViaTab(origTabId, imageUrl) {
       throw new Error((p && p.error) || 'could not read the image');
     }
     return await dataUrlToRGBA(p.dataUrl);
+  } catch (e) {
+    // The tab inject failed because this picture's host has no permission —
+    // record it so the popup can offer the grant for it.
+    if (/Missing host permission for the tab/i.test(String((e && e.message) || e))) {
+      await recordMissingHost(imageUrl);
+    }
+    throw e;
   } finally {
     if (newTabId != null) await chrome.tabs.remove(newTabId).catch(() => {});
   }

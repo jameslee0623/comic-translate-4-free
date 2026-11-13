@@ -190,6 +190,12 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
   // needs permission for them. Awaited here: this is popup-open time, not a
   // click gesture, so awaits are fine. Prefer the full host list; fall back
   // to the single main picture's host if the list message is unavailable.
+  // Also merge in the hosts the worker recorded as failing with "Missing
+  // host permission for the tab" (ct-missing-hosts): the content-script
+  // list alone can miss them (old content script in the tab, or a host that
+  // only appears on a later picture), and a run that partly succeeds never
+  // sets lastStatus.grantHost — without this the popup never offers the
+  // grant and those pictures keep failing.
   cachedImageHosts = [];
   if (tab && tab.id != null) {
     try {
@@ -209,6 +215,14 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
       } catch { /* content script not injected yet — page host is enough to try */ }
     }
   }
+  try {
+    const got = await chrome.storage.local.get('ct-missing-hosts');
+    const missing = Array.isArray(got['ct-missing-hosts']) ? got['ct-missing-hosts'] : [];
+    for (const h of missing) {
+      const lh = String(h || '').toLowerCase();
+      if (lh && lh !== currentHost && !cachedImageHosts.includes(lh)) cachedImageHosts.push(lh);
+    }
+  } catch { /* no recorded hosts — the content-script list is enough */ }
   const list = settings.siteWhitelist || [];
   const btn = $('whitelistBtn');
   if (!currentHost) {
