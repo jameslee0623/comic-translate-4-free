@@ -627,6 +627,7 @@ function buildBlocks(detections, w, h, rgba, settings) {
   // text box is skipped, so its text is not duplicated. If OCR finds
   // no text in a promoted bubble (false-positive outline), the block
   // is skipped downstream by the empty-text guard.
+  let promotedCount = 0;
   for (const bb of bubbles) {
     const covered = blocks.some(b => {
       const [x1, y1, x2, y2] = b.xyxy;
@@ -642,8 +643,14 @@ function buildBlocks(detections, w, h, rgba, settings) {
     b.source_lang = settings.sourceLang;
     b.target_lang = settings.targetLang;
     blocks.push(b);
+    promotedCount++;
   }
-  return sortBlocks(blocks, true);
+  const out = sortBlocks(blocks, true);
+  // How many blocks came from bubbles with no text box (0 on a page
+  // where detection is already good — the promotion is a no-op there).
+  // The run logs it so over-firing on other pages is visible, not silent.
+  out.promotedCount = promotedCount;
+  return out;
 }
 
 // Tighten a bubble box to the words inside it (page coords), for the
@@ -1336,8 +1343,12 @@ async function runPipeline(tabId, opts = {}) {
       const blocks = buildBlocks(detections, w, h, rgba, settings);
       imgTimings.blocks = Math.round(performance.now() - t0);
       imgSetProgress('blocks', 0.3);
+      // Promotion visibility: how many blocks came from bubbles with no
+      // text box. 0 on a page where detection is already good (no-op).
+      // A large number here on other pages would mean over-firing.
+      if (blocks.promotedCount) diagPush(`blocks promoted ${blocks.promotedCount} bubble(s) with no text box (of ${detections.length} detections -> ${blocks.length} blocks)`);
       await imgEmitDebug('blocks', {
-        title: `Text blocks — ${blocks.length}`,
+        title: `Text blocks — ${blocks.length}` + (blocks.promotedCount ? ` (${blocks.promotedCount} promoted from bubbles)` : ''),
         blocks: blocks.map((b, i) => ({
           i, text_class: b.text_class,
           xyxy: b.xyxy.map(v => Math.round(v)),
