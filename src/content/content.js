@@ -1070,6 +1070,24 @@
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
       return false;
     }
+    if (msg.type === 'ct/list-image-hosts') {
+      // Distinct hosts of every picture's real address (src or data-src),
+      // loaded or not — the access grant must cover ALL of them, not just
+      // the biggest picture's host. The background-tab fallback injects
+      // into a tab on the picture's host, so a host missing from the
+      // grant fails there with "Missing host permission for the tab".
+      try {
+        const hosts = new Set();
+        for (const im of allImages()) {
+          try {
+            const u = realSrc(im);
+            if (u && /^https?:\/\//i.test(u)) hosts.add(new URL(u).hostname.toLowerCase());
+          } catch {}
+        }
+        sendResponse({ ok: true, hosts: [...hosts] });
+      } catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
+      return false;
+    }
     if (msg.type === 'ct/get-image-pixels-by-uid') {
       imagePixelsByUid(msg.uid).then(
         r => sendResponse({ ok: true, ...r }),

@@ -146,13 +146,17 @@ async function refresh() {
   await Promise.all([refreshStatus(), refreshSettings()]);
 }
 
-// The picture often lives on a CDN host different from the page host; without
-// permission for it the extension can't download the picture's pixels.
-// cachedImageHost is filled in (best effort) when the popup opens, so the
+// The pictures often live on CDN hosts different from the page host; without
+// permission for them the extension can't download the pictures' pixels.
+// cachedImageHosts is filled in (best effort) when the popup opens, so the
 // click handler below can build the full origin list SYNCHRONOUSLY — Firefox
 // expires the click's user gesture across awaits, and permissions.request()
-// called after an await silently does nothing.
-let cachedImageHost = null;
+// called after an await silently does nothing. It is a LIST, not one host:
+// a page's pictures can span several hosts/CDNs, and the grant must cover
+// all of them — the background-tab fallback injects into a tab on the
+// picture's host, so a host missing from the grant fails there with
+// "Missing host permission for the tab".
+let cachedImageHosts = [];
 // A granted `*://host/*` satisfies the query, but be lenient like
 // hasHostAccess in the service worker: scheme-specific grants count too.
 async function hasOriginAccess(host) {
@@ -165,10 +169,12 @@ async function hasOriginAccess(host) {
 }
 function requestSiteAccessNow(host) {
   const origins = [`*://${host}/*`, `*://*.${host}/*`];
-  // The picture's host gets the base-domain treatment: hosts with random
+  // Every picture host gets the base-domain treatment: hosts with random
   // per-visit subdomains (e.g. *.hath.network) would otherwise need a fresh
   // grant on every visit.
-  if (cachedImageHost && cachedImageHost !== host) origins.push(...imageHostOrigins(cachedImageHost));
+  for (const ih of cachedImageHosts) {
+    if (ih && ih !== host) origins.push(...imageHostOrigins(ih));
+  }
   if (chrome.permissions && chrome.permissions.request) {
     return chrome.permissions.request({ origins }).catch(() => false);
   }
@@ -177,21 +183,31 @@ function requestSiteAccessNow(host) {
 
 async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => [null]);
   currentHost = tab ? hostOf(tab.url) : null;
-  // Learn the page picture's host now (not on click) so the grant click can
-  // request it without any awaits first — pictures often live on a CDN host
-  // different from the page host, and the pipeline's download tier needs
-  // permission for it. Awaited here: this is popup-open time, not a click
-  // gesture, so awaits are fine.
-  cachedImageHost = null;
+  // Learn the page pictures' hosts now (not on click) so the grant click can
+  // request them without any awaits first — pictures often live on CDN hosts
+  // different from the page host, and the pipeline's download tier (plus the
+  // background-tab fallback, which injects into a tab on the picture's host)
+  // needs permission for them. Awaited here: this is popup-open time, not a
+  // click gesture, so awaits are fine. Prefer the full host list; fall back
+  // to the single main picture's host if the list message is unavailable.
+  cachedImageHosts = [];
   if (tab && tab.id != null) {
     try {
-      const r = await chrome.tabs.sendMessage(tab.id, { type: 'ct/find-image' }).catch(() => null);
-      const src = r && r.image && r.image.src;
-      if (src && /^https?:\/\//i.test(src)) {
-        const ih = new URL(src).hostname.toLowerCase();
-        if (ih && ih !== currentHost) cachedImageHost = ih;
+      const r = await chrome.tabs.sendMessage(tab.id, { type: 'ct/list-image-hosts' }).catch(() => null);
+      if (r && r.ok && Array.isArray(r.hosts)) {
+        cachedImageHosts = r.hosts.filter(h => h && h !== currentHost);
       }
     } catch { /* content script not injected yet — page host is enough to try */ }
+    if (!cachedImageHosts.length) {
+      try {
+        const r = await chrome.tabs.sendMessage(tab.id, { type: 'ct/find-image' }).catch(() => null);
+        const src = r && r.image && r.image.src;
+        if (src && /^https?:\/\//i.test(src)) {
+          const ih = new URL(src).hostname.toLowerCase();
+          if (ih && ih !== currentHost) cachedImageHosts = [ih];
+        }
+      } catch { /* content script not injected yet — page host is enough to try */ }
+    }
   }
   const list = settings.siteWhitelist || [];
   const btn = $('whitelistBtn');
@@ -222,22 +238,27 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
     btn.classList.toggle('remind', !ok);
   }
   // Allowed but missing host access: offer the one-click grant. This covers
-  // BOTH the page host (needed for script injection) and the picture's host
-  // (needed for the download tier) — the picture often lives on a CDN. After
-  // the first grant the content script can inject, so the picture host becomes
-  // known and a second click covers it; the row stays visible until both are
-  // granted, naming whichever host is still missing.
+  // BOTH the page host (needed for script injection) and the pictures' hosts
+  // (needed for the download tier and the background-tab fallback) — the
+  // pictures often live on CDNs. After the first grant the content script
+  // can inject, so the picture hosts become known and a second click covers
+  // them; the row stays visible until all are granted, naming whichever host
+  // is still missing. A page's pictures can span several hosts, so check
+  // every one; the click grants all of them at once.
   const grantRow = $('grantRow');
   grantRow.style.display = 'none';
   if (ok && currentHost && chrome.permissions && chrome.permissions.contains) {
     const pageHas = await hasOriginAccess(currentHost);
-    const imgHas = !cachedImageHost || await hasOriginAccess(cachedImageHost);
-    const missing = !pageHas ? currentHost : (!imgHas ? cachedImageHost : null);
+    let missingHost = null;
+    for (const ih of cachedImageHosts) {
+      if (!(await hasOriginAccess(ih))) { missingHost = ih; break; }
+    }
+    const missing = !pageHas ? currentHost : missingHost;
     if (missing) {
       grantRow.style.display = '';
-      // Name the base domain for the picture's host: the exact hostname is
+      // Name the base domain for a picture's host: the exact hostname is
       // random per visit on some sites, and the grant covers the base.
-      const missingLabel = (missing === cachedImageHost) ? displayHost(missing) : missing;
+      const missingLabel = (missing === missingHost) ? displayHost(missing) : missing;
       $('grantBtn').textContent = ctMsg('grant_access_to', [missingLabel]) || `Grant access to ${missingLabel}`;
       $('grantBtn').onclick = () => {
         // Request synchronously in the click: no awaits before
