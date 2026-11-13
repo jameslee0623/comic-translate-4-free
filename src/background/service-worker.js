@@ -1212,6 +1212,10 @@ async function runPipeline(tabId, opts = {}) {
     const tab = await chrome.tabs.get(tabId).catch(() => null);
     const tabUrl = (tab && tab.url) || '';
     const tabHost = hostOf(tabUrl);
+    // 2.1.57: store the page address again now that it is known for sure.
+    // The run-start read can miss (tab still restoring after a background
+    // restart), and a record without it can never auto-resume.
+    if (tabUrl) persistRunRecord(runId, tabId, persistedStageByRun.get(runId) || 'capture', { url: tabUrl });
     if (tabHost && !(await hasPageHostAccess(tabHost))) {
       throw settings.allowAllSites
         ? new Error('"Allow all sites" is on, but the extension no longer has access to all sites (the permission may have been revoked) — reopen Settings → Site access and turn it back on.')
@@ -1257,6 +1261,10 @@ async function runPipeline(tabId, opts = {}) {
     let alreadyDone = 0;
     if (opts.resume && !manualSrc) {
       alreadyDone = images.filter(im => im.translated).length;
+      // 2.1.57: always log the count, even when 0 — a resumed run that
+      // finds nothing already done is the clue that the inventory disagrees
+      // with the recovery check (e.g. the page reloaded between the two).
+      diagPush(`auto-resume: inventory ${images.length} picture(s), ${alreadyDone} already translated`);
       if (alreadyDone) {
         diagPush(`auto-resume: skipping ${alreadyDone} already-translated picture(s), ${images.length - alreadyDone} left`);
         images = images.filter(im => !im.translated);
@@ -3012,6 +3020,11 @@ async function recoverOrphanedRuns() {
             continue;
           }
         }
+        // 2.1.57: clear the log BEFORE the auto-resume check, not after it —
+        // the check's decision lines (why it resumed or skipped) were wiped
+        // by the clear in the fail path below, so a skipped resume left no
+        // reason in the log at all.
+        clearDiagLog(); // 1.4.0 (m6): each recovery's log is its own.
         // Auto-resume (2.1.56): a run the background killed mid-way restarts
         // by itself on the same tab, skipping the pictures it already
         // finished, instead of only showing an error. Limits: at most 2
@@ -3040,10 +3053,27 @@ async function recoverOrphanedRuns() {
                     if (p && p.catch) p.catch(() => {});
                   }
                 } catch {}
+                // 2.1.57: clear the dead run's pending ML alarms too. The
+                // ML call it died in never settled, so its alarm entry is
+                // still in storage; when it fires later the hook would fail
+                // a run that was already resumed (spurious error on the tab).
+                try {
+                  const store = await chrome.storage.local.get(null);
+                  const keys = Object.keys(store || {}).filter(k => k.startsWith('ct-ml-pending:') && k.includes(':' + orphanRunId + ':'));
+                  for (const k of keys) {
+                    try { await chrome.storage.local.remove(k); } catch {}
+                    try {
+                      const alarmName = k.slice('ct-ml-pending:'.length);
+                      const p = chrome.alarms.clear(alarmName);
+                      if (p && p.catch) p.catch(() => {});
+                    } catch {}
+                  }
+                  if (keys.length) diagPush(`orphan auto-resume run ${orphanRunId}: cleared ${keys.length} pending ML alarm(s)`);
+                } catch {}
                 runPipeline(rec.tabId, { resume: true, resumeCount: resumes, auto: true }).catch(() => {});
                 resumed = true;
               } else {
-                diagPush(`orphan auto-resume skipped run ${orphanRunId}: no picture finished yet`);
+                diagPush(`orphan auto-resume skipped run ${orphanRunId}: no picture finished yet (inventory ${list.length})`);
               }
             } else {
               diagPush(`orphan auto-resume skipped run ${orphanRunId}: tab gone or page changed`);
@@ -3055,8 +3085,11 @@ async function recoverOrphanedRuns() {
             diagPush('orphan recovery done run ' + orphanRunId + ' (auto-resumed)');
             continue;
           }
+        } else {
+          // 2.1.57: log why the resume was not even attempted, so a
+          // skipped second resume is diagnosable instead of silent.
+          diagPush(`orphan auto-resume not attempted run ${orphanRunId}: resumes ${resumes}/${MAX_AUTO_RESUMES} tabId ${rec && rec.tabId} url ${rec && rec.url ? 'set' : 'MISSING'}`);
         }
-        clearDiagLog(); // 1.4.0 (m6): each recovery's log is its own.
         // 2.1.55: replay the persisted pre-restart log into the panel log,
         // so the user sees what the background was doing before it died.
         const recoveredCount = await replayDiagTrace();
@@ -3076,6 +3109,17 @@ async function recoverOrphanedRuns() {
 // background died mid-ML-call. Fail that run the same clean way.
 setMlAlarmRecoveryHook(async (entry, msg) => {
   try {
+    // 2.1.57: skip a run whose record is already gone — it was auto-resumed
+    // (its pending ML alarms were cleared there) or already failed, so
+    // failing it here would show a spurious error for a run that no longer
+    // exists. The record is the source of truth; the alarm entry is stale.
+    try {
+      const all = (await chrome.storage.local.get(ACTIVE_RUNS_KEY))[ACTIVE_RUNS_KEY] || {};
+      if (!all[entry.runId]) {
+        diagPush('alarm recovery skipped run ' + entry.runId + ': no active-run record (already resumed or failed)');
+        return;
+      }
+    } catch {}
     clearDiagLog(); // 1.4.0 (m6): alarm recovery log is its own.
     // 2.1.55: replay the persisted pre-restart log, same as orphan recovery.
     await replayDiagTrace();
