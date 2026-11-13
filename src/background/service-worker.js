@@ -834,11 +834,21 @@ async function sendDiagLog(tabId, runId) {
 // common case (one run at a time) is exact.
 const ACTIVE_RUNS_KEY = 'ct-active-runs';
 const persistedStageByRun = new Map(); // runId -> last stage written
-async function persistRunRecord(runId, tabId, stage) {
+// extra carries auto-resume info at run start ({ resumes, url }); later
+// stage updates preserve it from the previous record so it is not lost.
+// resumes = how many times this run has already been auto-resumed (loop
+// guard); url = the tab's address at run start (same-page check).
+async function persistRunRecord(runId, tabId, stage, extra) {
   try {
     const all = (await chrome.storage.local.get(ACTIVE_RUNS_KEY))[ACTIVE_RUNS_KEY] || {};
     const prev = all[runId];
-    all[runId] = { tabId, stage, startedAt: (prev && prev.startedAt) || Date.now(), updatedAt: Date.now() };
+    all[runId] = {
+      tabId, stage,
+      startedAt: (prev && prev.startedAt) || Date.now(),
+      updatedAt: Date.now(),
+      resumes: (extra && extra.resumes != null) ? extra.resumes : ((prev && prev.resumes) || 0),
+      url: (extra && extra.url) || (prev && prev.url) || '',
+    };
     await chrome.storage.local.set({ [ACTIVE_RUNS_KEY]: all });
     persistedStageByRun.set(runId, stage);
   } catch {}
@@ -1149,7 +1159,14 @@ async function runPipeline(tabId, opts = {}) {
       }
     }).catch(() => {});
   } catch {}
-  persistRunRecord(runId, tabId, 'capture'); // FIX1: see helpers above.
+  // Auto-resume needs the page address (same-page check) and the resume
+  // count (loop guard) in the run record. Read the tab URL now, at run start.
+  let runTabUrl = '';
+  try { const t0 = await chrome.tabs.get(tabId).catch(() => null); runTabUrl = (t0 && t0.url) || ''; } catch {}
+  persistRunRecord(runId, tabId, 'capture', {
+    resumes: opts.resume ? (opts.resumeCount || 0) + 1 : 0,
+    url: runTabUrl,
+  }); // FIX1: see helpers above.
   const settings = await getSettings();
   const timings = {};
   const pipelineT0 = performance.now(); // overall wall-clock for this run
@@ -1232,7 +1249,33 @@ async function runPipeline(tabId, opts = {}) {
     // Each one then runs the full pipeline; per-image stage progress maps onto
     // its slice of the overall run, debug titles carry the image index, and one
     // bad picture never kills the rest of the run.
-    const { images, skipped, skippedDetail, ignored } = await getPipelineImages(tabId, settings, tabUrl, { srcUrl: manualSrc });
+    let { images, skipped, skippedDetail, ignored } = await getPipelineImages(tabId, settings, tabUrl, { srcUrl: manualSrc });
+    // Auto-resume: skip pictures the dead run already finished (they show
+    // the translated render). Only the remaining pictures run, so the
+    // resumed run finishes from where the old one left instead of redoing
+    // the whole page.
+    let alreadyDone = 0;
+    if (opts.resume && !manualSrc) {
+      alreadyDone = images.filter(im => im.translated).length;
+      if (alreadyDone) {
+        diagPush(`auto-resume: skipping ${alreadyDone} already-translated picture(s), ${images.length - alreadyDone} left`);
+        images = images.filter(im => !im.translated);
+      }
+      if (!images.length) {
+        // Everything is already translated — nothing left to do.
+        timings.total = Math.round(performance.now() - pipelineT0);
+        setProgress(runId, 'done', 1, { backendLabel: settings.translationBackend });
+        try {
+          await chrome.tabs.sendMessage(tabId, {
+            type: 'ct/run-summary', runId, images: 0, failed: [], ignored,
+            resumed: true, alreadyDone,
+          });
+        } catch {}
+        if (settings.debugMode) await sendDiagLog(tabId, runId);
+        result = { runId, ok: true, images: 0, failed: [], resumed: true, alreadyDone };
+        return result;
+      }
+    }
     if (skipped.length) diagPush('skipping page images: ' + skipped.join(' | ').slice(0, 300));
     // Permission gate: ask for ALL possible permissions ONCE, BEFORE the run
     // starts — the page host and every picture host (exact + wildcard), in a
@@ -2120,10 +2163,11 @@ async function runPipeline(tabId, opts = {}) {
       await chrome.tabs.sendMessage(tabId, {
         type: 'ct/run-summary', runId, images: doneImgs.length,
         failed: failedImgs, ignored,
+        ...(opts.resume ? { resumed: true, alreadyDone } : {}),
       });
     } catch { /* content script may have been removed mid-run */ }
     if (settings.debugMode) await sendDiagLog(tabId, runId);
-    result = { runId, ok: true, images: doneImgs.length, failed: failedImgs };
+    result = { runId, ok: true, images: doneImgs.length, failed: failedImgs, ...(opts.resume ? { resumed: true, alreadyDone } : {}) };
   } catch (e) {
     let msg;
     // A user-cancelled run stays 'cancelled' even if the in-flight work
@@ -2965,6 +3009,50 @@ async function recoverOrphanedRuns() {
           }
           if (hasMlAlarm) {
             diagPush('orphan skipped run ' + orphanRunId + ': pending ML alarm will handle it');
+            continue;
+          }
+        }
+        // Auto-resume (2.1.56): a run the background killed mid-way restarts
+        // by itself on the same tab, skipping the pictures it already
+        // finished, instead of only showing an error. Limits: at most 2
+        // auto-resumes per run (loop guard), the tab must still be open on
+        // the SAME page, and at least one picture must already be finished
+        // (otherwise there is nothing to resume from).
+        const MAX_AUTO_RESUMES = 2;
+        const resumes = (rec && rec.resumes) || 0;
+        if (resumes < MAX_AUTO_RESUMES && rec && rec.tabId != null && rec.url) {
+          let resumed = false;
+          try {
+            const tab = await chrome.tabs.get(rec.tabId).catch(() => null);
+            if (tab && tab.url === rec.url) {
+              await chrome.scripting.executeScript({ target: { tabId: rec.tabId }, files: CONTENT_SCRIPT_FILES }).catch(() => {});
+              const r = await chrome.tabs.sendMessage(rec.tabId, { type: 'ct/list-images' }).catch(() => null);
+              const list = (r && r.images) || [];
+              const alreadyDone = list.filter(im => im && im.translated).length;
+              if (alreadyDone > 0) {
+                diagPush(`orphan auto-resume run ${orphanRunId} tab ${rec.tabId}: ${alreadyDone} already done (resume ${resumes + 1} of ${MAX_AUTO_RESUMES})`);
+                // Clear the dead run's record + keepalive alarm so it is
+                // not recovered again, then start the resumed run.
+                await clearRunRecord(orphanRunId);
+                try {
+                  if (typeof chrome !== 'undefined' && chrome.alarms) {
+                    const p = chrome.alarms.clear('ct-keepalive:' + orphanRunId);
+                    if (p && p.catch) p.catch(() => {});
+                  }
+                } catch {}
+                runPipeline(rec.tabId, { resume: true, resumeCount: resumes, auto: true }).catch(() => {});
+                resumed = true;
+              } else {
+                diagPush(`orphan auto-resume skipped run ${orphanRunId}: no picture finished yet`);
+              }
+            } else {
+              diagPush(`orphan auto-resume skipped run ${orphanRunId}: tab gone or page changed`);
+            }
+          } catch (e) {
+            diagPush('orphan auto-resume check failed run ' + orphanRunId + ': ' + String((e && e.message) || e).slice(0, 80));
+          }
+          if (resumed) {
+            diagPush('orphan recovery done run ' + orphanRunId + ' (auto-resumed)');
             continue;
           }
         }

@@ -1152,14 +1152,19 @@
     if (msg.type === 'ct/run-summary') {
       // End-of-run report from the worker: the popup is usually closed by
       // the time the last picture finishes, so the page pill carries the
-      // outcome (translated / failed / tiny images skipped).
+      // outcome (translated / failed / tiny images skipped). A resumed run
+      // says so and counts the pictures the dead run already finished.
       const n = (msg && msg.images) || 0;
       const failed = (msg && msg.failed) || [];
       const ignored = (msg && msg.ignored) || 0;
+      const resumed = !!(msg && msg.resumed);
+      const alreadyDone = (msg && msg.alreadyDone) || 0;
       if (failed.length) {
-        showPillError(`run finished — ${n} translated, ${failed.length} not: ` +
+        showPillError(`run finished${resumed ? ' (resumed)' : ''} — ${n} translated, ${failed.length} not: ` +
           failed.slice(0, 2).join('; ') + (failed.length > 2 ? ' …' : '') +
           ' — full list in the popup');
+      } else if (resumed) {
+        showPill(`comic-translate-4-free — resumed ✓ (${n} more translated, ${alreadyDone} already done)`);
       } else if (n > 1 || ignored) {
         showPill(`comic-translate-4-free — done ✓ (${n} translated` +
           (ignored ? `, ${ignored} tiny/hidden images skipped` : '') + ')');
