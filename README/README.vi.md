@@ -43,6 +43,7 @@ comic-translate-4-free tự động dịch manga và truyện tranh khi bạn du
 ## ✨ Tính năng
 
 - Dịch tự động — mở một trang manga trên một trang web được phép và bản dịch sẽ xuất hiện ngay tại chỗ, không cần bấm nút.
+- Mỗi hình ảnh trên trang — dịch tự động xử lý tất cả hình ảnh trên một trang (tối đa 50 hình mỗi lần chạy), không chỉ hình ảnh chính.
 - Nhấp chuột phải vào bất kỳ hình ảnh nào — chọn "Gửi đến comic-translate-4-free" để dịch một hình ảnh cụ thể, ngay cả khi nó nhỏ hơn kích thước tối thiểu.
 - 114 ngôn ngữ đích qua Google Translate, Azure Translator, hoặc máy chủ LM Studio cục bộ của riêng bạn.
 - Tự động phát hiện ngôn ngữ nguồn — tiếng Nhật, tiếng Anh, tiếng Trung giản thể/phồn thể được xác định tự động từ văn bản đã OCR.
@@ -80,7 +81,7 @@ Sau khi cài đặt, mở trang Cài đặt và nhấp một lần vào Tải xu
    ![Cấp quyền cho trang web từ cửa sổ bật lên](../docs/images/popup.png)
 
 2. Tải lại trang manga — nó bắt đầu dịch tự động khi trang tải. Một viên thuốc ở góc trên bên phải hiển thị tiến trình trực tiếp (Capturing → Detecting → OCR → …).
-3. Xong — hình ảnh của trang được thay thế ngay tại chỗ bằng bản dịch.
+3. Xong — các hình ảnh của trang được thay thế ngay tại chỗ bằng bản dịch.
 
 Mẹo:
 - Nhấp chuột phải vào bất kỳ hình ảnh nào → Gửi đến comic-translate-4-free để chỉ dịch hình ảnh đó.
@@ -117,8 +118,7 @@ Nếu tiện ích mở rộng này hữu ích với bạn, hãy cân nhắc hỗ
 ## ⚠️ Vấn đề đã biết
 
 - Chưa có OCR tiếng Hàn — ngôn ngữ nguồn là tiếng Nhật, tiếng Anh và tiếng Trung giản thể/phồn thể. (Tiếng Hàn vẫn có sẵn dưới dạng ngôn ngữ đích của bản dịch.)
-- Một hình ảnh trên mỗi trang cho dịch tự động (hình ảnh chính của trang). Dùng nhấp chuột phải → Gửi để dịch các hình khác.
-- Phiên lớn — dịch hàng chục hình ảnh trong một phiên có thể làm trình duyệt bị sập. Xóa bộ nhớ đệm của trang trong Cài đặt nếu điều này xảy ra.
+- Phiên lớn — dịch hàng chục hình ảnh trong một phiên có thể khởi động lại tiện ích mở rộng ở chế độ nền. Nếu điều đó xảy ra, quá trình chạy sẽ tự động tiếp tục từ chỗ đã dừng lại.
 - Firefox — các mô hình chạy trong trang nền (không có tài liệu offscreen), chia sẻ bộ nhớ với mọi thứ khác. Khởi động lại trình duyệt nếu bạn thấy "no available backend found".
 - Firefox chậm hơn Chrome — các tiện ích mở rộng của Firefox không thể dùng bộ nhớ dùng chung cho đa luồng (SharedArrayBuffer), vì vậy mô hình chạy trên một luồng CPU duy nhất. Đây là giới hạn của nền tảng Firefox, không phải lỗi của tiện ích mở rộng. ([Lỗi Mozilla 1673477](https://bugzilla.mozilla.org/show_bug.cgi?id=1673477)).
 - Google Translate sử dụng endpoint miễn phí không chính thức và có thể bị giới hạn tốc độ.

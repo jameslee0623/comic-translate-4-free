@@ -43,6 +43,7 @@ comic-translate-4-free menerjemahkan manga dan komik otomatis saat menjelajah. M
 ## ✨ Fitur
 
 - Terjemahan otomatis — buka halaman manga di situs yang diizinkan dan versi terjemahannya akan muncul di tempatnya, tanpa perlu mengeklik tombol.
+- Setiap gambar di halaman — terjemahan otomatis menangani semua gambar di sebuah halaman (hingga 50 per proses), bukan hanya gambar utama.
 - Klik kanan pada gambar apa pun — pilih "Kirim ke comic-translate-4-free" untuk menerjemahkan gambar tertentu, bahkan yang lebih kecil dari ukuran minimum.
 - 114 bahasa target melalui Google Translate, Azure Translator, atau server LM Studio lokal Anda sendiri.
 - Deteksi otomatis bahasa sumber — bahasa Jepang, Inggris, Tionghoa Sederhana/Tradisional dikenali secara otomatis dari teks hasil OCR.
@@ -80,7 +81,7 @@ Setelah menginstal, buka halaman Pengaturan dan klik Unduh semua model sekali (~
    ![Allow the site from the popup](../docs/images/popup.png)
 
 2. Muat ulang halaman manga — terjemahan dimulai secara otomatis saat halaman dimuat. Sebuah pil di kanan atas menunjukkan progres langsung (Capturing → Detecting → OCR → …).
-3. Selesai — gambar halaman diganti di tempatnya dengan versi terjemahan.
+3. Selesai — gambar-gambar halaman diganti di tempatnya dengan versi terjemahan.
 
 Tips:
 - Klik kanan pada gambar apa pun → Kirim ke comic-translate-4-free untuk menerjemahkan hanya gambar itu.
@@ -117,8 +118,7 @@ Jika ekstensi ini berguna bagi Anda, pertimbangkan untuk mendukung pengembangann
 ## ⚠️ Masalah yang Diketahui
 
 - Belum ada OCR Korea — bahasa sumbernya adalah Jepang, Inggris, dan Tionghoa Sederhana/Tradisional. (Bahasa Korea tetap tersedia sebagai bahasa target terjemahan.)
-- Satu gambar per halaman untuk terjemahan otomatis (gambar utama halaman). Gunakan klik kanan → Kirim untuk menerjemahkan yang lain.
-- Sesi besar — menerjemahkan puluhan gambar dalam satu sesi dapat membuat browser crash. Hapus cache halaman di Pengaturan jika hal ini terjadi.
+- Sesi besar — menerjemahkan puluhan gambar dalam satu sesi dapat memulai ulang ekstensi di latar belakang. Jika itu terjadi, proses akan dilanjutkan secara otomatis dari tempat terakhir berhenti.
 - Firefox — model berjalan di halaman latar belakang (tanpa dokumen offscreen), berbagi memori dengan yang lain. Restart browser jika Anda melihat "no available backend found".
 - Firefox lebih lambat daripada Chrome — ekstensi Firefox tidak dapat menggunakan memori bersama untuk multi-threading (SharedArrayBuffer), jadi model berjalan pada satu thread CPU. Ini adalah batasan platform Firefox, bukan bug ekstensi. ([Bug Mozilla 1673477](https://bugzilla.mozilla.org/show_bug.cgi?id=1673477)).
 - Google Translate menggunakan endpoint gratis tidak resmi dan mungkin dibatasi kecepatannya.

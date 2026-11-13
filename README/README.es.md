@@ -43,6 +43,7 @@ comic-translate-4-free traduce manga y cómics automáticamente mientras navegas
 ## ✨ Funciones
 
 - Traducción automática — abre una página de manga en un sitio permitido y la versión traducida aparece en su lugar, sin necesidad de hacer clic en ningún botón.
+- Cada imagen en la página — la traducción automática gestiona todas las imágenes de una página (hasta 50 por ejecución), no solo la imagen principal.
 - Clic derecho en cualquier imagen — elige "Enviar a comic-translate-4-free" para traducir una imagen concreta, incluso si es más pequeña que el tamaño mínimo.
 - 114 idiomas de destino con Google Translate, Azure Translator o tu propio servidor local de LM Studio.
 - Detección automática del idioma de origen — japonés, inglés, chino simplificado/tradicional se identifican automáticamente a partir del texto leído por OCR.
@@ -80,7 +81,7 @@ Después de instalar, abre la página de Ajustes y haz clic una vez en Descargar
    ![Permitir el sitio desde la ventana emergente](../docs/images/popup.png)
 
 2. Recarga la página de manga — empieza a traducir automáticamente cuando se carga la página. Una píldora en la parte superior derecha muestra el progreso en vivo (Capturing → Detecting → OCR → …).
-3. Listo — la imagen de la página se reemplaza en su lugar con la versión traducida.
+3. Listo — las imágenes de la página se reemplazan en su lugar con las versiones traducidas.
 
 Consejos:
 - Clic derecho en cualquier imagen → Enviar a comic-translate-4-free para traducir solo esa imagen.
@@ -117,8 +118,7 @@ Si esta extensión te resulta útil, considera apoyar su desarrollo:
 ## ⚠️ Problemas conocidos
 
 - Aún no hay OCR de coreano — los idiomas de origen son japonés, inglés y chino simplificado/tradicional. (El coreano sigue disponible como idioma de traducción.)
-- Una imagen por página para la traducción automática (la imagen principal de la página). Usa clic derecho → Enviar para traducir otras.
-- Sesiones grandes — traducir decenas de imágenes en una sesión puede hacer que el navegador se bloquee. Borra la caché de la página en Ajustes si esto ocurre.
+- Sesiones grandes — traducir decenas de imágenes en una sola sesión puede reiniciar la extensión en segundo plano. Si eso ocurre, la ejecución se reanuda automáticamente desde donde lo dejó.
 - Firefox — los modelos se ejecutan en la página en segundo plano (sin documentos offscreen), compartiendo memoria con todo lo demás. Reinicia el navegador si ves "no available backend found".
 - Firefox es más lento que Chrome — las extensiones de Firefox no pueden usar memoria compartida para multihilo (SharedArrayBuffer), por lo que el modelo se ejecuta en un solo hilo de CPU. Esto es un límite de la plataforma Firefox, no un error de la extensión. ([Bug de Mozilla 1673477](https://bugzilla.mozilla.org/show_bug.cgi?id=1673477)).
 - Google Translate usa el endpoint gratuito no oficial y puede tener límite de velocidad.

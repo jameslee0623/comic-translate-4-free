@@ -44,6 +44,7 @@ comic-translate-4-free translates manga and comic pages automatically as you bro
 ## ✨ Features
 
 - Automatic translation — open a manga page on an allowed site and the translated version appears in place, no button click needed.
+- Every picture on the page — auto-translate handles all pictures on a page (up to 50 per run), not just the main image.
 - Right-click any image — choose "Send to comic-translate-4-free" to translate a specific picture, even one smaller than the minimum size.
 - 114 target languages via Google Translate, Azure Translator, or your own local LM Studio server.
 - Source language auto-detect — Japanese, English, Simplified/Traditional Chinese identified automatically from the OCR'd text.
@@ -81,7 +82,7 @@ After installing, open the Settings page and click Download all models once (~35
    ![Allow the site from the popup](docs/images/popup.png)
 
 2. Reload the manga page — it starts translating automatically when the page loads. A pill in the top-right shows live progress (Capturing → Detecting → OCR → …).
-3. Done — the page's picture is replaced in place with the translated version.
+3. Done — the page's pictures are replaced in place with the translated versions.
 
 Tips:
 - Right-click any image → Send to comic-translate-4-free to translate just that picture.
@@ -118,8 +119,7 @@ If this extension is useful to you, consider supporting its development:
 ## ⚠️ Known Issues
 
 - No Korean OCR yet — source languages are Japanese, English, and Simplified/Traditional Chinese. (Korean remains available as a translation target.)
-- One picture per page for auto-translate (the page's main image). Use right-click → Send to translate others.
-- Large sessions — translating dozens of images in one session can crash the browser. Clear the page cache in Settings if this happens.
+- Large sessions — translating dozens of images in one session can restart the extension in the background. If that happens, the run resumes automatically from where it left off.
 - Firefox — models run in the background page (no offscreen documents), sharing memory with everything else. Restart the browser if you see "no available backend found".
 - Firefox is slower than Chrome — Firefox extensions cannot use shared memory for multi-threading (SharedArrayBuffer), so the model runs on one CPU thread. This is a Firefox platform limit, not an extension bug ([Mozilla bug 1673477](https://bugzilla.mozilla.org/show_bug.cgi?id=1673477)).
 - Google Translate uses the unofficial free endpoint and may be rate-limited.

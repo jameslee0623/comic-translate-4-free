@@ -43,6 +43,7 @@ comic-translate-4-free traduce automat manga și benzi desenate în timp ce navi
 ## ✨ Funcții
 
 - Traducere automată — deschide o pagină de manga pe un site permis, iar versiunea tradusă apare chiar acolo, fără să fie nevoie să apeși vreun buton.
+- Fiecare imagine de pe pagină — traducerea automată gestionează toate imaginile de pe o pagină (până la 50 pe rulare), nu doar imaginea principală.
 - Clic dreapta pe orice imagine — alege „Trimite la comic-translate-4-free” pentru a traduce o anumită imagine, chiar și una mai mică decât dimensiunea minimă.
 - 114 limbi țintă prin Google Translate, Azure Translator sau propriul tău server local LM Studio.
 - Detectare automată a limbii sursă — japoneza, engleza, chineza simplificată/tradițională sunt identificate automat din textul recunoscut prin OCR.
@@ -80,7 +81,7 @@ După instalare, deschide pagina Setări și apasă o dată Descarcă toate mode
    ![Allow the site from the popup](../docs/images/popup.png)
 
 2. Reîncarcă pagina de manga — începe să traducă automat când se încarcă pagina. O bulină în colțul din dreapta sus arată progresul live (Capturing → Detecting → OCR → …).
-3. Gata — imaginea paginii este înlocuită chiar acolo cu versiunea tradusă.
+3. Gata — imaginile paginii sunt înlocuite chiar acolo cu versiunile traduse.
 
 Sfaturi:
 - Clic dreapta pe orice imagine → Trimite la comic-translate-4-free pentru a traduce doar acea imagine.
@@ -117,8 +118,7 @@ Dacă această extensie îți este utilă, ia în considerare sprijinirea dezvol
 ## ⚠️ Probleme cunoscute
 
 - Încă nu există OCR pentru coreeană — limbile sursă sunt japoneza, engleza și chineza simplificată/tradițională. (Coreeana rămâne disponibilă ca limbă de traducere.)
-- O singură imagine pe pagină pentru traducerea automată (imaginea principală a paginii). Folosește clic dreapta → Trimite pentru a traduce celelalte imagini.
-- Sesiuni mari — traducerea a zeci de imagini într-o singură sesiune poate bloca browserul. Golește memoria cache a paginii în Setări, dacă se întâmplă acest lucru.
+- Sesiuni mari — traducerea a zeci de imagini într-o singură sesiune poate reporni extensia în fundal. Dacă se întâmplă asta, rularea reia automat de unde a rămas.
 - Firefox — modelele rulează în pagina de fundal (fără documente offscreen), împărțind memoria cu toate celelalte. Repornește browserul dacă vezi mesajul „no available backend found”.
 - Firefox este mai lent decât Chrome — extensiile Firefox nu pot folosi memoria partajată pentru multi-threading (SharedArrayBuffer), așa că modelul rulează pe un singur fir CPU. Aceasta este o limită a platformei Firefox, nu o eroare a extensiei. ([Bug Mozilla 1673477](https://bugzilla.mozilla.org/show_bug.cgi?id=1673477)).
 - Google Translate folosește endpointul gratuit neoficial și poate fi limitat ca rată.

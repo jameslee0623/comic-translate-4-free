@@ -43,6 +43,7 @@ comic-translate-4-free traduit mangas et BD automatiquement. Il lit japonais, an
 ## ✨ Fonctionnalités
 
 - Traduction automatique — ouvrez une page de manga sur un site autorisé et la version traduite apparaît sur place, sans avoir besoin de cliquer sur un bouton.
+- Chaque image sur la page — la traduction automatique gère toutes les images d'une page (jusqu'à 50 par exécution), pas seulement l'image principale.
 - Clic droit sur n'importe quelle image — choisissez « Envoyer vers comic-translate-4-free » pour traduire une image précise, même si elle est plus petite que la taille minimale.
 - 114 langues cibles via Google Translate, Azure Translator ou votre propre serveur local LM Studio.
 - Détection automatique de la langue source — le japonais, l'anglais, le chinois simplifié/traditionnel sont identifiés automatiquement à partir du texte lu par OCR.
@@ -80,7 +81,7 @@ Après l'installation, ouvrez la page Paramètres et cliquez une fois sur Télé
    ![Autoriser le site depuis la fenêtre popup](../docs/images/popup.png)
 
 2. Rechargez la page de manga — elle commence à traduire automatiquement quand la page se charge. Une pastille en haut à droite montre la progression en direct (Capturing → Detecting → OCR → …).
-3. Terminé — l'image de la page est remplacée sur place par la version traduite.
+3. Terminé — les images de la page sont remplacées sur place par les versions traduites.
 
 Conseils :
 - Clic droit sur n'importe quelle image → Envoyer vers comic-translate-4-free pour traduire juste cette image.
@@ -117,8 +118,7 @@ Si cette extension vous est utile, pensez à soutenir son développement :
 ## ⚠️ Problèmes connus
 
 - Pas encore d'OCR coréen — les langues sources sont le japonais, l'anglais et le chinois simplifié/traditionnel. (Le coréen reste disponible comme langue de traduction.)
-- Une image par page pour la traduction automatique (l'image principale de la page). Utilisez clic droit → Envoyer pour traduire les autres.
-- Grosses sessions — traduire des dizaines d'images en une session peut faire planter le navigateur. Videz le cache de la page dans Paramètres si cela arrive.
+- Grosses sessions — traduire des dizaines d'images en une session peut redémarrer l'extension en arrière-plan. Si cela arrive, l'exécution reprend automatiquement là où elle s'était arrêtée.
 - Firefox — les modèles tournent dans la page d'arrière-plan (sans documents offscreen), en partageant la mémoire avec tout le reste. Redémarrez le navigateur si vous voyez « no available backend found ».
 - Firefox est plus lent que Chrome — les extensions Firefox ne peuvent pas utiliser la mémoire partagée pour le multithreading (SharedArrayBuffer), donc le modèle tourne sur un seul thread CPU. C'est une limite de la plateforme Firefox, pas un bug de l'extension. ([Bug Mozilla 1673477](https://bugzilla.mozilla.org/show_bug.cgi?id=1673477)).
 - Google Translate utilise le point de terminaison gratuit non officiel et peut être limité en débit.

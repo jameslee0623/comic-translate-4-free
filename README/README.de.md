@@ -43,6 +43,7 @@ comic-translate-4-free übersetzt Manga und Comics automatisch. Es liest Japanis
 ## ✨ Funktionen
 
 - Automatische Übersetzung — öffne eine Mangaseite auf einer erlaubten Website, und die übersetzte Version erscheint an Ort und Stelle, ganz ohne Klick.
+- Jedes Bild auf der Seite — die automatische Übersetzung verarbeitet alle Bilder einer Seite (bis zu 50 pro Durchlauf), nicht nur das Hauptbild.
 - Rechtsklick auf ein beliebiges Bild — wähle „An comic-translate-4-free senden“, um ein bestimmtes Bild zu übersetzen, auch wenn es kleiner als die Mindestgröße ist.
 - 114 Zielsprachen über Google Translate, Azure Translator oder deinen eigenen lokalen LM-Studio-Server.
 - Automatische Quellspracherkennung — Japanisch, Englisch, Vereinfachtes/Traditionelles Chinesisch werden automatisch aus dem per OCR gelesenen Text erkannt.
@@ -80,7 +81,7 @@ Firefox:
    ![Die Website über das Popup freigeben](../docs/images/popup.png)
 
 2. Lade die Mangaseite neu — sie beginnt automatisch zu übersetzen, sobald die Seite lädt. Eine Pille oben rechts zeigt den Live-Fortschritt (Capturing → Detecting → OCR → …).
-3. Fertig — das Bild der Seite wird an Ort und Stelle durch die übersetzte Version ersetzt.
+3. Fertig — die Bilder der Seite werden an Ort und Stelle durch die übersetzten Versionen ersetzt.
 
 Tipps:
 - Rechtsklick auf ein beliebiges Bild → An comic-translate-4-free senden, um nur dieses Bild zu übersetzen.
@@ -117,8 +118,7 @@ Wenn dir diese Erweiterung nützlich ist, erwäge, ihre Entwicklung zu unterstü
 ## ⚠️ Bekannte Probleme
 
 - Noch kein koreanisches OCR — Quellsprachen sind Japanisch, Englisch und Vereinfachtes/Traditionelles Chinesisch. (Koreanisch bleibt als Übersetzungssprache verfügbar.)
-- Ein Bild pro Seite für die automatische Übersetzung (das Hauptbild der Seite). Verwende Rechtsklick → Senden, um andere zu übersetzen.
-- Große Sitzungen — das Übersetzen von Dutzenden Bildern in einer Sitzung kann den Browser zum Absturz bringen. Leere in diesem Fall den Seiten-Cache in den Einstellungen.
+- Große Sitzungen — das Übersetzen von Dutzenden Bildern in einer Sitzung kann die Erweiterung im Hintergrund neu starten. Wenn das passiert, wird der Lauf automatisch von dort fortgesetzt, wo er aufgehört hat.
 - Firefox — die Modelle laufen auf der Hintergrundseite (ohne Offscreen-Dokumente) und teilen sich den Speicher mit allem anderen. Starte den Browser neu, wenn du „no available backend found“ siehst.
 - Firefox ist langsamer als Chrome — Firefox-Erweiterungen können keinen gemeinsamen Speicher für Multithreading (SharedArrayBuffer) verwenden, daher läuft das Modell auf einem einzigen CPU-Thread. Das ist eine Grenze der Firefox-Plattform, kein Fehler der Erweiterung. ([Mozilla-Bug 1673477](https://bugzilla.mozilla.org/show_bug.cgi?id=1673477)).
 - Google Translate nutzt den inoffiziellen kostenlosen Endpunkt und kann ratenbegrenzt sein.
