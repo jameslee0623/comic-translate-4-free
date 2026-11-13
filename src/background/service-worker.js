@@ -1189,49 +1189,49 @@ async function runPipeline(tabId, opts = {}) {
     // bad picture never kills the rest of the run.
     const { images, skipped, skippedDetail, ignored } = await getPipelineImages(tabId, settings, tabUrl, { srcUrl: manualSrc });
     if (skipped.length) diagPush('skipping page images: ' + skipped.join(' | ').slice(0, 300));
-    // Permission gate: check EVERY picture's host before the run starts.
-    // A picture whose host has no permission fails the background-tab read
-    // and is lost for that run — there is no second chance, so the run must
-    // not start until every host is permitted. Record the missing hosts (the
-    // popup offers them) and stop with a clear error telling the user to
-    // grant access first, then run again.
+    // Permission gate: ask for ALL possible permissions ONCE, BEFORE the run
+    // starts — the page host and every picture host (exact + wildcard), in a
+    // single permissions.request. Do not rely on the contains check to decide
+    // what is missing: it said i4 was permitted, yet the fallback tab still
+    // failed there with "Missing host permission". permissions.request only
+    // prompts for what is not yet granted, so if everything is already
+    // allowed it resolves at once and the run proceeds. If the prompt cannot
+    // show or the user denies it, re-check and fall back to the gate error
+    // so the popup still offers the grant button.
+    const pageHost = hostOf(tabUrl) || '';
+    const allOrigins = new Set();
+    if (pageHost) for (const o of imageHostOrigins(pageHost)) allOrigins.add(o);
+    for (const im of images || []) {
+      try {
+        const h = new URL(im.src).hostname.toLowerCase();
+        if (h) for (const o of imageHostOrigins(h)) allOrigins.add(o);
+      } catch { /* unparsable src — skipped by the contains check below */ }
+    }
+    let promptGranted = false;
+    try {
+      promptGranted = await chrome.permissions.request({ origins: [...allOrigins] });
+      if (promptGranted) diagPush('permission gate: granted via prompt (all hosts)');
+    } catch (e) {
+      diagPush('permission gate: prompt failed: ' + String((e && e.message) || e).slice(0, 80));
+    }
     const missingHosts = await checkImageHostPermissions(images);
     if (missingHosts.length) {
-      // Ask for ALL missing hosts in ONE prompt, BEFORE the run starts —
-      // the site host and every picture host packed into a single
-      // permissions.request. If granted, the run proceeds; nothing is lost
-      // and there is no second granting. If the prompt cannot show (no user
-      // gesture, or the user denies it), fall back to the gate error so the
-      // popup still offers the grant button.
-      let granted = false;
+      for (const h of missingHosts) await recordMissingHost('https://' + h + '/');
+      diagPush('permission gate: missing host permission for ' + missingHosts.join(', '));
+      const label = displayHost(missingHosts[0]);
       try {
-        const pageHost = hostOf(tabUrl) || '';
-        const origins = new Set();
-        for (const h of missingHosts) for (const o of imageHostOrigins(h)) origins.add(o);
-        if (pageHost) for (const o of imageHostOrigins(pageHost)) origins.add(o);
-        granted = await chrome.permissions.request({ origins: [...origins] });
-        if (granted) diagPush('permission gate: granted via prompt for ' + missingHosts.join(', '));
-      } catch (e) {
-        diagPush('permission gate: prompt failed: ' + String((e && e.message) || e).slice(0, 80));
-      }
-      if (!granted) {
-        for (const h of missingHosts) await recordMissingHost('https://' + h + '/');
-        diagPush('permission gate: missing host permission for ' + missingHosts.join(', '));
-        const label = displayHost(missingHosts[0]);
-        try {
-          await chrome.tabs.sendMessage(tabId, {
-            type: MSG.PILL_NOTICE,
-            text: `Pictures on ${label} need permission — open the popup and tap Grant access, then run translate again.`,
-            sticky: true,
-          });
-        } catch { /* pill is best-effort */ }
-        const gateErr = new Error(
-          `Pictures on ${label} need permission — open the extension popup and tap "Grant access", then run translate again. (${missingHosts.length} host${missingHosts.length > 1 ? 's' : ''} missing permission)`,
-        );
-        gateErr.grantHost = missingHosts[0];
-        gateErr.grantHosts = missingHosts;
-        throw gateErr;
-      }
+        await chrome.tabs.sendMessage(tabId, {
+          type: MSG.PILL_NOTICE,
+          text: `Pictures on ${label} need permission — open the popup and tap Grant access, then run translate again.`,
+          sticky: true,
+        });
+      } catch { /* pill is best-effort */ }
+      const gateErr = new Error(
+        `Pictures on ${label} need permission — open the extension popup and tap "Grant access", then run translate again. (${missingHosts.length} host${missingHosts.length > 1 ? 's' : ''} missing permission)`,
+      );
+      gateErr.grantHost = missingHosts[0];
+      gateErr.grantHosts = missingHosts;
+      throw gateErr;
     } else {
       // Gate passed — log which hosts were checked, so a pass is visible
       // in the log too (not only a block). Without this, a run that
@@ -2065,7 +2065,7 @@ async function runPipeline(tabId, opts = {}) {
     // capture.
     try {
       const missed = [...(skippedDetail || []), ...missedDetail];
-      diagPush(`missed ${missed.length} of ${images.length + missed.length} picked pictures (${doneImgs.length} translated):`);
+      diagPush(`missed ${missed.length} of ${images.length + (skippedDetail || []).length} picked pictures (${doneImgs.length} translated):`);
       for (const m of missed) diagPush(`missed ${m.idx ? '#' + m.idx + ' ' : ''}${m.w}x${m.h} ${hostOf(m.src) || '?'} ${m.reason}`);
     } catch { /* accounting is best-effort — the run already succeeded */ }
     // Surface the outcome on the PAGE too: runs take minutes and the popup is
