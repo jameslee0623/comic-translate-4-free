@@ -11,7 +11,7 @@ import {
 } from '../shared/textblock.js';
 import { toGrayU8, meanBrightness, renderScale, resizeBilinearRGBA } from '../shared/image-ops.js';
 import { pixelPut, pixelTake, pixelDrop, pixelPruneRun } from '../shared/pixel-bus.js';
-import { generateMask } from '../shared/mask.js';
+import { generateMask, detectContentMaskInBbox } from '../shared/mask.js';
 import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL, BACKEND_SHORT_LABEL } from './translators.js';
 import { detectPageLang } from '../shared/lang-detect.js';
 import { mlHostAlive, ensureMlHost, callMl, cancelMlForRun, runGpuInpaint, cancelGpuInpaint, runChromeGpuInpaint, cancelChromeGpuInpaint, notifyChromeGpuProgress, makeCanvas, canvasToBlob, directHandlers, WEBP_TYPE, WEBP_QUALITY, setMlAlarmRecoveryHook } from './ml-bridge.js';
@@ -615,11 +615,18 @@ function buildBlocks(detections, w, h, rgba, settings) {
   // missed the text). Without this, that text is never translated — on
   // image 18/18 the detector found 21 boxes (12 bubbles + 9 texts) but
   // only 9 blocks, because 6 bubbles had no text box inside them.
-  // Promote each such bubble to a block (the bubble box itself is the
-  // text region; OCR reads the words inside it). A bubble that already
-  // has a text box is skipped, so its text is not duplicated. If OCR
-  // finds no text in a promoted bubble (false-positive outline), the
-  // block is skipped downstream by the empty-text guard.
+  // Promote each such bubble to a text_bubble block. The OCR crop must
+  // be tight around the WORDS, not the whole bubble: the full bubble
+  // box is mostly empty space and border, so Baberu sees the text
+  // small and misreads it (low-score text already reads poorly, and a
+  // loose crop makes it worse — misread words cannot be translated, so
+  // the output comes out mixed English and Chinese). Tighten the block
+  // to the text content inside the bubble (mask.js content detection,
+  // which already excludes the bubble outline); fall back to the full
+  // bubble box if no content is found. A bubble that already has a
+  // text box is skipped, so its text is not duplicated. If OCR finds
+  // no text in a promoted bubble (false-positive outline), the block
+  // is skipped downstream by the empty-text guard.
   for (const bb of bubbles) {
     const covered = blocks.some(b => {
       const [x1, y1, x2, y2] = b.xyxy;
@@ -627,7 +634,8 @@ function buildBlocks(detections, w, h, rgba, settings) {
       return cx >= bb[0] && cx <= bb[2] && cy >= bb[1] && cy <= bb[3];
     });
     if (covered) continue;
-    const b = makeTextBlock({ xyxy: clampBox(bb, w, h) });
+    const tight = tightenBubbleToText(rgba, w, h, bb);
+    const b = makeTextBlock({ xyxy: clampBox(tight || bb, w, h) });
     b.text_class = 'text_bubble';
     b.bubble_xyxy = bb;
     b.font_color = extractFgColor(rgba, w, b.xyxy);
@@ -636,6 +644,32 @@ function buildBlocks(detections, w, h, rgba, settings) {
     blocks.push(b);
   }
   return sortBlocks(blocks, true);
+}
+
+// Tighten a bubble box to the words inside it (page coords), for the
+// OCR crop of a promoted bubble. Uses the mask module's content
+// detection (Otsu + connected components), which drops the bubble
+// outline (it touches the crop edge and is one large component) and
+// keeps the text. Returns null when no content is found.
+function tightenBubbleToText(rgba, w, h, bubbleXyxy) {
+  const [bx1, by1, bx2, by2] = bubbleXyxy.map(v => Math.round(v));
+  const cx1 = Math.max(0, bx1), cy1 = Math.max(0, by1);
+  const cx2 = Math.min(w, bx2), cy2 = Math.min(h, by2);
+  if (cx2 <= cx1 || cy2 <= cy1) return null;
+  const crop = cropRGBA(rgba, w, cx1, cy1, cx2, cy2);
+  const mask = detectContentMaskInBbox(crop.data, crop.w, crop.h);
+  let x1 = crop.w, y1 = crop.h, x2 = -1, y2 = -1;
+  for (let y = 0; y < crop.h; y++) {
+    for (let x = 0; x < crop.w; x++) {
+      if (!mask[y * crop.w + x]) continue;
+      if (x < x1) x1 = x;
+      if (x > x2) x2 = x;
+      if (y < y1) y1 = y;
+      if (y > y2) y2 = y;
+    }
+  }
+  if (x2 < 0) return null;
+  return [cx1 + x1, cy1 + y1, cx1 + x2 + 1, cy1 + y2 + 1];
 }
 
 // ---------------------------------------------------------------- debug helpers
