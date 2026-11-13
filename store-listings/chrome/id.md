@@ -8,35 +8,48 @@ Terjemahkan manga & komik di browser Anda. Membaca Jepang, Inggris, Tionghoa Sed
 
 ## Detailed description
 
-📖 **Baca manga dalam bahasamu — langsung di browser.**
+📖 Baca manga dalam bahasamu!
 
-comic-translate-4-free menerjemahkan halaman komik dan manga secara otomatis saat Anda menjelajah. Buka sebuah halaman, dan versi terjemahannya menggantikan gambar aslinya di tempatnya — gelembung percakapan terisi dengan bahasa Anda, tanpa perlu mengeklik apa pun.
+comic-translate-4-free menerjemahkan manga dan komik otomatis saat menjelajah. Membaca Jepang, Inggris, Tionghoa Sederhana/Tradisional (deteksi otomatis), dan menerjemahkan ke 114 bahasa, mengganti gambar di tempatnya.
 
-**Cara kerjanya**
+✨ Fitur
+- Terjemahan otomatis — buka halaman manga di situs yang diizinkan dan versi terjemahannya akan muncul di tempatnya, tanpa perlu mengeklik tombol.
+- Setiap gambar di halaman — terjemahan otomatis menangani semua gambar di sebuah halaman (hingga 50 per proses), bukan hanya gambar utama.
+- Klik kanan pada gambar apa pun — pilih "Kirim ke comic-translate-4-free" untuk menerjemahkan gambar tertentu, bahkan yang lebih kecil dari ukuran minimum.
+- 114 bahasa target melalui Google Translate, Azure Translator, atau server LM Studio lokal Anda sendiri.
+- Deteksi otomatis bahasa sumber — bahasa Jepang, Inggris, Tionghoa Sederhana/Tradisional dikenali secara otomatis dari teks hasil OCR.
+- Dukungan strip panjang / webtoon — halaman tinggi diproses dalam segmen yang tumpang tindih sehingga teks tetap tajam.
+- 17 bahasa UI — antarmuka ekstensi mengikuti pengaturan bahasa browser Anda.
 
-1. Ekstensi menemukan setiap gambar di halaman dan menangkapnya.
-2. Detektor AI di perangkat menemukan setiap gelembung percakapan dan blok teks.
-3. OCR yang dilatih manga membaca teksnya (Jepang, Inggris, Tionghoa Sederhana dan Tradisional — dengan deteksi bahasa otomatis).
-4. Teks aslinya dihapus dengan bersih melalui inpainting AI.
-5. Mesin terjemahan pilihan Anda menampilkan hasilnya kembali ke dalam gelembung, dengan ukuran yang pas.
+🔒 Privasi
+- AI berjalan di komputer Anda. Deteksi gelembung, OCR, dan inpainting semuanya berjalan secara lokal di browser Anda. Deteksi dan OCR berjalan melalui WebAssembly. Inpainting berjalan di GPU di Chrome (dengan fallback WebAssembly), dan melalui WebAssembly di Firefox. Halaman Anda tidak pernah meninggalkan perangkat Anda.
+- Hanya teks terjemahan yang dikirim keluar — hanya string yang diekstrak yang dikirim ke layanan terjemahan yang Anda pilih (Google / Azure / LM Studio lokal Anda).
+- Tanpa akun, tanpa pelacakan, tanpa telemetri. Semua pengaturan dan model yang di-cache tetap berada di penyimpanan lokal browser Anda.
 
-**Privasi diutamakan: AI berjalan di komputer Anda**
+💡 Cara Menggunakan
+- Izinkan situsnya terlebih dahulu — klik ikon ekstensi dan tekan Izinkan situs ini (atau aktifkan Izinkan semua situs). Terjemahan hanya berjalan di tempat Anda memberikan izin.
 
-Deteksi gelembung dan OCR berjalan secara lokal di browser Anda melalui WebAssembly, dan inpainting berjalan di GPU Anda (dengan fallback WebAssembly) — halaman Anda tidak pernah meninggalkan perangkat Anda. Hanya teks yang diekstrak yang dikirim ke layanan terjemahan yang Anda pilih.
+- Muat ulang halaman manga — terjemahan dimulai secara otomatis saat halaman dimuat. Sebuah pil di kanan atas menunjukkan progres langsung (Capturing → Detecting → OCR → …).
+- Selesai — gambar-gambar halaman diganti di tempatnya dengan versi terjemahan.
 
-**Fitur**
+Tips:
+- Klik kanan pada gambar apa pun → Kirim ke comic-translate-4-free untuk menerjemahkan hanya gambar itu.
 
-- Terjemahan otomatis saat halaman dimuat — tanpa perlu menekan tombol
-- Menerjemahkan setiap gambar di halaman (hingga 50 per proses), bukan hanya gambar utama
-- Klik kanan pada gambar apa pun → "Kirim ke comic-translate-4-free" untuk menerjemahkannya langsung
-- 114 bahasa target melalui Google Translate, Azure Translator, atau server LM Studio lokal Anda sendiri
-- Deteksi otomatis bahasa sumber
-- Dukungan strip panjang / webtoon
-- Berfungsi di situs yang memblokir unduhan otomatis (melalui fallback tab latar belakang)
-- Popup dan pengaturan bertema gelap, kontrol akses per situs
-- Mode debug menampilkan setiap tahap pipeline untuk pemecahan masalah
+- Jika sebuah situs memblokir unduhan (HTTP 403), ekstensi akan otomatis mencoba lagi melalui tab latar belakang.
+- Pilih mesin terjemahan Anda di Pengaturan: Google (gratis, tanpa kunci), Azure Translator (ajukan kunci di bawah — 2 jt karakter/bulan gratis), atau LM Studio (server lokal).
+- Aktifkan Mode debug (pemeriksa tahap) di Pengaturan untuk memeriksa setiap tahap pipeline.
 
-**Gratis untuk penggunaan nonkomersial**
+⚠️ Masalah yang Diketahui
+- Belum ada OCR Korea — bahasa sumbernya adalah Jepang, Inggris, dan Tionghoa Sederhana/Tradisional. (Bahasa Korea tetap tersedia sebagai bahasa target terjemahan.)
+- Sesi besar — menerjemahkan puluhan gambar dalam satu sesi dapat memulai ulang ekstensi di latar belakang. Jika itu terjadi, proses akan dilanjutkan secara otomatis dari tempat terakhir berhenti.
+- Firefox — model berjalan di halaman latar belakang (tanpa dokumen offscreen), berbagi memori dengan yang lain. Restart browser jika Anda melihat "no available backend found".
+- Firefox lebih lambat daripada Chrome — ekstensi Firefox tidak dapat menggunakan memori bersama untuk multi-threading (SharedArrayBuffer), jadi model berjalan pada satu thread CPU. Ini adalah batasan platform Firefox, bukan bug ekstensi. (Bug Mozilla 1673477).
+- Google Translate menggunakan endpoint gratis tidak resmi dan mungkin dibatasi kecepatannya.
 
-Berdilisensi di bawah PolyForm Noncommercial License 1.0.0. Tanpa akun, tanpa langganan, tanpa pelacakan.
+📄 Pemberitahuan pihak ketiga
+Proyek ini terinspirasi oleh ogkalu2/comic-translate — detektor gelembung/teks dan inpainter LaMa yang dilatih manga adalah ekspor ONNX-nya, dan logika inferensinya diporting darinya. (OCR menggunakan Baberu oleh genshiai-daichi.)
+
+Pustaka yang dibundel, kode yang diporting, dan model yang diunduh saat runtime dicantumkan beserta lisensinya di THIRD-PARTY-NOTICES.md.
+
+PolyForm Noncommercial License 1.0.0 — lihat LICENSE.
 https://github.com/jameslee0623/comic-translate-4-free

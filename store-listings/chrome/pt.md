@@ -8,35 +8,48 @@ Traduza mangás e quadrinhos no seu navegador. Lê japonês, inglês, chinês si
 
 ## Detailed description
 
-📖 **Leia mangás no seu idioma — diretamente no navegador.**
+📖 Leia mangá no seu idioma!
 
-comic-translate-4-free traduz páginas de quadrinhos e mangás automaticamente enquanto você navega. Abra uma página, e a versão traduzida substitui a imagem original no lugar — balões de fala cheios do seu idioma, sem clicar em nada.
+comic-translate-4-free traduz mangá e quadrinhos automaticamente enquanto você navega. Ele lê japonês, inglês, chinês simplificado/tradicional (detecção automática) e traduz para 114 idiomas, substituindo a imagem no lugar.
 
-**Como funciona**
+✨ Recursos
+- Tradução automática — abra uma página de mangá em um site permitido e a versão traduzida aparece no lugar, sem precisar clicar em nenhum botão.
+- Cada imagem na página — a tradução automática cuida de todas as imagens da página (até 50 por execução), não apenas a imagem principal.
+- Clique com o botão direito em qualquer imagem — escolha "Enviar para comic-translate-4-free" para traduzir uma imagem específica, mesmo que seja menor que o tamanho mínimo.
+- 114 idiomas de destino via Google Translate, Azure Translator ou o seu próprio servidor local LM Studio.
+- Detecção automática do idioma de origem — japonês, inglês, chinês simplificado/tradicional identificados automaticamente a partir do texto lido por OCR.
+- Suporte a tiras longas / webtoon — páginas altas são processadas em segmentos sobrepostos para que o texto fique nítido.
+- 17 idiomas de interface — a interface da extensão segue a configuração de idioma do seu navegador.
 
-1. A extensão encontra todas as imagens da página e as captura.
-2. Um detector de IA no dispositivo localiza cada balão de fala e cada bloco de texto.
-3. O OCR treinado em mangá lê o texto (japonês, inglês, chinês simplificado e tradicional — com detecção automática do idioma).
-4. O texto original é removido limpamente com inpainting de IA.
-5. O mecanismo de tradução da sua escolha devolve o resultado aos balões, com o tamanho ajustado.
+🔒 Privacidade
+- A IA roda na sua máquina. A detecção de balões, o OCR e o inpainting rodam todos localmente no seu navegador. A detecção e o OCR rodam via WebAssembly. O inpainting roda na GPU no Chrome (com fallback para WebAssembly) e via WebAssembly no Firefox. Suas páginas nunca saem do seu dispositivo.
+- Apenas o texto traduzido é enviado — apenas as strings extraídas vão para o serviço de tradução que você escolher (Google / Azure / seu LM Studio local).
+- Sem conta, sem rastreamento, sem telemetria. Todas as configurações e modelos em cache ficam no armazenamento local do seu navegador.
 
-**Privacidade em primeiro lugar: a IA roda na sua máquina**
+💡 Como usar
+- Permita o site primeiro — clique no ícone da extensão e pressione Permitir este site (ou ative Permitir todos os sites). A tradução só roda onde você concedeu permissão.
 
-A detecção de balões e o OCR rodam localmente no seu navegador via WebAssembly, e o inpainting roda na sua GPU (com fallback para WebAssembly) — suas páginas nunca saem do seu dispositivo. Apenas o texto extraído é enviado para o serviço de tradução que você escolher.
+- Recarregue a página do mangá — ela começa a traduzir automaticamente ao carregar. Uma pílula no canto superior direito mostra o progresso ao vivo (Capturing → Detecting → OCR → …).
+- Pronto — as imagens da página são substituídas no lugar pelas versões traduzidas.
 
-**Recursos**
+Dicas:
+- Clique com o botão direito em qualquer imagem → Enviar para comic-translate-4-free para traduzir só aquela imagem.
 
-- Tradução automática ao carregar as páginas — sem apertar nenhum botão
-- Traduz todas as imagens da página (até 50 por execução), não apenas a imagem principal
-- Clique com o botão direito em qualquer imagem → "Enviar para comic-translate-4-free" para traduzi-la diretamente
-- 114 idiomas de destino via Google Translate, Azure Translator ou o seu próprio servidor local LM Studio
-- Detecção automática do idioma de origem
-- Suporte a tiras longas / webtoon
-- Funciona em sites que bloqueiam downloads automáticos (nova tentativa por meio de uma aba em segundo plano)
-- Popup e configurações com tema escuro, controles de acesso por site
-- O Modo de depuração mostra cada etapa do pipeline para solução de problemas
+- Se um site bloquear downloads (HTTP 403), a extensão tenta novamente automaticamente por meio de uma aba em segundo plano.
+- Escolha seu mecanismo de tradução em Configurações: Google (grátis, sem chave), Azure Translator (solicite as chaves abaixo — 2 milhões de caracteres/mês grátis) ou LM Studio (servidor local).
+- Ative o Modo de depuração (inspetor de etapas) em Configurações para inspecionar cada etapa do pipeline.
 
-**Grátis para uso não comercial**
+⚠️ Problemas conhecidos
+- Ainda não há OCR de coreano — os idiomas de origem são japonês, inglês e chinês simplificado/tradicional. (O coreano continua disponível como idioma de tradução.)
+- Sessões grandes — traduzir dezenas de imagens em uma sessão pode reiniciar a extensão em segundo plano. Se isso acontecer, a execução retoma automaticamente de onde parou.
+- Firefox — os modelos rodam na página de fundo (sem documentos offscreen), compartilhando memória com todo o resto. Reinicie o navegador se vir "no available backend found".
+- O Firefox é mais lento que o Chrome — as extensões do Firefox não podem usar memória compartilhada para multithreading (SharedArrayBuffer), então o modelo roda em um único thread de CPU. Isso é um limite da plataforma Firefox, não um bug da extensão. (Bug da Mozilla 1673477).
+- O Google Translate usa o endpoint gratuito não oficial e pode ter limite de taxa.
 
-Licenciado sob a PolyForm Noncommercial License 1.0.0. Sem conta, sem assinatura, sem rastreamento.
+📄 Avisos de terceiros
+Este projeto é inspirado em ogkalu2/comic-translate — o detector de balões/texto e o inpainter LaMa treinado com mangá são suas exportações ONNX, e a lógica de inferência foi portada dele. (O OCR usa Baberu de genshiai-daichi.)
+
+As bibliotecas incluídas, o código portado e os modelos baixados em tempo de execução estão listados com suas licenças em THIRD-PARTY-NOTICES.md.
+
+PolyForm Noncommercial License 1.0.0 — ver LICENSE.
 https://github.com/jameslee0623/comic-translate-4-free
