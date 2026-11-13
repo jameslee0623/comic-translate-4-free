@@ -2525,46 +2525,99 @@ async function fallbackCaptureViaTab(origTabId, imageUrl) {
   const notice = (text, sticky) =>
     chrome.tabs.sendMessage(origTabId, { type: MSG.PILL_NOTICE, text, sticky }).catch(() => {});
   await notice('Direct download blocked — reading the image in a background tab…', true);
-  let newTabId = null;
+  // Parse the image URL once for the failure log (host + path).
+  let imgHost = '', imgPath = '';
+  try { const u = new URL(imageUrl); imgHost = u.host; imgPath = u.pathname; } catch {}
+  // Log a failed attempt with everything related: the picture's host/path,
+  // the tab's real host/path (redirect target or error page), and the error.
+  // "Missing host permission" alone says nothing — the tab URL names
+  // where the tab actually was when the script could not run.
+  const logFailure = (attemptNo, e) => {
+    const tabUrl = (e && e.tabUrl) || '';
+    let tabHost = '', tabPath = '';
+    if (tabUrl) {
+      try {
+        const u = new URL(tabUrl);
+        if (u.host) { tabHost = u.host; tabPath = u.pathname; }
+        else tabHost = tabUrl.slice(0, 120); // e.g. about:neterror — no host, keep the whole URL
+      } catch { tabHost = tabUrl; }
+    } else tabHost = '(unknown)';
+    diagPush(`background-tab read failed (attempt ${attemptNo}): image ${imgHost}${imgPath} tab ${tabHost}${tabPath} err ${String((e && e.message) || e).slice(0, 120)}`);
+  };
+  const isMissingHost = (e) => /Missing host permission for the tab/i.test(String((e && e.message) || e));
+  // One attempt: open the image in a background tab, wait for the picture
+  // to load, inject the content script and read the pixels.
+  const attempt = async () => {
+    let newTabId = null;
+    try {
+      const newTab = await chrome.tabs.create({ url: imageUrl, active: false });
+      if (!newTab || newTab.id == null) throw new Error('could not open background tab');
+      newTabId = newTab.id;
+      // Wait for the image document to finish loading (its <img> is the page).
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('timed out waiting for the image tab to load')), 30000);
+        const listener = (tabId, changeInfo) => {
+          if (tabId === newTabId && changeInfo.status === 'complete') {
+            clearTimeout(timeout);
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(listener);
+        // Already loaded (fast cache hit): don't wait for an event that fired.
+        chrome.tabs.get(newTabId).then(t => {
+          if (t && t.status === 'complete') {
+            clearTimeout(timeout);
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }
+        }).catch(() => {});
+      });
+      // The tab is 'complete' — read its real URL now. If the server
+      // refused the picture the tab is on an error page (about:neterror),
+      // not the picture, and no script can run there. A redirect to
+      // another http(s) address is fine — the reader matches the single
+      // picture on the page — so only a non-http(s) tab URL fails here.
+      let tabUrl = '';
+      try { const t = await chrome.tabs.get(newTabId); tabUrl = (t && t.url) || ''; } catch {}
+      if (tabUrl && !/^https?:\/\//i.test(tabUrl)) {
+        const e = new Error('Missing host permission for the tab');
+        e.tabUrl = tabUrl;
+        throw e;
+      }
+      await chrome.scripting.executeScript({ target: { tabId: newTabId }, files: CONTENT_SCRIPT_FILES });
+      const p = await chrome.tabs.sendMessage(newTabId, { type: 'ct/get-image-pixels', srcUrl: imageUrl });
+      if (!p || !p.ok || typeof p.dataUrl !== 'string') {
+        throw new Error((p && p.error) || 'could not read the image');
+      }
+      return await dataUrlToRGBA(p.dataUrl);
+    } catch (e) {
+      // Attach the tab's real URL (if we can still read it) so the
+      // failure log shows where the tab actually was.
+      if (e && !e.tabUrl && newTabId != null) {
+        try { const t = await chrome.tabs.get(newTabId); if (t && t.url) e.tabUrl = t.url; } catch {}
+      }
+      throw e;
+    } finally {
+      if (newTabId != null) await chrome.tabs.remove(newTabId).catch(() => {});
+    }
+  };
   try {
-    const newTab = await chrome.tabs.create({ url: imageUrl, active: false });
-    if (!newTab || newTab.id == null) throw new Error('could not open background tab');
-    newTabId = newTab.id;
-    // Wait for the image document to finish loading (its <img> is the page).
-    await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('timed out waiting for the image tab to load')), 30000);
-      const listener = (tabId, changeInfo) => {
-        if (tabId === newTabId && changeInfo.status === 'complete') {
-          clearTimeout(timeout);
-          chrome.tabs.onUpdated.removeListener(listener);
-          resolve();
-        }
-      };
-      chrome.tabs.onUpdated.addListener(listener);
-      // Already loaded (fast cache hit): don't wait for an event that fired.
-      chrome.tabs.get(newTabId).then(t => {
-        if (t && t.status === 'complete') {
-          clearTimeout(timeout);
-          chrome.tabs.onUpdated.removeListener(listener);
-          resolve();
-        }
-      }).catch(() => {});
-    });
-    await chrome.scripting.executeScript({ target: { tabId: newTabId }, files: CONTENT_SCRIPT_FILES });
-    const p = await chrome.tabs.sendMessage(newTabId, { type: 'ct/get-image-pixels', srcUrl: imageUrl });
-    if (!p || !p.ok || typeof p.dataUrl !== 'string') {
-      throw new Error((p && p.error) || 'could not read the image');
+    return await attempt();
+  } catch (e1) {
+    logFailure(1, e1);
+    if (isMissingHost(e1)) await recordMissingHost(imageUrl);
+    // Retry once in a fresh tab: a tab that was not ready (or a transient
+    // server refusal) can succeed on a second open. Wait a moment first
+    // so a transient CDN hiccup can clear before the retry.
+    await new Promise(r => setTimeout(r, 1000));
+    try {
+      return await attempt();
+    } catch (e2) {
+      logFailure(2, e2);
+      if (isMissingHost(e2)) await recordMissingHost(imageUrl);
+      throw e2;
     }
-    return await dataUrlToRGBA(p.dataUrl);
-  } catch (e) {
-    // The tab inject failed because this picture's host has no permission —
-    // record it so the popup can offer the grant for it.
-    if (/Missing host permission for the tab/i.test(String((e && e.message) || e))) {
-      await recordMissingHost(imageUrl);
-    }
-    throw e;
-  } finally {
-    if (newTabId != null) await chrome.tabs.remove(newTabId).catch(() => {});
   }
 }
 if (chrome.contextMenus && chrome.contextMenus.onClicked) {
