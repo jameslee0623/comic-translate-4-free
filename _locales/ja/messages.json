@@ -3,7 +3,7 @@
     "message": "追加"
   },
   "appDesc": {
-    "message": "マンガ・コミックのページをブラウザ内で翻訳：吹き出し検出、OCR、インペインティング、翻訳、再描画。すべてのMLはONNX Runtime Webでローカル実行。"
+    "message": "ブラウザでマンガやコミックを翻訳。日本語、英語、簡体字・繁体字中国語を読み取り、114言語に翻訳します。"
   },
   "appName": {
     "message": "comic-translate-4-free"

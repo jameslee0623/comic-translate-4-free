@@ -3,7 +3,7 @@
     "message": "Add"
   },
   "appDesc": {
-    "message": "Translate manga and comic pages in your browser: detection, OCR, inpainting, translation. All ML runs locally."
+    "message": "Translate manga & comics in your browser. Reads Japanese, English, Simplified & Traditional Chinese; translates into 114 languages."
   },
   "appName": {
     "message": "comic-translate-4-free"

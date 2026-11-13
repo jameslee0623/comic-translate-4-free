@@ -3,7 +3,7 @@
     "message": "新增"
   },
   "appDesc": {
-    "message": "在瀏覽器內翻譯漫畫頁面：對話框偵測、OCR、影像修補、翻譯、重新渲染。所有 ML 均透過 ONNX Runtime Web 在本機執行。"
+    "message": "在瀏覽器中翻譯漫畫。辨識日語、英語、簡體及繁體中文，翻譯成 114 種語言。"
   },
   "appName": {
     "message": "comic-translate-4-free"

@@ -3,7 +3,7 @@
     "message": "添加"
   },
   "appDesc": {
-    "message": "在浏览器内翻译漫画页面：气泡检测、OCR、图像修复、翻译、重新渲染。所有 ML 均通过 ONNX Runtime Web 在本地运行。"
+    "message": "在浏览器中翻译漫画。识别日语、英语、简体和繁体中文，翻译成 114 种语言。"
   },
   "appName": {
     "message": "comic-translate-4-free"

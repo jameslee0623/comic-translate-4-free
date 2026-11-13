@@ -3,7 +3,7 @@
     "message": "추가"
   },
   "appDesc": {
-    "message": "브라우저에서 만화/코믹 페이지를 번역: 말풍선 감지, OCR, 인페인팅, 번역, 다시 그리기. 모든 ML은 ONNX Runtime Web으로 로컬 실행."
+    "message": "브라우저에서 만화와 코믹을 번역하세요. 일본어, 영어, 간체·번체 중국어를 읽고 114개 언어로 번역합니다."
   },
   "appName": {
     "message": "comic-translate-4-free"
