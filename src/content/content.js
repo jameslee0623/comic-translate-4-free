@@ -1229,11 +1229,18 @@
       // against the old page's stashed URLs). allImages() also descends
       // into shadow roots — querySelectorAll does not, so a stale marker
       // inside a shadow box survived the clear.
-      try {
-        allImages().forEach(im => {
-          delete im.dataset.ctOriginal;
-        });
-      } catch { /* best-effort */ }
+      // 2.1.58: a RESUMED run (same page, same pictures) must NOT clear
+      // them — they are how the resume knows which pictures the dead run
+      // already finished. Clearing them made the resume re-translate
+      // pictures it had already done (and the page-cache missed, because
+      // the capture then read the translated render, not the original).
+      if (!msg.resume) {
+        try {
+          allImages().forEach(im => {
+            delete im.dataset.ctOriginal;
+          });
+        } catch { /* best-effort */ }
+      }
       sendResponse({ ok: true });
       return false;
     }

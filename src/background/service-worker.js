@@ -834,34 +834,53 @@ async function sendDiagLog(tabId, runId) {
 // common case (one run at a time) is exact.
 const ACTIVE_RUNS_KEY = 'ct-active-runs';
 const persistedStageByRun = new Map(); // runId -> last stage written
+// 2.1.58: serialize ALL run-record writes through one promise chain.
+// persistRunRecord / clearRunRecord read the whole ct-active-runs object,
+// change one run, and write it back — fire-and-forget, with no lock. Two
+// writes overlapping lose one update. The 2.1.57 line that re-stores the
+// page address passes a url but NO resume count: if it read before the
+// run-start write landed, it wrote the count back as 0 while keeping the
+// page, so the max-2 loop guard never tripped and the run resumed forever.
+// Queued writes run one at a time, in call order, so a later write always
+// sees the earlier write's result.
+let recordQueue = Promise.resolve();
+function queueRecordOp(op) {
+  const p = recordQueue.then(op, op);
+  recordQueue = p.catch(() => {});
+  return p;
+}
 // extra carries auto-resume info at run start ({ resumes, url }); later
 // stage updates preserve it from the previous record so it is not lost.
 // resumes = how many times this run has already been auto-resumed (loop
 // guard); url = the tab's address at run start (same-page check).
 async function persistRunRecord(runId, tabId, stage, extra) {
-  try {
-    const all = (await chrome.storage.local.get(ACTIVE_RUNS_KEY))[ACTIVE_RUNS_KEY] || {};
-    const prev = all[runId];
-    all[runId] = {
-      tabId, stage,
-      startedAt: (prev && prev.startedAt) || Date.now(),
-      updatedAt: Date.now(),
-      resumes: (extra && extra.resumes != null) ? extra.resumes : ((prev && prev.resumes) || 0),
-      url: (extra && extra.url) || (prev && prev.url) || '',
-    };
-    await chrome.storage.local.set({ [ACTIVE_RUNS_KEY]: all });
-    persistedStageByRun.set(runId, stage);
-  } catch {}
+  return queueRecordOp(async () => {
+    try {
+      const all = (await chrome.storage.local.get(ACTIVE_RUNS_KEY))[ACTIVE_RUNS_KEY] || {};
+      const prev = all[runId];
+      all[runId] = {
+        tabId, stage,
+        startedAt: (prev && prev.startedAt) || Date.now(),
+        updatedAt: Date.now(),
+        resumes: (extra && extra.resumes != null) ? extra.resumes : ((prev && prev.resumes) || 0),
+        url: (extra && extra.url) || (prev && prev.url) || '',
+      };
+      await chrome.storage.local.set({ [ACTIVE_RUNS_KEY]: all });
+      persistedStageByRun.set(runId, stage);
+    } catch {}
+  });
 }
 async function clearRunRecord(runId) {
-  try {
-    const all = (await chrome.storage.local.get(ACTIVE_RUNS_KEY))[ACTIVE_RUNS_KEY] || {};
-    if (all[runId]) {
-      delete all[runId];
-      await chrome.storage.local.set({ [ACTIVE_RUNS_KEY]: all });
-    }
-    persistedStageByRun.delete(runId);
-  } catch {}
+  return queueRecordOp(async () => {
+    try {
+      const all = (await chrome.storage.local.get(ACTIVE_RUNS_KEY))[ACTIVE_RUNS_KEY] || {};
+      if (all[runId]) {
+        delete all[runId];
+        await chrome.storage.local.set({ [ACTIVE_RUNS_KEY]: all });
+      }
+      persistedStageByRun.delete(runId);
+    } catch {}
+  });
 }
 
 // FIX2: run-scoped keep-alive. Firefox MV3 background.page is a
@@ -1230,8 +1249,11 @@ async function runPipeline(tabId, opts = {}) {
     }
     // Tell the page this run is the current one. A render from any older run
     // (e.g. a page the user already left) is ignored by the content script.
+    // 2.1.58: a resumed run passes resume:true so the page keeps the
+    // already-translated markers — clearing them would make the resume
+    // re-translate pictures the dead run already finished.
     try {
-      await chrome.tabs.sendMessage(tabId, { type: MSG.RUN_STARTED, runId });
+      await chrome.tabs.sendMessage(tabId, { type: MSG.RUN_STARTED, runId, resume: !!opts.resume });
     } catch { /* content script not there yet */ }
     // Auto-translate only: lazy pictures below the fold have not loaded
     // yet, so the inventory would skip them. Force the page to load
