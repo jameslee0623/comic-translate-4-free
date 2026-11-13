@@ -7,6 +7,27 @@
 
   const FONT_STACK = '"Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Noto Sans",sans-serif';
 
+  // Anti-right-click override: some sites block the context menu
+  // (document.addEventListener('contextmenu', e => e.preventDefault())),
+  // which also blocks the extension's "Send to comic-translate-4-free"
+  // item. When the user right-clicks a picture, stop the event in the
+  // capture phase — before the page's bubble-phase blocker runs — so
+  // the browser still shows its menu. stopPropagation() does NOT call
+  // preventDefault(), so the browser's default action (show the menu)
+  // still happens, and the browser builds the menu from the clicked
+  // element, so the image item still appears. Scoped to pictures only
+  // so other custom menus (text, background) keep working. Registered
+  // here, at content-script load, so it is in place before the user
+  // right-clicks — the worker injects this script on page load for
+  // allowed sites for exactly this reason.
+  function unblockImageContextMenu(e) {
+    const t = e.target;
+    if (!t) return;
+    const img = t.tagName === 'IMG' ? t : (t.closest ? t.closest('img') : null);
+    if (img) e.stopPropagation();
+  }
+  window.addEventListener('contextmenu', unblockImageContextMenu, true);
+
   // Browser canvas size guards (mirrors src/shared/image-ops.js renderScale —
   // this is a classic script, no modules, so the constants are duplicated).
   // Chrome ~16384px side, Firefox ~11180, Safari ~4096-8192.

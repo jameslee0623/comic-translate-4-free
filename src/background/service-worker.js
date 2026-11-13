@@ -2262,10 +2262,20 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   (async () => {
     try {
       const settings = await getSettings();
-      if (!settings.autoTranslateOnLoad) return;
-      if (!tab || !tab.active) return; // translate what you're looking at
       const host = hostOf(tab.url || '');
       if (!host || (!settings.allowAllSites && !isSiteAllowed(host, settings.siteWhitelist || []))) return;
+      // Inject the content script on page load for allowed sites, even
+      // when auto-translate is off: it carries the anti-right-click
+      // override, so it must be on the page BEFORE the user right-clicks
+      // a picture. Best-effort (a chrome:// tab or a revoked permission
+      // throws) — a later runPipeline injection is a no-op thanks to the
+      // script's double-injection guard, and a failed inject here never
+      // blocks auto-translate.
+      try {
+        await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
+      } catch {}
+      if (!settings.autoTranslateOnLoad) return;
+      if (!tab || !tab.active) return; // translate what you're looking at
       const url = tab.url;
       const prev = autoFired.get(tabId);
       const now = Date.now();
