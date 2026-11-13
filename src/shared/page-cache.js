@@ -19,7 +19,6 @@
 // also skips it there.
 
 import { openDb, PAGE_CACHE_STORE } from './contracts.js';
-import { BUILD } from './version.js';
 import { MODEL_GROUPS } from './model-specs.js';
 
 const PAGE_CACHE_MAX_ENTRIES = 200;
@@ -44,12 +43,13 @@ export function initPageCache() {
         console.warn('[ct] page-cache startup check failed:',
           String((e && e.message) || e).slice(0, 120));
       }
-      // Prune dead entries (best-effort hygiene, never fails init): v2 keys
-      // carry the build stamp, so entries from older builds can never be
-      // served again — but they were still counted in stats and held space.
-      // Also drops Tier-2 entries whose Tier-1 base is gone (the lookup is
-      // Tier-1-first, so they can never render). Legacy (non-v2t1) keys are
-      // left alone: the v1 fallback still serves them.
+      // Prune dead entries (best-effort hygiene, never fails init): the
+      // old v2t1 keys carried the build stamp, so they can never be served
+      // again (the lookup now uses v2t2) — but they were still counted in
+      // stats and held space. Also drops Tier-2 entries whose Tier-1 base
+      // is gone (the lookup is Tier-1-first, so they can never render).
+      // Legacy (non-v2t2) keys are left alone: the v1 fallback still
+      // serves them.
       try {
         const d = await db();
         const metas = await scanMeta(d);
@@ -57,12 +57,13 @@ export function initPageCache() {
         const dead = [];
         for (const m of metas) {
           const id = String(m.id);
-          if (!id.startsWith('v2t1~')) continue;
+          // Old v2t1 format (with the build stamp): dead.
+          if (id.startsWith('v2t1~')) { dead.push(m.id); continue; }
+          if (!id.startsWith('v2t2~')) continue;
           const seg = id.split('~');
           const t2 = seg.indexOf('t2');
-          const build = t2 >= 0 ? seg[6] : seg[seg.length - 1];
-          if (build !== BUILD) { dead.push(m.id); continue; }
-          if (t2 >= 0 && !ids.has(seg.slice(0, 7).join('~'))) dead.push(m.id);
+          // Tier-1 is the first 6 segments (v2t2~hash~WxH~src~thr~models).
+          if (t2 >= 0 && !ids.has(seg.slice(0, 6).join('~'))) dead.push(m.id);
         }
         if (dead.length) {
           await new Promise((resolve, reject) => {
@@ -84,6 +85,15 @@ export function initPageCache() {
 // Key = image content hash + everything that can change the output.
 // Font size is fixed now (no font-size settings since 1.2.6), so it cannot
 // change the output and needs no key component.
+//
+// The key deliberately does NOT include the extension version (BUILD).
+// It used to: every update then wiped the whole cache and every page
+// re-translated on refresh. The version does not change the output — the
+// models component below already invalidates when a model changes, and the
+// schema prefix (v2t2) is bumped only when the translation pipeline itself
+// changes what it outputs. So the cache now survives version updates.
+// Bump the v2t2 prefix (and the v1 prefix below) when the pipeline output
+// changes in a way the models component cannot capture.
 function hex(buf) {
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -114,7 +124,6 @@ export async function buildCacheKey(rgba, w, h, settings) {
     settings.sourceLang, settings.targetLang, settings.translationBackend,
     String(settings.detectionThreshold),
     models,
-    BUILD,
   ].join('~');
 }
 
@@ -127,13 +136,12 @@ export async function buildCacheKeyTier1(rgba, w, h, settings) {
     .map(g => g.id + ':' + g.files.map(f => f.file + '@' + f.bytes).join(','))
     .join('|');
   return [
-    'v2t1',
+    'v2t2',
     hex(digest),
     `${w}x${h}`,
     settings.sourceLang,
     String(settings.detectionThreshold),
     models,
-    BUILD,
   ].join('~');
 }
 
@@ -236,22 +244,20 @@ export async function clearPageCache() {
 }
 
 // Distinct-image key for stats: collapse each Tier-2 entry into its Tier-1
-// image, and ignore the build stamp — otherwise one image counts as two
-// entries (Tier-1 + Tier-2), and re-caching the same image on a new build
-// counts it again. Key shapes: Tier-1 = v2t1~hash~WxH~src~thr~models~BUILD,
+// image. Key shapes: Tier-1 = v2t2~hash~WxH~src~thr~models,
 // Tier-2 = Tier-1 + ~t2~target~backend~model.
 export function baseImageKey(id) {
   const seg = String(id).split('~');
-  // Legacy v1 keys (v1~hash~WxH~src~target~backend~thr~models~BUILD) map onto
-  // the Tier-1 base (v2t1~hash~WxH~src~thr~models): without this, the v1
+  // Legacy v1 keys (v1~hash~WxH~src~target~backend~thr~models) map onto
+  // the Tier-1 base (v2t2~hash~WxH~src~thr~models): without this, the v1
   // backfill written by older builds counts as a second image for the same
-  // picture. Only the current 9-segment layout is normalized; anything else
+  // picture. Only the current 8-segment layout is normalized; anything else
   // falls through to the generic path below.
-  if (seg[0] === 'v1' && seg.length >= 9) {
-    return ['v2t1', seg[1], seg[2], seg[3], seg[6], seg[7]].join('~');
+  if (seg[0] === 'v1' && seg.length >= 8) {
+    return ['v2t2', seg[1], seg[2], seg[3], seg[6], seg[7]].join('~');
   }
   const t2 = seg.indexOf('t2');
-  const end = (t2 >= 0 ? t2 : seg.length) - 1; // drop the BUILD segment
+  const end = t2 >= 0 ? t2 : seg.length;
   return seg.slice(0, Math.max(end, 1)).join('~');
 }
 
