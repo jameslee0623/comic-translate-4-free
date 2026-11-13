@@ -8,7 +8,7 @@ Traduza mangás e quadrinhos no seu navegador. Lê japonês, inglês, chinês si
 
 ## Detailed description
 
-**Leia mangás no seu idioma — diretamente no navegador.**
+📖 **Leia mangás no seu idioma — diretamente no navegador.**
 
 comic-translate-4-free traduz páginas de quadrinhos e mangás automaticamente enquanto você navega. Abra uma página, e a versão traduzida substitui a imagem original no lugar — balões de fala cheios do seu idioma, sem clicar em nada.
 

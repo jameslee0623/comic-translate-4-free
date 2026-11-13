@@ -8,7 +8,7 @@ Tradu manga și benzi desenate în browser. Citește japoneză, engleză, chinez
 
 ## Detailed description
 
-**Citește manga în limba ta — direct în browser.**
+📖 **Citește manga în limba ta — direct în browser.**
 
 comic-translate-4-free traduce automat pagini de benzi desenate și manga pe măsură ce navighezi. Deschide o pagină, iar versiunea tradusă înlocuiește imaginea originală chiar acolo — baloane de dialog pline cu limba ta, fără să fie nevoie să dai clic pe nimic.
 

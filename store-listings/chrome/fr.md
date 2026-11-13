@@ -8,7 +8,7 @@ Traduisez mangas et BD dans votre navigateur. Lit japonais, anglais, chinois sim
 
 ## Detailed description
 
-**Lisez des mangas dans votre langue — directement dans le navigateur.**
+📖 **Lisez des mangas dans votre langue — directement dans le navigateur.**
 
 comic-translate-4-free traduit automatiquement les pages de BD et de mangas pendant que vous naviguez. Ouvrez une page, et la version traduite remplace l'image originale sur place — des bulles remplies de votre langue, rien à cliquer.
 

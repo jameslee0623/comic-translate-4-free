@@ -8,7 +8,7 @@ Translate manga & comics in your browser. Reads Japanese, English, Simplified & 
 
 ## Detailed description
 
-**Read manga in your language — right in the browser.**
+📖 **Read manga in your language — right in the browser.**
 
 comic-translate-4-free translates comic and manga pages automatically as you
 browse. Open a page, and the translated version replaces the original image

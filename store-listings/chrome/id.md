@@ -8,7 +8,7 @@ Terjemahkan manga & komik di browser Anda. Membaca Jepang, Inggris, Tionghoa Sed
 
 ## Detailed description
 
-**Baca manga dalam bahasamu — langsung di browser.**
+📖 **Baca manga dalam bahasamu — langsung di browser.**
 
 comic-translate-4-free menerjemahkan halaman komik dan manga secara otomatis saat Anda menjelajah. Buka sebuah halaman, dan versi terjemahannya menggantikan gambar aslinya di tempatnya — gelembung percakapan terisi dengan bahasa Anda, tanpa perlu mengeklik apa pun.
 

@@ -8,7 +8,7 @@
 
 ## Detailed description
 
-**Lies Manga in deiner Sprache — direkt im Browser.**
+📖 **Lies Manga in deiner Sprache — direkt im Browser.**
 
 comic-translate-4-free übersetzt Comic- und Mangaseiten automatisch, während du surfst. Öffne eine Seite, und die übersetzte Version ersetzt das Originalbild an Ort und Stelle — Sprechblasen gefüllt mit deiner Sprache, nichts anzuklicken.
 

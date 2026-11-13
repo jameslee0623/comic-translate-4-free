@@ -8,7 +8,7 @@ Dịch manga & truyện tranh trên trình duyệt. Đọc tiếng Nhật, tiế
 
 ## Detailed description
 
-**Đọc manga bằng ngôn ngữ của bạn — ngay trên trình duyệt.**
+📖 **Đọc manga bằng ngôn ngữ của bạn — ngay trên trình duyệt.**
 
 comic-translate-4-free tự động dịch các trang truyện tranh và manga khi bạn duyệt web. Mở một trang, và bản dịch sẽ thay thế hình ảnh gốc ngay tại chỗ — các bong bóng thoại chứa ngôn ngữ của bạn, không cần nhấn gì cả.
 

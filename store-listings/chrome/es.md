@@ -8,7 +8,7 @@ Traduce manga y cómics en tu navegador. Lee japonés, inglés, chino simplifica
 
 ## Detailed description
 
-**Lee manga en tu idioma, directamente en el navegador.**
+📖 **Lee manga en tu idioma, directamente en el navegador.**
 
 comic-translate-4-free traduce páginas de cómics y manga automáticamente mientras navegas. Abre una página y la versión traducida reemplaza la imagen original en su lugar — bocadillos llenos de tu idioma, sin hacer clic en nada.
 
