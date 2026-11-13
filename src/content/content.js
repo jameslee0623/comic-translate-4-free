@@ -569,6 +569,15 @@
         const cur = im.currentSrc || im.src || '';
         return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
       });
+      // Background-tab fallback: the tab IS the image (a single <img>).
+      // If the image URL redirected, the exact match above fails even
+      // though the picture is right there — use the only picture on the
+      // page. Only when there is exactly one, so a normal multi-picture
+      // page never picks the wrong one.
+      if (!im) {
+        const all = allImages().filter(x => x.isConnected && x.complete && x.naturalWidth);
+        if (all.length === 1) im = all[0];
+      }
     } else {
       im = mainImgEl && mainImgEl.isConnected ? mainImgEl : null;
     }

@@ -1973,6 +1973,10 @@ async function runPipeline(tabId, opts = {}) {
             if (r2 && r2.doneExtra) lastDoneExtra = r2.doneExtra;
             recovered = true;
           } catch (e2) {
+            // Log the tab failure reason to the diag log (not just the
+            // console): the original error alone hides WHY the tab read
+            // failed (timeout, redirect, server refused the tab too).
+            diagPush(`background-tab read failed for image ${imgIdx + 1}: ${String((e2 && e2.message) || e2).slice(0, 160)}`);
             console.warn('[ct] auto fallback capture failed for image ' + (imgIdx + 1) + ':', String((e2 && e2.message) || e2).slice(0, 120));
           }
         }
