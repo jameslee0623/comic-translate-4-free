@@ -343,6 +343,65 @@
   // Every qualifying picture on the page, top to bottom in the layout
   // (not biggest first — James's order). The worker applies the minimum
   // image size and the per-run cap; this only skips tiny/hidden images.
+  // Force every picture on the page to load (auto-translate only). Lazy
+  // pictures below the fold have complete=false / naturalWidth=0 until
+  // they enter the viewport, so the inventory would skip them. Scroll
+  // through the page in viewport steps to trigger every lazy-load
+  // (native loading=lazy, IntersectionObserver, scroll handlers), wait
+  // until the pictures are loaded, then jump back to where the user
+  // was. The budgets below are time limits so a huge / infinite-scroll
+  // page can never hang the run — after the budget, translate whatever
+  // loaded. Returns { loaded, total, ms, steps }.
+  async function forceLoadAllImages() {
+    const t0 = Date.now();
+    const BUDGET_MS = 15000; // whole force-load (scroll + wait) must fit in this
+    const STEP_WAIT_MS = 120; // let the lazy-load observer fire after each scroll step
+    const MAX_STEPS = 200; // taller than this is effectively infinite scroll
+    const startY = window.scrollY || 0, startX = window.scrollX || 0;
+    const vh = Math.max(1, window.innerHeight || 800);
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const pageHeight = () => document.documentElement.scrollHeight || document.body.scrollHeight || 0;
+    let steps = 0;
+    try {
+      let lastH = 0;
+      for (;;) {
+        const h = pageHeight();
+        const maxY = Math.max(0, h - vh);
+        const y = Math.min(maxY, steps * vh);
+        window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+        steps++;
+        await sleep(STEP_WAIT_MS);
+        const h2 = pageHeight();
+        // At the bottom and nothing new appeared: done scrolling.
+        if (y >= maxY && h2 <= lastH) break;
+        lastH = Math.max(lastH, h2);
+        if (steps >= MAX_STEPS || Date.now() - t0 >= BUDGET_MS) break;
+      }
+      // The pictures fetch async after entering the viewport. Poll until
+      // all are complete (or errored — complete is true then too), or the
+      // budget runs out; then translate whatever loaded.
+      for (;;) {
+        let pending = 0;
+        for (const im of allImages()) {
+          if (im.isConnected && !im.complete) pending++;
+        }
+        if (!pending) break;
+        if (Date.now() - t0 >= BUDGET_MS) break;
+        await sleep(200);
+      }
+    } finally {
+      // Always jump back, even if loading timed out or threw.
+      try { window.scrollTo({ top: startY, left: startX, behavior: 'instant' }); } catch {}
+    }
+    let loaded = 0, total = 0;
+    for (const im of allImages()) {
+      if (!im.isConnected) continue;
+      total++;
+      if (im.complete && im.naturalWidth) loaded++;
+    }
+    return { loaded, total, ms: Date.now() - t0, steps };
+  }
+
   function collectPageImages() {
     const imgs = allImages().filter(im => {
       if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
@@ -890,6 +949,16 @@
     }
     if (msg.type === 'ct/get-image-pixels') {
       mainImagePixels(msg.srcUrl).then(
+        r => sendResponse({ ok: true, ...r }),
+        e => sendResponse({ ok: false, error: String((e && e.message) || e) })
+      );
+      return true; // async response
+    }
+    if (msg.type === 'ct/force-load-images') {
+      // Auto-translate only: scroll the page to load every lazy picture
+      // before the inventory is taken, then jump back. Async — the reply
+      // carries how many pictures loaded.
+      forceLoadAllImages().then(
         r => sendResponse({ ok: true, ...r }),
         e => sendResponse({ ok: false, error: String((e && e.message) || e) })
       );

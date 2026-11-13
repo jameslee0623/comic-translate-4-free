@@ -1143,6 +1143,22 @@ async function runPipeline(tabId, opts = {}) {
     try {
       await chrome.tabs.sendMessage(tabId, { type: MSG.RUN_STARTED, runId });
     } catch { /* content script not there yet */ }
+    // Auto-translate only: lazy pictures below the fold have not loaded
+    // yet, so the inventory would skip them. Force the page to load
+    // every picture first (content script scrolls through the page, then
+    // jumps back). Best-effort with a timeout — a failure or timeout
+    // must never block the run; translate whatever loaded.
+    if (opts.auto && !manualSrc) {
+      try {
+        const r = await Promise.race([
+          chrome.tabs.sendMessage(tabId, { type: 'ct/force-load-images' }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('force-load timeout')), 20000)),
+        ]);
+        diagPush('force-load images: ' + (r && r.ok ? (r.loaded + '/' + r.total + ' loaded in ' + r.ms + 'ms (' + r.steps + ' scroll steps)') : 'failed: ' + String((r && r.error) || 'no reply').slice(0, 80)));
+      } catch (e) {
+        diagPush('force-load images skipped: ' + String((e && e.message) || e).slice(0, 80));
+      }
+    }
     // ---- 1. inventory: every qualifying picture on the page (multi-pic).
     // Each one then runs the full pipeline; per-image stage progress maps onto
     // its slice of the overall run, debug titles carry the image index, and one
@@ -2259,7 +2275,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       // A stale run must never finish on top of the new page.
       await cancelRunsForTab(tabId);
       autoFired.set(tabId, { url, at: now });
-      const r = await runPipeline(tabId);
+      const r = await runPipeline(tabId, { auto: true });
       if (!r.ok && !r.cancelled) console.warn('[ct] auto-translate failed:', String(r.error).slice(0, 160));
     } catch (e) {
       console.warn('[ct] auto-translate error:', String((e && e.message) || e).slice(0, 120));
