@@ -509,18 +509,27 @@
     lastBigSrcs = [];
     let nBig = 0, nBigIn = 0;
     for (const im of all) {
-      if (!im.isConnected) { reasons.notConn++; continue; }
-      if (!im.complete) { reasons.notComplete++; continue; }
-      if (!im.naturalWidth) { reasons.noNat++; continue; }
+      // Big is decided FIRST, from natural size OR width/height attributes.
+      // On a 403 site a picture that failed to load has natural size 0, but
+      // its width="1410" height="1000" attributes still say it is big — and
+      // its src/host must reach the permission check, or the 403 pictures
+      // stay invisible. (An earlier version checked natural size first and
+      // skipped failed pictures before ever calling them big.)
+      const attrW = parseInt(im.getAttribute('width') || '0', 10) || 0;
+      const attrH = parseInt(im.getAttribute('height') || '0', 10) || 0;
+      const isBig = Math.max(im.naturalWidth || 0, im.naturalHeight || 0) >= 500 || Math.max(attrW, attrH) >= 500;
       const r = im.getBoundingClientRect();
-      const inList = r.width >= 120 && r.height >= 120;
-      if (!inList) reasons.dispSmall++;
-      if (Math.max(im.naturalWidth, im.naturalHeight) >= 500) {
+      const inList = !!(im.isConnected && im.complete && im.naturalWidth && r.width >= 120 && r.height >= 120);
+      if (!im.isConnected) reasons.notConn++;
+      else if (!im.complete) reasons.notComplete++;
+      else if (!im.naturalWidth) reasons.noNat++;
+      else if (!inList) reasons.dispSmall++;
+      if (isBig) {
         nBig++;
         if (inList) nBigIn++;
         const src = im.currentSrc || im.src || '';
         lastBigSrcs.push(src);
-        bigLines.push(`big nat ${im.naturalWidth}x${im.naturalHeight} disp ${Math.round(r.width)}x${Math.round(r.height)} complete ${im.complete} in ${inList ? 'Y' : 'N'} ${src.slice(0, 60)}`);
+        bigLines.push(`big nat ${im.naturalWidth || 0}x${im.naturalHeight || 0} attr ${attrW}x${attrH} disp ${Math.round(r.width)}x${Math.round(r.height)} complete ${im.complete} in ${inList ? 'Y' : 'N'} ${src.slice(0, 60)}`);
       }
     }
     lastInventoryDiag = `inventory total ${all.length} big-pics ${nBigIn}/${nBig} in list; excluded notConn ${reasons.notConn} notComplete ${reasons.notComplete} noNat ${reasons.noNat} dispSmall ${reasons.dispSmall}\n` + bigLines.join('\n');
