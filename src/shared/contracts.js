@@ -40,7 +40,7 @@ export const MSG = {
   ML_BENCH_KEEPALIVE: 'ml/bench-keepalive', // Chrome 2.1.21: SW -> offscreen doc {} -> {ok} (approach C: the SW pings the doc every 15s for 2 min after a run to keep it alive while the bench runs; the doc logs each ping and does NOT cancel the bench for it)
   ML_BENCH_GET: 'ml/bench-get',          // Chrome 2.1.22: offscreen doc -> SW {} -> {ok, measuredThreads, benchStatus} (the doc asks the SW for the saved bench values, because the doc's own storage reads fail like its writes; used by the self-trigger so it does not re-run a finished bench)
   // SW -> content (tabs.sendMessage)
-  RUN_STARTED: 'ct/run-started',         // {runId, resume?} (marks the tab's current run; stale renders are ignored; resume:true keeps the already-translated markers so a resumed run can skip finished pictures)
+  RUN_STARTED: 'ct/run-started',         // {runId} (marks the tab's current run; stale renders are ignored)
   RENDER: 'ct/render',                   // {runId, mode, imageDataUrl, width, height, blocks, timings, debug, srcUrl?}
   DEBUG_STAGE: 'ct/debug-stage',          // {runId, stage, payload, debug}
   PILL_NOTICE: 'ct/pill-notice',         // {text, sticky} (custom pill message, e.g. fallback status)

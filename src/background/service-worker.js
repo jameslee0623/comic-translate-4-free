@@ -1249,11 +1249,10 @@ async function runPipeline(tabId, opts = {}) {
     }
     // Tell the page this run is the current one. A render from any older run
     // (e.g. a page the user already left) is ignored by the content script.
-    // 2.1.58: a resumed run passes resume:true so the page keeps the
-    // already-translated markers — clearing them would make the resume
-    // re-translate pictures the dead run already finished.
+    // (2.1.60: the run-start marker clear now keeps markers on pictures
+    // still showing a data URL, so no resume flag is needed here.)
     try {
-      await chrome.tabs.sendMessage(tabId, { type: MSG.RUN_STARTED, runId, resume: !!opts.resume });
+      await chrome.tabs.sendMessage(tabId, { type: MSG.RUN_STARTED, runId });
     } catch { /* content script not there yet */ }
     // Auto-translate only: lazy pictures below the fold have not loaded
     // yet, so the inventory would skip them. Force the page to load
@@ -2243,12 +2242,18 @@ async function runPipeline(tabId, opts = {}) {
   // wait for the bench itself, but the trigger is confirmed: 2.1.15 made
   // it await the reply and retry (up to 3 tries, 3s each) instead of
   // fire-and-forget, because a send to a dead doc was lost silently.
+  // 2.1.59: the bench is Chrome-only (it runs in the offscreen doc).
+  // Firefox WASM runs 1 thread, so there is nothing to measure, and
+  // there is no offscreen doc to receive the trigger — it failed 3
+  // times + 2 min of keepalive pings after every Firefox run. Skip it
+  // on Firefox (directHandlers() is set there); the else below only
+  // logs a run that actually failed.
   // 2.0.25: gate the trigger here too. The offscreen doc also skips when
   // it sees a complete save, but in 2.0.24 the bench re-measured after
   // every run, so check in the service worker as well — if a complete
   // full-chain result is already saved for this machine, do not send the
   // trigger at all. Fail open: any error or missing value still sends it.
-  if (result && result.ok) {
+  if (result && result.ok && !directHandlers()) {
     try {
       // 2.1.25: log only lines that tell something. The old code logged
       // "run ok, checking saved count" + "already measured N, skipping"
@@ -2351,9 +2356,10 @@ async function runPipeline(tabId, opts = {}) {
       };
       setTimeout(tick, 15000);
     })();
-  } else {
+  } else if (!result || !result.ok) {
     benchTracePush('threads bench trigger: run not ok (ok=' + (result && result.ok) + '), skipping');
   }
+  // (Firefox + run ok: bench skipped silently — Chrome-only, steady state.)
   return result;
 }
 

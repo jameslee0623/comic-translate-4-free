@@ -1229,18 +1229,23 @@
       // against the old page's stashed URLs). allImages() also descends
       // into shadow roots — querySelectorAll does not, so a stale marker
       // inside a shadow box survived the clear.
-      // 2.1.58: a RESUMED run (same page, same pictures) must NOT clear
-      // them — they are how the resume knows which pictures the dead run
-      // already finished. Clearing them made the resume re-translate
-      // pictures it had already done (and the page-cache missed, because
-      // the capture then read the translated render, not the original).
-      if (!msg.resume) {
-        try {
-          allImages().forEach(im => {
-            delete im.dataset.ctOriginal;
-          });
-        } catch { /* best-effort */ }
-      }
+      // 2.1.60: only clear a marker when the picture is NOT showing a
+      // data URL. A data-URL src means the picture is still showing a
+      // translation from this page, and its marker is the true original.
+      // Deleting it made a fresh re-run capture the translated render
+      // instead of the original, so the cache key changed and the whole
+      // page re-translated (James, Asura, cache NOT cleared). A stale
+      // marker on an http-src picture is harmless — describeImage only
+      // uses the marker when the src is a data URL — so SPA navigation
+      // still clears correctly: the new page's pictures have http srcs.
+      // (This replaces the 2.1.58 resume flag: the data-URL check keeps
+      // the markers for resumed runs AND fresh re-runs alike.)
+      try {
+        allImages().forEach(im => {
+          const cur = im.currentSrc || im.src || '';
+          if (!/^data:/i.test(cur)) delete im.dataset.ctOriginal;
+        });
+      } catch { /* best-effort */ }
       sendResponse({ ok: true });
       return false;
     }
