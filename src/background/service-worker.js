@@ -377,6 +377,16 @@ async function getPipelineImages(tabId, settings, tabUrl, opts = {}) {
     list = r?.images || [];
     total = r?.total || list.length;
     if (r?.diag) for (const l of String(r.diag).split('\n')) diagPush('inventory-diag ' + l);
+    // Permission for EVERY big picture's host — including the ones that did
+    // not make the inventory — so a missing grant on a 403 CDN host is
+    // visible in the same log, not just the gate's view of the listed ones.
+    if (Array.isArray(r?.bigSrcs) && r.bigSrcs.length) {
+      try {
+        const missing = await checkImageHostPermissions(r.bigSrcs.map(src => ({ src })));
+        const hosts = [...new Set(r.bigSrcs.map(s => { try { return new URL(s).hostname.toLowerCase(); } catch { return ''; } }).filter(Boolean))];
+        diagPush('inventory-diag big-pic hosts: ' + hosts.join(', ') + ' — missing permission: ' + (missing.length ? missing.join(', ') : 'none'));
+      } catch (e) { diagPush('inventory-diag host permission check failed: ' + String((e && e.message) || e).slice(0, 80)); }
+    }
   } catch { list = []; }
   if (!list.length) {
     throw new Error('no pictures found on this page — the extension translates the page\'s own pictures, not a screenshot of the page');

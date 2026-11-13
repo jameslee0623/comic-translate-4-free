@@ -498,10 +498,15 @@
   // whether it made the inventory — so a browser that shows a picture big
   // but does not list it is visible in the diag log.
   let lastInventoryDiag = '';
+  // Full src URLs of every big picture (in the list and excluded), so the
+  // worker can check host permission for ALL of them — not just the ones
+  // that made the inventory.
+  let lastBigSrcs = [];
   function collectPageImages() {
     const all = allImages();
     const reasons = { notConn: 0, notComplete: 0, noNat: 0, dispSmall: 0 };
     const bigLines = [];
+    lastBigSrcs = [];
     let nBig = 0, nBigIn = 0;
     for (const im of all) {
       if (!im.isConnected) { reasons.notConn++; continue; }
@@ -513,7 +518,9 @@
       if (Math.max(im.naturalWidth, im.naturalHeight) >= 500) {
         nBig++;
         if (inList) nBigIn++;
-        bigLines.push(`big nat ${im.naturalWidth}x${im.naturalHeight} disp ${Math.round(r.width)}x${Math.round(r.height)} complete ${im.complete} in ${inList ? 'Y' : 'N'} ${(im.currentSrc || im.src || '').slice(0, 60)}`);
+        const src = im.currentSrc || im.src || '';
+        lastBigSrcs.push(src);
+        bigLines.push(`big nat ${im.naturalWidth}x${im.naturalHeight} disp ${Math.round(r.width)}x${Math.round(r.height)} complete ${im.complete} in ${inList ? 'Y' : 'N'} ${src.slice(0, 60)}`);
       }
     }
     lastInventoryDiag = `inventory total ${all.length} big-pics ${nBigIn}/${nBig} in list; excluded notConn ${reasons.notConn} notComplete ${reasons.notComplete} noNat ${reasons.noNat} dispSmall ${reasons.dispSmall}\n` + bigLines.join('\n');
@@ -1089,7 +1096,7 @@
     }
     if (msg.type === 'ct/list-images') {
       // Multi-pic inventory: every qualifying picture, top to bottom.
-      try { const images = collectPageImages(); sendResponse({ ok: true, images, total: allImages().length, diag: lastInventoryDiag }); }
+      try { const images = collectPageImages(); sendResponse({ ok: true, images, total: allImages().length, diag: lastInventoryDiag, bigSrcs: lastBigSrcs }); }
       catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e) }); }
       return false;
     }
