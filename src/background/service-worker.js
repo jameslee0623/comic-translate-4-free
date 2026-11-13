@@ -43,6 +43,9 @@ function diagPush(line) {
     else if (typeof console.debug === 'function') console.debug('[ct-diag] ' + line);
     else console.log('[ct-diag] ' + line);
     diagLogBuf.push('[ct-diag] ' + line);
+    // 2.1.55: persist the line (last 200) so a background restart does
+    // not wipe the log orphan recovery needs. Fire-and-forget, chained.
+    try { diagTracePersist('[ct-diag] ' + line); } catch {}
     // 2.1.49: keep 2000 lines, not 200. A multi-pic run makes ~15 lines per
     // picture (up to ~33 for a dense one), so even a 50-picture run
     // (~1700 lines worst case) keeps the early inventory-diag lines. The
@@ -68,6 +71,48 @@ function benchTracePush(line) {
       await chrome.storage.local.set({ benchTrace: arr.slice(-100) });
     } catch {}
   }).catch(() => {});
+}
+
+// 2.1.55: persisted diag log. diagPush alone is in-memory, so when the
+// background restarts mid-run the log is wiped and orphan recovery can
+// only say the log "is lost" — the one time the log matters most. Every
+// diag line is also appended to storage.local 'diagTrace' (last 200
+// lines, chained and fire-and-forget like benchTrace, so it never blocks
+// the pipeline). Orphan/alarm recovery replays those lines into the
+// panel log, so the user sees what the background was doing before it
+// died. 200 lines covers ~13 pictures at ~15 lines each — the last thing
+// before the crash is what matters.
+const DIAG_TRACE_KEY = 'diagTrace';
+let diagTraceChain = Promise.resolve();
+function diagTracePersist(line) {
+  diagTraceChain = diagTraceChain.then(async () => {
+    try {
+      const saved = await chrome.storage.local.get(DIAG_TRACE_KEY);
+      const arr = (saved && Array.isArray(saved[DIAG_TRACE_KEY])) ? saved[DIAG_TRACE_KEY] : [];
+      arr.push(String(line));
+      await chrome.storage.local.set({ [DIAG_TRACE_KEY]: arr.slice(-200) });
+    } catch {}
+  }).catch(() => {});
+}
+async function readDiagTrace() {
+  try {
+    const saved = await chrome.storage.local.get(DIAG_TRACE_KEY);
+    const arr = (saved && Array.isArray(saved[DIAG_TRACE_KEY])) ? saved[DIAG_TRACE_KEY] : [];
+    return arr.filter((l) => typeof l === 'string');
+  } catch { return []; }
+}
+// Replay the persisted pre-restart log into the in-memory buffer (direct
+// buffer push, NOT diagPush, so the replayed lines are not persisted
+// again). Returns how many lines were replayed. Used by orphan/alarm
+// recovery only — a normal run start never replays old lines.
+async function replayDiagTrace() {
+  try {
+    const recovered = await readDiagTrace();
+    if (!recovered.length) return 0;
+    diagLogBuf.push('[ct-diag] --- log from before the restart (recovered) ---');
+    for (const l of recovered) diagLogBuf.push(l);
+    return recovered.length;
+  } catch { return 0; }
 }
 
 // 2.1.29: retired bench lines. 2.1.25 removed these from live code, but
@@ -2554,24 +2599,54 @@ async function fallbackCaptureViaTab(origTabId, imageUrl) {
       if (!newTab || newTab.id == null) throw new Error('could not open background tab');
       newTabId = newTab.id;
       // Wait for the image document to finish loading (its <img> is the page).
+      // Only a tab whose address is the picture (an http(s) URL) counts as
+      // loaded. A new tab starts at about:blank, which is 'complete'
+      // instantly — resolving on that blank 'complete' runs the script
+      // before the tab ever reaches the picture, and it fails with
+      // "Missing host permission for the tab". So every 'complete' is
+      // checked against the tab's real address: an http(s) address
+      // resolves, an error page (about:neterror) rejects at once with the
+      // real address, and about:blank keeps waiting for the real load.
       await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error('timed out waiting for the image tab to load')), 30000);
-        const listener = (tabId, changeInfo) => {
-          if (tabId === newTabId && changeInfo.status === 'complete') {
-            clearTimeout(timeout);
-            chrome.tabs.onUpdated.removeListener(listener);
-            resolve();
+        let done = false;
+        const finishOk = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timeout);
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        };
+        const finishErr = (err) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timeout);
+          chrome.tabs.onUpdated.removeListener(listener);
+          reject(err);
+        };
+        const checkLoaded = async () => {
+          if (done) return;
+          let t = null;
+          try { t = await chrome.tabs.get(newTabId); } catch { return; }
+          if (!t || t.status !== 'complete') return;
+          const u = t.url || '';
+          if (/^https?:\/\//i.test(u)) { finishOk(); return; }
+          if (u && u !== 'about:blank') {
+            // Error page (about:neterror, …): the load already failed, it
+            // will never reach the picture — fail at once with the real address.
+            const e = new Error('Missing host permission for the tab');
+            e.tabUrl = u;
+            finishErr(e);
           }
+          // about:blank (or no address yet): the tab has not reached the
+          // picture — keep waiting for the real load.
+        };
+        const listener = (tabId, changeInfo) => {
+          if (tabId === newTabId && changeInfo.status === 'complete') checkLoaded();
         };
         chrome.tabs.onUpdated.addListener(listener);
         // Already loaded (fast cache hit): don't wait for an event that fired.
-        chrome.tabs.get(newTabId).then(t => {
-          if (t && t.status === 'complete') {
-            clearTimeout(timeout);
-            chrome.tabs.onUpdated.removeListener(listener);
-            resolve();
-          }
-        }).catch(() => {});
+        checkLoaded();
       });
       // The tab is 'complete' — read its real URL now. If the server
       // refused the picture the tab is on an error page (about:neterror),
@@ -2894,7 +2969,10 @@ async function recoverOrphanedRuns() {
           }
         }
         clearDiagLog(); // 1.4.0 (m6): each recovery's log is its own.
-        const msg = 'Translation stopped because the background restarted while it was at stage ' + (rec.stage || 'unknown') + ' — please run translate again. (The detailed log from before the restart was in memory only and is lost.)';
+        // 2.1.55: replay the persisted pre-restart log into the panel log,
+        // so the user sees what the background was doing before it died.
+        const recoveredCount = await replayDiagTrace();
+        const msg = 'Translation stopped because the background restarted while it was at stage ' + (rec.stage || 'unknown') + ' — please run translate again.' + (recoveredCount > 0 ? ' (The log from before the restart is in the diagnostic panel below.)' : ' (The detailed log from before the restart was in memory only and is lost.)');
         diagPush('orphan recovery run ' + orphanRunId + ' tab ' + rec.tabId + ' died at stage ' + (rec.stage || 'unknown') + ' started ' + (rec.startedAt ? new Date(rec.startedAt).toISOString() : 'unknown') + ' lastStageUpdate ' + (rec.updatedAt ? new Date(rec.updatedAt).toISOString() : 'unknown'));
         const sent = await failOrphanedRun(orphanRunId, rec, msg);
         if (sent) {
@@ -2911,6 +2989,8 @@ async function recoverOrphanedRuns() {
 setMlAlarmRecoveryHook(async (entry, msg) => {
   try {
     clearDiagLog(); // 1.4.0 (m6): alarm recovery log is its own.
+    // 2.1.55: replay the persisted pre-restart log, same as orphan recovery.
+    await replayDiagTrace();
     diagPush('alarm recovery run ' + entry.runId + ' type ' + entry.type + ' tab ' + entry.tabId);
     const sent = await failOrphanedRun(entry.runId, { tabId: entry.tabId }, msg);
     if (sent) {
