@@ -16,7 +16,7 @@ in place — speech bubbles filled with your language, nothing to click.
 
 **How it works**
 
-1. The extension finds the page's main image and captures it.
+1. The extension finds every picture on the page and captures them.
 2. An on-device AI detector locates every speech bubble and text block.
 3. Manga-trained OCR reads the text (Japanese, English, Simplified and
    Traditional Chinese — with automatic language detection).
@@ -34,6 +34,7 @@ service you choose.
 **Features**
 
 - Automatic translation when pages load — no button pressing
+- Translates every picture on the page (up to 50 per run), not just the main image
 - Right-click any image → "Send to comic-translate-4-free" to translate it directly
 - 114 target languages via Google Translate, Azure Translator, or your own
   local LM Studio server
