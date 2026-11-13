@@ -610,6 +610,31 @@ function buildBlocks(detections, w, h, rgba, settings) {
     b.target_lang = settings.targetLang;
     return b;
   });
+  // Bubbles whose text the detector missed: a bubble with no text box
+  // inside it still contains words (the detector found the outline but
+  // missed the text). Without this, that text is never translated — on
+  // image 18/18 the detector found 21 boxes (12 bubbles + 9 texts) but
+  // only 9 blocks, because 6 bubbles had no text box inside them.
+  // Promote each such bubble to a block (the bubble box itself is the
+  // text region; OCR reads the words inside it). A bubble that already
+  // has a text box is skipped, so its text is not duplicated. If OCR
+  // finds no text in a promoted bubble (false-positive outline), the
+  // block is skipped downstream by the empty-text guard.
+  for (const bb of bubbles) {
+    const covered = blocks.some(b => {
+      const [x1, y1, x2, y2] = b.xyxy;
+      const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+      return cx >= bb[0] && cx <= bb[2] && cy >= bb[1] && cy <= bb[3];
+    });
+    if (covered) continue;
+    const b = makeTextBlock({ xyxy: clampBox(bb, w, h) });
+    b.text_class = 'text_bubble';
+    b.bubble_xyxy = bb;
+    b.font_color = extractFgColor(rgba, w, b.xyxy);
+    b.source_lang = settings.sourceLang;
+    b.target_lang = settings.targetLang;
+    blocks.push(b);
+  }
   return sortBlocks(blocks, true);
 }
 
