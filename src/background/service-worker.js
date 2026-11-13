@@ -2303,8 +2303,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       }
       // New page: drop whatever the tab was doing and start fresh immediately.
       // A stale run must never finish on top of the new page.
-      await cancelRunsForTab(tabId);
+      // Record the fire SYNCHRONOUSLY here, before the await below: two
+      // 'complete' events (page + a slow iframe) can land in the same tick,
+      // and if both pass the dedupe above before either records, both start
+      // a run — they then fight over the page, one dies 'stale run', and
+      // only a couple of pictures get translated. The check and the record
+      // are one synchronous block, so the second event sees it and returns.
       autoFired.set(tabId, { url, at: now });
+      await cancelRunsForTab(tabId);
       const r = await runPipeline(tabId, { auto: true });
       if (!r.ok && !r.cancelled) console.warn('[ct] auto-translate failed:', String(r.error).slice(0, 160));
     } catch (e) {
