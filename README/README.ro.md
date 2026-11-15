@@ -68,9 +68,8 @@ Firefox:
 
 [Instalează din Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — un clic, actualizări automate.
 
-După instalare, deschide pagina Setări și apasă o dată Descarcă toate modelele (~350 MB: detector, OCR, inpainter). Sunt stocate în cache în browser și verificate după dimensiunea în octeți.
+După instalare, modelele se descarcă automat în fundal (~350 MB: detector, OCR, inpainter). Sunt stocate în cache în browser și verificate după dimensiunea în octeți. Dacă o traducere începe înainte ca modelele să termine descărcarea, ea așteaptă.
 
-![Downloading the models from the Settings page](../docs/images/options-models.png)
 
 ---
 

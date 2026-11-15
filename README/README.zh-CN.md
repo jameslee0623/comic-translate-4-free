@@ -68,9 +68,8 @@ Firefox:
 
 [从 Firefox 附加组件安装](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — 一键安装，自动更新。
 
-安装后，打开设置页面，点击一次下载所有模型（约 350 MB：检测器、OCR、修复器）。它们会缓存在浏览器中，并按字节大小验证。
+安装后，模型会在后台自动下载（约 350 MB：检测器、OCR、修复器）。它们会缓存在浏览器中，并按字节大小验证。如果翻译在模型下载完成前开始，翻译会等模型下载完成。
 
-![在设置页面下载模型](../docs/images/options-models.png)
 
 ---
 

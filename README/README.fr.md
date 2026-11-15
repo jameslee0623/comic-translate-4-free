@@ -68,9 +68,8 @@ Firefox :
 
 [Installer depuis Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — en un clic, mises à jour automatiques.
 
-Après l'installation, ouvrez la page Paramètres et cliquez une fois sur Télécharger tous les modèles (~350 Mo : détecteur, OCR, inpainter). Ils sont mis en cache dans le navigateur et vérifiés par taille en octets.
+Après l'installation, les modèles se téléchargent automatiquement en arrière-plan (~350 Mo : détecteur, OCR, inpainter). Ils sont mis en cache dans le navigateur et vérifiés par taille en octets. Si une traduction commence avant qu'ils soient téléchargés, elle attend.
 
-![Téléchargement des modèles depuis la page des réglages](../docs/images/options-models.png)
 
 ---
 

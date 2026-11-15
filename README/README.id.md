@@ -68,9 +68,8 @@ Firefox:
 
 [Pasang dari Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — sekali klik, pembaruan otomatis.
 
-Setelah menginstal, buka halaman Pengaturan dan klik Unduh semua model sekali (~350 MB: detektor, OCR, inpainter). Model-model itu di-cache di browser dan diverifikasi berdasarkan ukuran byte.
+Setelah menginstal, model diunduh secara otomatis di latar belakang (~350 MB: detektor, OCR, inpainter). Model-model itu di-cache di browser dan diverifikasi berdasarkan ukuran byte. Jika penerjemahan dimulai sebelum model selesai diunduh, penerjemahan akan menunggu.
 
-![Downloading the models from the Settings page](../docs/images/options-models.png)
 
 ---
 

@@ -68,9 +68,8 @@ Firefox:
 
 [Cài đặt từ Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/comic-translate-4-free/) — một cú nhấp chuột, cập nhật tự động.
 
-Sau khi cài đặt, mở trang Cài đặt và nhấp một lần vào Tải xuống tất cả mô hình (~350 MB: trình phát hiện, OCR, inpainter). Chúng được lưu trong bộ nhớ đệm của trình duyệt và được xác minh theo kích thước byte.
+Sau khi cài đặt, các mô hình sẽ tự động tải xuống ở chế độ nền (~350 MB: trình phát hiện, OCR, inpainter). Chúng được lưu trong bộ nhớ đệm của trình duyệt và được xác minh theo kích thước byte. Nếu bản dịch bắt đầu trước khi các mô hình tải xong, bản dịch sẽ đợi chúng.
 
-![Tải các mô hình từ trang Cài đặt](../docs/images/options-models.png)
 
 ---
 
