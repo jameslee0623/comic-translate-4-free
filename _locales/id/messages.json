@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "Mendeteksi gelembung & teks…"
   },
+  "stage_downloading": {
+    "message": "Mengunduh model…"
+  },
   "stage_blocks": {
     "message": "Menyusun blok teks…"
   },

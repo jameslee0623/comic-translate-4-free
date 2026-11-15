@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "Đang phát hiện bong bóng & chữ…"
   },
+  "stage_downloading": {
+    "message": "Đang tải mô hình…"
+  },
   "stage_blocks": {
     "message": "Đang ghép các khối văn bản…"
   },

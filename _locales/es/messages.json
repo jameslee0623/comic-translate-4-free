@@ -343,6 +343,9 @@
   "stage_detect": {
     "message": "Detectando bocadillos y texto…"
   },
+  "stage_downloading": {
+    "message": "Descargando modelos…"
+  },
   "stage_done": {
     "message": "Listo"
   },

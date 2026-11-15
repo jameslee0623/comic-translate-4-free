@@ -786,6 +786,7 @@
     capture: 'Capturing', detect: 'Detecting bubbles', blocks: 'Building blocks',
     ocr: 'Reading text', mask: 'Masking', translate: 'Translating',
     inpaint: 'Inpainting', render: 'Rendering',
+    downloading: 'Downloading models',
   };
   function stageLabel(stage) {
     try {

@@ -343,6 +343,9 @@
   "stage_detect": {
     "message": "Поиск облачков и текста…"
   },
+  "stage_downloading": {
+    "message": "Загрузка моделей…"
+  },
   "stage_done": {
     "message": "Готово"
   },

@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "Détection des bulles et du texte…"
   },
+  "stage_downloading": {
+    "message": "Téléchargement des modèles…"
+  },
   "stage_blocks": {
     "message": "Assemblage des blocs de texte…"
   },

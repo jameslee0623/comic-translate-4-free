@@ -111,10 +111,9 @@ async function refreshSettings() {
     const has = await chrome.permissions.contains({ origins: ['<all_urls>'] });
     if (settings && !!settings.allowAllSites !== has) {
       // Re-read before writing: the object captured above can go stale
-      // during the permissions.contains await (e.g. the first-run consume
-      // clearing firstRun in the meantime). Merge only the reconciled flag
-      // into fresh state so a stale write can't resurrect firstRun or
-      // clobber a concurrent change.
+      // during the permissions.contains await. Merge only the reconciled
+      // flag into fresh state so a stale write can't clobber a
+      // concurrent change.
       const fresh = await readSettingsRaw();
       await chrome.storage.local.set({ settings: { ...(fresh || {}), allowAllSites: has } });
     }
@@ -481,20 +480,9 @@ chrome.runtime.onMessage.addListener(msg => {
 
 ctApplyI18n();
 fillLangs();
-// First run: send the user straight to the models section of the Settings
-// page, with the Download all button highlighted. One-time flag set by the
-// SW's onInstalled handler; consumed here.
-(async () => {
-  try {
-    const settings = await readSettingsRaw();
-    if (settings && settings.firstRun) {
-      await chrome.storage.local.set({ settings: { ...settings, firstRun: false } });
-      chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/options.html#models-download') });
-      window.close();
-      return;
-    }
-  } catch { /* popup works fine without the redirect */ }
-})();
+// Models auto-download (2.2.2): no first-run redirect to Settings any
+// more — the install trigger fetches them, and a run that starts before
+// they finish waits for them instead.
 try {
   const v = chrome.runtime.getManifest().version;
   $('build').textContent = `v${v}`;

@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "正在偵測對話框與文字…"
   },
+  "stage_downloading": {
+    "message": "正在下載模型…"
+  },
   "stage_blocks": {
     "message": "正在組裝文字區塊…"
   },

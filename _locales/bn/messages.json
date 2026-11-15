@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "বাবল ও লেখা শনাক্ত করা হচ্ছে…"
   },
+  "stage_downloading": {
+    "message": "মডেল ডাউনলোড হচ্ছে…"
+  },
   "stage_blocks": {
     "message": "টেক্সট ব্লক সাজানো হচ্ছে…"
   },

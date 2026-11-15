@@ -1,6 +1,6 @@
 // Model inventory: exact HuggingFace artifacts (verified 2026-09-27).
 // Downloaded on first use into IndexedDB ('ct-db'/'models'), never bundled.
-import { openDb, idbGet, idbPut, idbDel, MSG } from './contracts.js';
+import { openDb, idbGet, idbPut, idbDel, idbKeys, MSG } from './contracts.js';
 
 const hf = (repo, file) => `https://huggingface.co/${repo}/resolve/main/${file}`;
 
@@ -73,6 +73,43 @@ export async function getModelStatus() {
     out.push({ id: g.id, label: g.label, labelKey: g.labelKey, required: !!g.required, downloaded: done, sizeMismatch, files });
   }
   return out;
+}
+
+// Download state for auto-download (2.2.2): per-file progress, including
+// in-progress files whose manifest is not written yet. A file with chunk
+// records but no manifest is mid-download; loaded is estimated from the
+// 8MB chunk count, capped at the expected size. A manifest with the wrong
+// byte count is stale (a newer file version), not done — it needs a full
+// re-download, so loaded is 0 for it.
+export async function getModelDownloadState() {
+  const db = await openDb();
+  const keys = await idbKeys(db).catch(() => []);
+  const files = [];
+  for (const f of ALL_FILES) {
+    const rec = await idbGet(db, f.id).catch(() => null);
+    const done = !!rec && rec.bytes === f.bytes;
+    let loaded = 0, started = false;
+    if (done) {
+      loaded = f.bytes;
+    } else {
+      let n = 0;
+      for (const k of keys) {
+        if (typeof k === 'string' && k.startsWith(f.id + '#')) n++;
+      }
+      if (n > 0) {
+        started = true;
+        loaded = Math.min(n * IDB_CHUNK, f.bytes);
+      }
+    }
+    files.push({ id: f.id, group: f.group, file: f.file, bytes: f.bytes, loaded, done, started });
+  }
+  const missing = files.filter(f => !f.done);
+  return {
+    files,
+    missing,
+    totalBytes: missing.reduce((a, f) => a + f.bytes, 0),
+    loadedBytes: missing.reduce((a, f) => a + f.loaded, 0),
+  };
 }
 
 export async function deleteModelGroup(groupId) {

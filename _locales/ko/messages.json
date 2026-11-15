@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "말풍선 및 텍스트 감지 중…"
   },
+  "stage_downloading": {
+    "message": "모델 다운로드 중…"
+  },
   "stage_blocks": {
     "message": "텍스트 블록 조립 중…"
   },

@@ -343,6 +343,9 @@
   "stage_detect": {
     "message": "बबल और टेक्स्ट पहचाने जा रहे हैं…"
   },
+  "stage_downloading": {
+    "message": "मॉडल डाउनलोड हो रहे हैं…"
+  },
   "stage_done": {
     "message": "हो गया"
   },

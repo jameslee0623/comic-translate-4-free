@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "Sprechblasen & Text werden erkannt…"
   },
+  "stage_downloading": {
+    "message": "Modelle werden heruntergeladen…"
+  },
   "stage_blocks": {
     "message": "Textblöcke werden zusammengesetzt…"
   },

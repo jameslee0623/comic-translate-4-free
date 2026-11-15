@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "正在检测气泡和文字…"
   },
+  "stage_downloading": {
+    "message": "正在下载模型…"
+  },
   "stage_blocks": {
     "message": "正在组装文本块…"
   },

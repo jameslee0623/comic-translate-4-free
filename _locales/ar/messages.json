@@ -343,6 +343,9 @@
   "stage_detect": {
     "message": "جارٍ كشف الفقاعات والنص…"
   },
+  "stage_downloading": {
+    "message": "تنزيل النماذج…"
+  },
   "stage_done": {
     "message": "تم"
   },

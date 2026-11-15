@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "吹き出しと文字を検出中…"
   },
+  "stage_downloading": {
+    "message": "モデルをダウンロード中…"
+  },
   "stage_blocks": {
     "message": "テキストブロックを構築中…"
   },

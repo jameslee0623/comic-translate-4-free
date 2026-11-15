@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "Detectando balões e texto…"
   },
+  "stage_downloading": {
+    "message": "Baixando modelos…"
+  },
   "stage_blocks": {
     "message": "Montando blocos de texto…"
   },

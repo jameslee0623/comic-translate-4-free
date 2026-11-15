@@ -343,6 +343,9 @@
   "stage_detect": {
     "message": "بلبلے اور متن کی شناخت…"
   },
+  "stage_downloading": {
+    "message": "ماڈل ڈاؤن لوڈ ہو رہے ہیں…"
+  },
   "stage_done": {
     "message": "مکمل"
   },

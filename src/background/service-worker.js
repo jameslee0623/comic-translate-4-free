@@ -2,7 +2,7 @@
 // translation APIs, capture, debug emission. ML inference itself lives in
 // the offscreen document; pure-JS stages (blocks, mask) run here.
 import { MSG } from '../shared/contracts.js';
-import { MODEL_GROUPS, getModelStatus, deleteModelGroup, computeModelFingerprint } from '../shared/model-specs.js';
+import { MODEL_GROUPS, getModelStatus, getModelDownloadState, deleteModelGroup, pruneModelIds, computeModelFingerprint } from '../shared/model-specs.js';
 import { getSettings } from '../shared/settings.js';
 import {
   makeTextBlock, mergeOverlappingBoxes, sortBlocks,
@@ -1154,6 +1154,96 @@ async function renderFromPageCache(tabId, runId, entry, settings, timings, srcUr
 // ---------------------------------------------------------------- pipeline
 // opts.srcUrl: manual send (right-click) — translate this exact image,
 // bypassing the minimum image size. Otherwise the auto path.
+// ---------------------------------------------------------------- auto-download models (2.2.2)
+// Models (~350MB) download themselves: once right after install (and
+// after an update that changes them), and again at run start if they are
+// still missing — the run waits with progress in the pill instead of
+// failing. The Settings "Download all models" button stays as a manual
+// fallback. Downloads run in the ML host (offscreen doc on Chrome,
+// background page on Firefox), so a service-worker shutdown can't kill
+// them mid-stream. Completion is read from IndexedDB, which is the
+// source of truth — never the callMl result, whose 90s timeout fires
+// on slow downloads that are still progressing.
+const modelDownloadInflight = new Map(); // fileId -> { startedAt }
+const MODEL_DOWNLOAD_WAIT_MS = 15 * 60 * 1000; // overall cap for one run's wait
+const MODEL_DOWNLOAD_STALL_MS = 3 * 60 * 1000; // no progress for this long = dead download, restart it
+
+// Fire-and-forget one file's download. Returns the host call's promise,
+// or null if it is already going (same SW lifetime) — a duplicate start
+// would write the same chunk keys twice and corrupt the file. The
+// promise's rejection is swallowed here on purpose: callMl times out at
+// 90s on slow downloads that are still progressing in the ML host, so
+// only a success clears the in-flight mark. A download that truly
+// stopped is caught by the wait loop's stall detection, not by this.
+function triggerModelDownload(fileId) {
+  if (modelDownloadInflight.has(fileId)) return null;
+  modelDownloadInflight.set(fileId, { startedAt: Date.now() });
+  const p = ensureMlHost().then(
+    () => callMl({ type: MSG.ML_DOWNLOAD, fileId }),
+    (e) => { modelDownloadInflight.delete(fileId); throw e; },
+  );
+  p.then(() => { modelDownloadInflight.delete(fileId); }, () => {});
+  return p;
+}
+
+// Start downloads for every missing file that is not already in flight
+// (a file with chunks in IDB is mid-download — from the install trigger,
+// another run, or a previous SW lifetime — so it is left alone).
+async function autoDownloadMissingModels() {
+  let state;
+  try { state = await getModelDownloadState(); } catch { return; }
+  for (const f of state.missing) {
+    if (f.started) continue;
+    try { triggerModelDownload(f.id); } catch {}
+  }
+}
+
+// Wait until all models are downloaded, showing progress in the pill.
+// Throws if the wait is cancelled, stalls, or hits the overall cap.
+async function waitForModels(runId) {
+  await autoDownloadMissingModels();
+  const t0 = Date.now();
+  let lastLoaded = -1, lastProgressAt = Date.now();
+  for (;;) {
+    if (runs.get(runId)?.cancelled) throw new Error('cancelled');
+    let state;
+    try { state = await getModelDownloadState(); } catch (e) {
+      throw new Error('could not check downloaded models: ' + String((e && e.message) || e).slice(0, 100));
+    }
+    if (!state.missing.length) {
+      for (const f of state.files) modelDownloadInflight.delete(f.id);
+      return;
+    }
+    // Start anything not downloading yet (covers a failed ensureMlHost
+    // at the top, and a download that died before writing a chunk).
+    for (const f of state.missing) {
+      if (!f.started && !modelDownloadInflight.has(f.id)) triggerModelDownload(f.id);
+    }
+    const frac = state.totalBytes ? state.loadedBytes / state.totalBytes : 0;
+    setProgress(runId, 'downloading', frac);
+    if (state.loadedBytes !== lastLoaded) {
+      lastLoaded = state.loadedBytes;
+      lastProgressAt = Date.now();
+    } else if (Date.now() - lastProgressAt > MODEL_DOWNLOAD_STALL_MS) {
+      // Stalled: a partial file whose bytes stopped growing belongs to a
+      // dead download (host died, network dropped). Clear it and start
+      // over so the wait can make progress instead of hanging.
+      diagPush('model download stalled, restarting: ' + state.missing.filter(f => f.started).map(f => f.id).join(', '));
+      for (const f of state.missing) {
+        if (!f.started) { triggerModelDownload(f.id); continue; }
+        try { await pruneModelIds([f.id]); } catch {}
+        modelDownloadInflight.delete(f.id);
+        triggerModelDownload(f.id);
+      }
+      lastProgressAt = Date.now();
+    }
+    if (Date.now() - t0 > MODEL_DOWNLOAD_WAIT_MS) {
+      throw new Error('model download timed out after 15 minutes — check the connection, or open Settings → Models and tap "Download all models".');
+    }
+    await new Promise(r => setTimeout(r, 1000));
+  }
+}
+
 async function runPipeline(tabId, opts = {}) {
   const manualSrc = opts.srcUrl || null;
   const runId = 'run-' + Date.now().toString(36) + '-' + (runSeq++) + '-' + Math.random().toString(36).slice(2, 8);
@@ -1198,6 +1288,10 @@ async function runPipeline(tabId, opts = {}) {
   let result;
   try {
     keepAliveStart(runId); // FIX2: hold the background alive for this run only; released in finally.
+    // Auto-download (2.2.2): if the models are not here yet (install
+    // download still going, or it never ran), fetch them now and wait,
+    // showing progress in the pill, instead of failing the run.
+    await waitForModels(runId);
     // MEASURE1: thread-info diagnostic (best-effort, never fails the run).
     // Served by the same ML host as compute (worker on Firefox, offscreen
     // doc on Chrome — see ML_WORKER_TYPES in ml-bridge.js), so the numbers
@@ -2397,18 +2491,18 @@ async function detectSliced(rgba, w, h, threshold, runId, pxKeys) {
 const autoFired = new Map(); // tabId -> {url, at}
 chrome.tabs.onRemoved.addListener(tabId => autoFired.delete(tabId));
 
-// First install: always flag the popup to send the user straight to the
-// models section of the Settings page (download button highlighted) on
-// next open. Update: flag it ONLY when the update changes the model list
+// Auto-download on install (2.2.2): start fetching missing models in the
+// background right after install, so the first run usually finds them
+// already here. Update: only when the update changes the model list
 // (new/changed file IDs or sizes — e.g. a Baberu swap), i.e. when a new
-// download is actually necessary; a code-only update does not lead.
+// download is actually necessary; a code-only update downloads nothing.
 // The fingerprint is stored on install and on every model-changing
 // update, so the next update compares against the last installed list.
 // No stored fingerprint (updating from before this check existed) counts
-// as changed — one lead to set the baseline, then only real changes.
-// Consumed by the popup on first open after the install/update; opening
-// the popup is what triggers the lead, so it waits if the user never
-// opens it.
+// as changed — one download to set the baseline, then only real changes.
+// A run that starts before the download finishes waits for it instead
+// (see waitForModels); the Settings "Download all models" button stays
+// as a manual fallback.
 // Silent first-startup core detection (Chrome 2.0.2, no UI).
 // Detects navigator.hardwareConcurrency once and saves it to
 // storage.local as detectedCores { cores, detectedAt, source }.
@@ -2431,22 +2525,20 @@ async function saveDetectedCores(cores, source) {
 
 chrome.runtime.onInstalled.addListener(details => {
   if (!details || (details.reason !== 'install' && details.reason !== 'update')) return;
-  // Run before the early returns below: a code-only update changes no
-  // models, so the existing handler returns early for it — core
-  // detection must still run on that first startup after the update.
+  // Run before the early return below: a code-only update changes no
+  // models, so the handler returns early for it — core detection must
+  // still run on that first startup after the update.
   saveDetectedCores((typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || null, 'onInstalled');
-  chrome.storage.local.get(['settings', 'modelFingerprint']).then(({ settings, modelFingerprint: stored }) => {
+  chrome.storage.local.get(['modelFingerprint']).then(async ({ modelFingerprint: stored }) => {
     const current = computeModelFingerprint();
     const modelsChanged = stored !== current;
-    if (details.reason === 'install') {
-      if (settings && settings.firstRun && !modelsChanged) return;
-    } else if (!modelsChanged) {
-      return;
+    if (details.reason === 'update' && !modelsChanged) return;
+    if (modelsChanged) {
+      try { await chrome.storage.local.set({ modelFingerprint: current }); } catch {}
     }
-    const patch = {};
-    if (!(settings && settings.firstRun)) patch.settings = { ...(settings || {}), firstRun: true };
-    if (modelsChanged) patch.modelFingerprint = current;
-    if (Object.keys(patch).length) chrome.storage.local.set(patch).catch(() => {});
+    // Fire-and-forget: a run that starts before they finish waits for
+    // them (see waitForModels), so a slow or failed start here is not fatal.
+    try { await autoDownloadMissingModels(); } catch {}
   }).catch(() => {});
 });
 
@@ -2932,9 +3024,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
         case MSG.DOWNLOAD_MODEL: {
-          await ensureMlHost();
-          // fire-and-forget; progress arrives via MODEL_PROGRESS broadcasts
-          callMl({ type: MSG.ML_DOWNLOAD, fileId: msg.fileId }).then(
+          // fire-and-forget; progress arrives via MODEL_PROGRESS broadcasts.
+          // Routed through triggerModelDownload so a manual click cannot
+          // start a duplicate of an auto-download already in flight.
+          const p = triggerModelDownload(msg.fileId);
+          if (p) p.then(
             () => chrome.runtime.sendMessage({
               type: MSG.MODEL_PROGRESS, fileId: msg.fileId, done: true,
             }).catch(() => {}),

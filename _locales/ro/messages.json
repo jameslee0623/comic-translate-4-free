@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "Se detectează bulele și textul…"
   },
+  "stage_downloading": {
+    "message": "Se descarcă modelele…"
+  },
   "stage_blocks": {
     "message": "Se asamblează blocurile de text…"
   },

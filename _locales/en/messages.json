@@ -276,6 +276,9 @@
   "stage_detect": {
     "message": "Detecting bubbles & text…"
   },
+  "stage_downloading": {
+    "message": "Downloading models…"
+  },
   "stage_blocks": {
     "message": "Assembling text blocks…"
   },
