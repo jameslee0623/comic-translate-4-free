@@ -1172,9 +1172,10 @@ const MODEL_DOWNLOAD_STALL_MS = 3 * 60 * 1000; // no progress for this long = de
 // or null if it is already going (same SW lifetime) — a duplicate start
 // would write the same chunk keys twice and corrupt the file. The
 // promise's rejection is swallowed here on purpose: callMl times out at
-// 90s on slow downloads that are still progressing in the ML host, so
-// only a success clears the in-flight mark. A download that truly
-// stopped is caught by the wait loop's stall detection, not by this.
+// 90s on slow downloads that are still progressing in the ML host, so a
+// rejection must NOT always clear the in-flight mark. But a failure before
+// the first chunk is written does clear it (see below) — otherwise the
+// wait loop skips the file forever and no retry ever starts.
 function triggerModelDownload(fileId) {
   if (modelDownloadInflight.has(fileId)) return null;
   modelDownloadInflight.set(fileId, { startedAt: Date.now() });
@@ -1182,7 +1183,23 @@ function triggerModelDownload(fileId) {
     () => callMl({ type: MSG.ML_DOWNLOAD, fileId }),
     (e) => { modelDownloadInflight.delete(fileId); throw e; },
   );
-  p.then(() => { modelDownloadInflight.delete(fileId); }, () => {});
+  p.then(() => { modelDownloadInflight.delete(fileId); }, () => {
+    // A failure before the first 8 MB chunk is written must clear the
+    // in-flight mark: otherwise the wait loop skips the file (in flight)
+    // and the stall branch only restarts files that already wrote chunks,
+    // so no retry ever starts — in this SW lifetime, or the whole Firefox
+    // session (its background page never restarts). Only clear when nothing
+    // was written: a download that wrote chunks may still be progressing
+    // past the 90s callMl timeout, and its stall restart is the wait loop's
+    // job, not this handler's. A slow download that truly is still running
+    // may write its first chunk after this check and then meet a duplicate
+    // start — harmless: both fetch the same bytes and write the same chunk
+    // keys.
+    getModelDownloadState().then(state => {
+      const f = state.files.find(x => x.id === fileId);
+      if (f && !f.done && !f.started) modelDownloadInflight.delete(fileId);
+    }).catch(() => {});
+  });
   return p;
 }
 
