@@ -361,9 +361,13 @@ async function lmStudioDiscoverModel(ep, headers, signal, deadlineMs) {
 // same translation.
 function lmStudioPrompt(texts, settings) {
   const n = texts.length;
-  const from = langName(settings.sourceLang);
+  // 'auto' is not a language: with the default source setting the prompt
+  // used to say "from auto", which is nonsense to the model. Omit the
+  // source clause then; the model detects it from the text.
+  const from = settings.sourceLang && settings.sourceLang !== 'auto'
+    ? ' from ' + langName(settings.sourceLang) : '';
   const to = langName(settings.targetLang);
-  return 'Translate the following ' + n + ' text(s) from ' + from + ' to ' + to +
+  return 'Translate the following ' + n + ' text(s)' + from + ' to ' + to +
     '. Reply with ONLY a JSON array of ' + n +
     ' translated strings, in the same order, no explanations, no code fences.' +
     ' Do not analyse the text and do not think step by step: output the array' +
