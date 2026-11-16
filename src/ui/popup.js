@@ -10,6 +10,7 @@ const STAGE_LABEL = {
   idle: 'idle', capture: 'Capturing page…', detect: 'Detecting bubbles & text…',
   blocks: 'Assembling text blocks…', ocr: 'Reading text (OCR)…', mask: 'Building masks…',
   inpaint: 'Inpainting…', translate: 'Translating…', render: 'Rendering…',
+  downloading: 'Downloading models…',
   done: 'Done', cancelled: 'Cancelled', error: 'Error',
 };
 for (const k of Object.keys(STAGE_LABEL)) {
