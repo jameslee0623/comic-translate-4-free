@@ -223,6 +223,13 @@ async function azure(texts, settings, signal) {
   if (!key) throw new Error('azure translator: API key not set — add it in Settings');
   if (!region) throw new Error('azure translator: region not set — add it in Settings');
   const to = azureLang(settings.targetLang);
+  // Send the source language when the user picked one: without `from`,
+  // Azure auto-detects, and short manga fragments (sound effects, 2–3
+  // kana) are exactly what auto-detect gets wrong. 'auto' stays omitted —
+  // that is the correct call then. azureLang() also maps the zh codes
+  // (zh-CN -> zh-Hans, zh-TW -> zh-Hant), same as for the target.
+  const from = settings.sourceLang && settings.sourceLang !== 'auto'
+    ? azureLang(settings.sourceLang) : null;
   // The 25-text batches used to run one at a time; now 3 batches fly in
   // parallel (official paid API — no rate-limit gentleness needed).
   const batches = [];
@@ -233,15 +240,16 @@ async function azure(texts, settings, signal) {
     for (;;) {
       const bi = next++;
       if (bi >= batches.length) return;
-      out[bi] = await azureBatch(batches[bi], key, region, to);
+      out[bi] = await azureBatch(batches[bi], key, region, to, from);
     }
   }
   const lanes = [];
   for (let k = 0; k < Math.min(3, batches.length); k++) lanes.push(lane());
   await Promise.all(lanes);
 
-  async function azureBatch(batch, key, region, to) {
-    const url = `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=${encodeURIComponent(to)}`;
+  async function azureBatch(batch, key, region, to, from) {
+    const url = `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=${encodeURIComponent(to)}` +
+      (from ? `&from=${encodeURIComponent(from)}` : '');
     // Like the Google path: one throttled batch (429/5xx) must not kill the
     // whole page. Retry with exponential backoff + jitter.
     const delays = [1500, 4000, 10000];
