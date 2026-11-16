@@ -1385,7 +1385,11 @@
             renderDebugTab('render');
           }
           sendResponse({ ok: true, replaced });
-          closeTabKeepAlive(msg.runId); // FIX3: render done, run over.
+          // The keep-alive stays open: a multi-pic run renders once per
+          // picture, and closing here killed the tab-held port after the
+          // first render, leaving the rest of the run on the worker-side
+          // keep-alive alone. The ct/run-progress handler closes it on the
+          // terminal stage (done/error/cancelled) instead.
         } catch (e) {
           sendResponse({ ok: false, error: String((e && e.message) || e) });
         }
