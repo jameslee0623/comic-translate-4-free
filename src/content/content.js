@@ -564,12 +564,19 @@
   // by live src, by the translated data URL now shown, or by the stashed
   // original (re-send of an already-translated image). No size filter — the
   // manual send bypasses the minimum image size on purpose.
+  // No loaded check: a lazy picture still shows its placeholder (its live src
+  // is the placeholder, the real URL is in data-src), and a picture the page
+  // itself failed to load (403) has naturalWidth 0. Both must still match —
+  // the real URL is what the fetch tiers download, and the page-canvas tier
+  // refuses unloaded/placeholder elements (see captureElementPixels), so the
+  // run falls through to the network tiers instead of translating a blank.
   function findImageBySrc(srcUrl) {
     if (!srcUrl) return null;
     const im = allImages().find(im => {
-      if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
+      if (!im.isConnected) return false;
       const cur = realSrc(im);
-      return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
+      const live = im.currentSrc || im.src || '';
+      return cur === srcUrl || live === srcUrl || im.dataset.ctOriginal === srcUrl;
     });
     if (!im) return null;
     const cur = realSrc(im);
@@ -592,6 +599,14 @@
   // freezes the page for 1-3s on multi-MP images. Note: HTMLCanvasElement
   // has toBlob (callback), not convertToBlob (that's OffscreenCanvas only).
   async function captureElementPixels(im) {
+    // The element must actually be showing the real picture. A lazy picture
+    // still shows its placeholder, and a picture the page failed to load
+    // (403) draws a 1x1 blank — translating either would be wrong. Throw so
+    // the worker's fetch tiers take over with the real URL (findImageBySrc
+    // already resolved it via realSrc).
+    const live = im.currentSrc || im.src || '';
+    if (!im.complete || !im.naturalWidth) throw new Error('image has not loaded yet');
+    if (isPlaceholderUrl(live)) throw new Error('image is still showing its placeholder');
     // Canvas guard: natural size can exceed browser limits (e.g. 2000x15000).
     // Downscale to fit — the pipeline downscales to 6.5MP anyway.
     const s = renderScale(im.naturalWidth, im.naturalHeight);
