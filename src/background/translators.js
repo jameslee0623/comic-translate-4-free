@@ -22,15 +22,16 @@ function sleepAbortable(ms, signal) {
 // 10-min timeout per attempt; 2 retries with 2s/6s backoff on network
 // errors and 5xx only (4xx are not retried).
 
-// LM Studio host permission check. Manifest covers localhost/127.0.0.1;
-// a LAN host (192.168.x.x) or remote URL needs an explicit grant. Check
-// before fetching so the user gets an actionable error instead of a bare
-// "Failed to fetch".
+// LM Studio host permission check. Manifest covers localhost/127.0.0.1
+// only — NOT [::1] (the manifests grant no IPv6 loopback). A [::1] URL
+// therefore needs an explicit grant like a LAN host; treating it as
+// covered made the fetch fail with a misleading "is the server running?"
+// while the grant button said no grant was needed.
 export function lmStudioHostPattern(url) {
   try {
     const u = new URL(url);
     const host = u.hostname.toLowerCase();
-    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') return null; // covered by manifest
+    if (host === 'localhost' || host === '127.0.0.1') return null; // covered by manifest
     // Ensure IPv6 literals are bracketed in the permission pattern.
     // u.host is already bracketed for IPv6, but be explicit: an IPv6
     // address has 2+ colons (IPv4:port has exactly one).

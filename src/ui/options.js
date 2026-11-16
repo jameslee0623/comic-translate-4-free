@@ -288,7 +288,9 @@ $('grantLmStudioHost').onclick = async () => {
   try {
     const u = new URL(url);
     const host = u.hostname.toLowerCase();
-    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') {
+    // Manifest covers localhost/127.0.0.1 only — NOT [::1]. A [::1] URL
+    // needs a grant like a LAN host; the pattern below handles it.
+    if (host === 'localhost' || host === '127.0.0.1') {
       out.className = 'check-result ok';
       out.textContent = 'localhost needs no grant — already covered.';
       return;
