@@ -738,6 +738,15 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
       // failover attempt at 15s and stop when the budget is gone, so Azure
       // always gets its turn inside the 30s translate budget.
       const FAILOVER_LM_DEADLINE_MS = 15000;
+      // Reserve for Azure: if Azure is configured and still to come, a
+      // non-Azure attempt must leave it enough time for one attempt plus
+      // one retry — a batch fetch is ~2s and Azure's first retry delay is
+      // 1.5s, so 8s covers attempt + delay + attempt with lane overhead.
+      // Without this, a slow LM Studio — or, in rescue mode, a Google retry
+      // cycle, which has no per-attempt cap — could burn the whole budget
+      // and Azure would never get its turn.
+      const AZURE_RESERVE_MS = 8000;
+      const azureStillToCome = azureConfigured && backend !== 'azure';
       for (const fb of candidates) {
         const remaining = failoverBudgetMs - (performance.now() - budgetStart);
         if (remaining <= 0) break;
@@ -750,9 +759,33 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
           // Skip LM Studio failover if it was the failing backend (avoid loop).
           // Skip backends that need config we don't have.
           if (fb === 'lmstudio' && backend === 'lmstudio') continue;
+          // Cap a non-Azure attempt so Azure keeps its reserve. LM Studio
+          // takes the cap as its attempt deadline; Google has no such
+          // parameter, so it gets a per-attempt abort timer instead. A
+          // timer abort is not a user cancel — the catch below checks
+          // isUserCancelled, so the loop still moves on to Azure.
+          let attemptSig = attemptSignal;
+          let attemptTimer = null;
+          let lmCap = fb === 'lmstudio' ? Math.min(remaining, FAILOVER_LM_DEADLINE_MS) : undefined;
+          if (fb !== 'azure' && azureStillToCome) {
+            const attemptMs = remaining - AZURE_RESERVE_MS;
+            if (attemptMs <= 0) continue; // Nothing left before Azure's reserve.
+            if (fb === 'lmstudio') lmCap = Math.min(lmCap, attemptMs);
+            else {
+              const ac = new AbortController();
+              attemptTimer = setTimeout(() => ac.abort(), attemptMs);
+              if (attemptSignal.aborted) ac.abort();
+              else attemptSignal.addEventListener('abort', () => ac.abort(), { once: true });
+              attemptSig = ac.signal;
+            }
+          }
           // User-visible notice: failover must not happen silently.
           onProgress && onProgress({ failoverFrom: backend, failoverTo: fb });
-          results = await runBackend(fb, fb === 'lmstudio' ? Math.min(remaining, FAILOVER_LM_DEADLINE_MS) : undefined, attemptSignal);
+          try {
+            results = await runBackend(fb, lmCap, attemptSig);
+          } finally {
+            if (attemptTimer) clearTimeout(attemptTimer);
+          }
           if (isUserCancelled?.()) {
             if (failoverTimer) clearTimeout(failoverTimer);
             throw Object.assign(new Error('cancelled'), { cancelled: true });
