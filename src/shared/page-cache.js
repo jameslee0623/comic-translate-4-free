@@ -114,8 +114,11 @@ function samplePixels(rgba, w, h) {
 
 export async function buildCacheKey(rgba, w, h, settings) {
   const digest = await crypto.subtle.digest('SHA-256', samplePixels(rgba, w, h));
+  // The file ID is part of the key, not just name + size: a model update
+  // can keep both (Baberu v1.1 to v1.2 changed only the IDs), and without
+  // the ID a page cached with the old model would serve its old OCR.
   const models = MODEL_GROUPS
-    .map(g => g.id + ':' + g.files.map(f => f.file + '@' + f.bytes).join(','))
+    .map(g => g.id + ':' + g.files.map(f => f.id + '@' + f.file + '@' + f.bytes).join(','))
     .join('|');
   return [
     'v1',
@@ -132,8 +135,11 @@ export async function buildCacheKey(rgba, w, h, settings) {
 // new targetLang translates only — skipping detect/OCR/inpaint (minutes).
 export async function buildCacheKeyTier1(rgba, w, h, settings) {
   const digest = await crypto.subtle.digest('SHA-256', samplePixels(rgba, w, h));
+  // The file ID is part of the key, not just name + size: a model update
+  // can keep both (Baberu v1.1 to v1.2 changed only the IDs), and without
+  // the ID a page cached with the old model would serve its old OCR.
   const models = MODEL_GROUPS
-    .map(g => g.id + ':' + g.files.map(f => f.file + '@' + f.bytes).join(','))
+    .map(g => g.id + ':' + g.files.map(f => f.id + '@' + f.file + '@' + f.bytes).join(','))
     .join('|');
   return [
     'v2t2',
