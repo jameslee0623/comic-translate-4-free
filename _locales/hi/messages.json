@@ -379,6 +379,9 @@
   "support_title": {
     "message": "इस प्रोजेक्ट के बारे में"
   },
+  "feedback_email": {
+    "message": "✉️ ईमेल द्वारा फ़ीडबैक"
+  },
   "target_lang": {
     "message": "लक्ष्य भाषा"
   },

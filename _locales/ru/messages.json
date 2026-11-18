@@ -379,6 +379,9 @@
   "support_title": {
     "message": "О проекте"
   },
+  "feedback_email": {
+    "message": "✉️ Отзыв по электронной почте"
+  },
   "target_lang": {
     "message": "Целевой язык"
   },

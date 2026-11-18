@@ -340,6 +340,9 @@
   "support_title": {
     "message": "Về dự án này"
   },
+  "feedback_email": {
+    "message": "✉️ Góp ý qua email"
+  },
   "support_hint": {
     "message": "Tiện ích này miễn phí và mã nguồn mở. Nếu nó giúp bạn tiết kiệm thời gian, bạn có thể hỗ trợ phát triển tiếp."
   },

@@ -379,6 +379,9 @@
   "support_title": {
     "message": "Acerca de este proyecto"
   },
+  "feedback_email": {
+    "message": "✉️ Comentarios por correo electrónico"
+  },
   "target_lang": {
     "message": "Idioma de destino"
   },

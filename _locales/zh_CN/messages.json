@@ -340,6 +340,9 @@
   "support_title": {
     "message": "关于此项目"
   },
+  "feedback_email": {
+    "message": "✉️ 通过电子邮件反馈"
+  },
   "support_hint": {
     "message": "本扩展程序免费开源。如果它帮到了你，欢迎支持它的持续开发。"
   },

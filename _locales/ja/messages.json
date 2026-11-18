@@ -340,6 +340,9 @@
   "support_title": {
     "message": "このプロジェクトについて"
   },
+  "feedback_email": {
+    "message": "✉️ メールでフィードバック"
+  },
   "support_hint": {
     "message": "この拡張機能は無料でオープンソースです。役に立ったなら、開発の支援をいただけると助かります。"
   },

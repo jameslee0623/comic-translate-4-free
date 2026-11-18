@@ -340,6 +340,9 @@
   "support_title": {
     "message": "Sobre este projeto"
   },
+  "feedback_email": {
+    "message": "✉️ Comentários por e-mail"
+  },
   "support_hint": {
     "message": "Esta extensão é gratuita e de código aberto. Se ela economiza seu tempo, você pode apoiar seu desenvolvimento contínuo."
   },

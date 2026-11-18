@@ -379,6 +379,9 @@
   "support_title": {
     "message": "حول هذا المشروع"
   },
+  "feedback_email": {
+    "message": "✉️ ملاحظات عبر البريد الإلكتروني"
+  },
   "target_lang": {
     "message": "اللغة الهدف"
   },

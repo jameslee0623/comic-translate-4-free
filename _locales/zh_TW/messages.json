@@ -340,6 +340,9 @@
   "support_title": {
     "message": "關於此專案"
   },
+  "feedback_email": {
+    "message": "✉️ 透過電子郵件提供意見回饋"
+  },
   "support_hint": {
     "message": "本擴充功能免費開源。如果它幫到了你，歡迎支持它的持續開發。"
   },

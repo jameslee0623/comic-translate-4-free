@@ -340,6 +340,9 @@
   "support_title": {
     "message": "Tentang proyek ini"
   },
+  "feedback_email": {
+    "message": "✉️ Umpan balik melalui email"
+  },
   "support_hint": {
     "message": "Ekstensi ini gratis dan open source. Jika ini menghemat waktu Anda, Anda bisa mendukung pengembangannya."
   },

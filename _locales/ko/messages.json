@@ -340,6 +340,9 @@
   "support_title": {
     "message": "이 프로젝트에 대해"
   },
+  "feedback_email": {
+    "message": "✉️ 이메일로 피드백 보내기"
+  },
   "support_hint": {
     "message": "이 확장 프로그램은 무료이며 오픈 소스입니다. 도움이 되었다면 개발을 후원해 주세요."
   },

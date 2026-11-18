@@ -340,6 +340,9 @@
   "support_title": {
     "message": "Despre acest proiect"
   },
+  "feedback_email": {
+    "message": "✉️ Feedback prin e-mail"
+  },
   "support_hint": {
     "message": "Această extensie este gratuită și open source. Dacă îți economisește timp, poți sprijini dezvoltarea ei continuă."
   },

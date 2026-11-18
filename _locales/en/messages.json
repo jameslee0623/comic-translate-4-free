@@ -340,6 +340,9 @@
   "support_title": {
     "message": "About this project"
   },
+  "feedback_email": {
+    "message": "✉️ Feedback by email"
+  },
   "support_hint": {
     "message": "This extension is free and open source. If it saves you time, you can support its ongoing development."
   },
