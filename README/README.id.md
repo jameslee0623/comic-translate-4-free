@@ -44,6 +44,7 @@ comic-translate-4-free menerjemahkan manga dan komik otomatis saat menjelajah. M
 
 - Terjemahan otomatis — buka halaman manga di situs yang diizinkan dan versi terjemahannya akan muncul di tempatnya, tanpa perlu mengeklik tombol.
 - Setiap gambar di halaman — terjemahan otomatis menangani semua gambar di sebuah halaman (hingga 50 per proses), bukan hanya gambar utama.
+- Terjemahkan halaman berikutnya terlebih dahulu — saat Anda membaca halaman ini, gambar halaman berikutnya diterjemahkan di latar belakang, jadi sudah siap begitu Anda membukanya (hanya satu gambar; aktif secara default, bisa dimatikan di Pengaturan).
 - Klik kanan pada gambar apa pun — pilih "Kirim ke comic-translate-4-free" untuk menerjemahkan gambar tertentu, bahkan yang lebih kecil dari ukuran minimum.
 - 114 bahasa target melalui Google Translate, Azure Translator, atau server LM Studio lokal Anda sendiri.
 - Deteksi otomatis bahasa sumber — bahasa Jepang, Inggris, Tionghoa Sederhana/Tradisional dikenali secara otomatis dari teks hasil OCR.

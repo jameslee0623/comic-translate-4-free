@@ -44,6 +44,7 @@ comic-translate-4-free übersetzt Manga und Comics automatisch. Es liest Japanis
 
 - Automatische Übersetzung — öffne eine Mangaseite auf einer erlaubten Website, und die übersetzte Version erscheint an Ort und Stelle, ganz ohne Klick.
 - Jedes Bild auf der Seite — die automatische Übersetzung verarbeitet alle Bilder einer Seite (bis zu 50 pro Durchlauf), nicht nur das Hauptbild.
+- Nächste Seite vorab übersetzen — während du die aktuelle Seite liest, wird das Bild der nächsten Seite im Hintergrund übersetzt und ist bereit, sobald du sie öffnest (nur ein Bild; standardmäßig an, in den Einstellungen abschaltbar).
 - Rechtsklick auf ein beliebiges Bild — wähle „An comic-translate-4-free senden“, um ein bestimmtes Bild zu übersetzen, auch wenn es kleiner als die Mindestgröße ist.
 - 114 Zielsprachen über Google Translate, Azure Translator oder deinen eigenen lokalen LM-Studio-Server.
 - Automatische Quellspracherkennung — Japanisch, Englisch, Vereinfachtes/Traditionelles Chinesisch werden automatisch aus dem per OCR gelesenen Text erkannt.

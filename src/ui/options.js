@@ -162,6 +162,7 @@ function applyToForm(s) {
   setVal('minImageSize', s.minImageSize);
   setChecked('debugMode', s.debugMode);
   setChecked('autoTranslate', s.autoTranslateOnLoad);
+  setChecked('pretranslateNext', s.pretranslateNextPage !== false);
   setChecked('playDing', s.playDing !== false);
   setChecked('allowAllSites', s.allowAllSites);
   allowedSites = [...(s.siteWhitelist || [])];
@@ -205,7 +206,7 @@ $('threshold').oninput = e => { $('thresholdVal').textContent = Number(e.target.
 for (const id of ['sourceLang', 'targetLang', 'backend', 'backendFailover', 'azureKey', 'azureRegion',
     'lmStudioUrl', 'lmStudioApi', 'lmStudioKey',
     'threshold', 'minImageSize',
-    'debugMode', 'autoTranslate', 'playDing']) {
+    'debugMode', 'autoTranslate', 'pretranslateNext', 'playDing']) {
   const el = $(id);
   if (!el) continue;
   const evt = el.type === 'text' || el.type === 'password' || el.type === 'number' ? 'input' : 'change';
@@ -249,6 +250,7 @@ function collect() {
     debugMode: $('debugMode').checked,
     backendFailover: $('backendFailover').checked,
     siteWhitelist: [...allowedSites], autoTranslateOnLoad: $('autoTranslate').checked,
+    pretranslateNextPage: $('pretranslateNext').checked,
     playDing: $('playDing').checked,
     allowAllSites: $('allowAllSites').checked,
   };

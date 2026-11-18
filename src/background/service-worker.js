@@ -1293,6 +1293,489 @@ async function maybeShowSupportPopup(tabId, translatedCount) {
   try { await chrome.storage.local.set({ [SUPPORT_POPUP_KEY]: { translatedTotal: total, shown } }); } catch {}
 }
 
+// Shared page-cache lookup (normal runs + pre-translation): Tier 1 first,
+// then Tier 2; legacy v1 as fallback. Same shapes the callers already use:
+// a full hit returns the entry (blocks with translations), a Tier-1-only
+// hit returns {tier1Only, entry, tier2Key}, a legacy hit returns the entry,
+// a miss returns null. `tier` is only for the diag lines.
+async function lookupPageCache(rgba, w, h, settings, tabId, tier) {
+  try {
+    if (await isIncognitoTab(tabId)) return null;
+    // Two-tier lookup: Tier 1 (target-independent) first, then Tier 2
+    // (targetLang + backend). A Tier-1 hit with a new targetLang
+    // translates only — skipping detect/OCR/inpaint.
+    const tier1Key = await buildCacheKeyTier1(rgba, w, h, settings);
+    let tier1Entry = await pageCacheGet(tier1Key);
+    // Dimension guard: the entry must match the CURRENT (scaled) capture
+    // dims. A mismatch means the entry was stored at different dims
+    // (e.g. before the R3 normalization) — treat as miss and overwrite.
+    if (tier1Entry && (tier1Entry.width !== w || tier1Entry.height !== h)) {
+      diagPush(`page-cache MISS tier1 ${tier1Key.split('~')[1]?.slice(0, 12)} dims ${tier1Entry.width}x${tier1Entry.height} != ${w}x${h} (tier ${tier})`);
+      tier1Entry = null;
+    }
+    if (tier1Entry) {
+      const tier2Key = buildCacheKeyTier2(tier1Key, settings);
+      const tier2Entry = await pageCacheGet(tier2Key);
+      if (tier2Entry && tier2Entry.translations) {
+        // Full hit: apply cached translations to the Tier-1 blocks.
+        diagPush(`page-cache HIT tier1+2 ${tier1Key.split('~')[1]?.slice(0, 12)} image ${w}x${h} (tier ${tier})`);
+        const blocks = tier1Entry.blocks.map((b, i) => ({
+          ...b, translation: tier2Entry.translations[i] || '',
+        }));
+        return { ...tier1Entry, blocks };
+      }
+      // Tier-1 hit, Tier-2 miss: translate the OCR'd blocks only.
+      diagPush(`page-cache HIT tier1 only ${tier1Key.split('~')[1]?.slice(0, 12)} image ${w}x${h} (tier ${tier})`);
+      return { tier1Only: true, entry: tier1Entry, tier2Key };
+    }
+    // No Tier 1: try the legacy v1 key for backward compatibility.
+    diagPush(`page-cache MISS tier1 ${tier1Key.split('~')[1]?.slice(0, 12)} image ${w}x${h} (tier ${tier})`);
+    const legacy = await pageCacheGet(await buildCacheKey(rgba, w, h, settings));
+    if (legacy) diagPush(`page-cache HIT legacy v1 image ${w}x${h} (tier ${tier})`);
+    return legacy || null;
+  } catch (e) {
+    console.warn('[ct] page-cache lookup failed:', String((e && e.message) || e).slice(0, 120));
+    return null;
+  }
+}
+
+// Shared page-cache write (normal runs + pre-translation): Tier 1 stores
+// the inpainted base + OCR'd blocks (translations stripped); Tier 2 stores
+// the translations for this targetLang/backend. Best-effort — a cache
+// failure must never fail the run. Skipped in incognito.
+async function writePageCache(rgba, w, h, finalDataUrl, blocks, effSettings, settings, tabId, mode) {
+  try {
+    if (await isIncognitoTab(tabId)) return;
+    const t1Key = await buildCacheKeyTier1(rgba, w, h, settings);
+    const blocksNoTrans = blocks.map(b => {
+      const { translation, ...rest } = b;
+      return rest;
+    });
+    await pageCachePut(t1Key, {
+      imageDataUrl: finalDataUrl, width: w, height: h,
+      blocks: blocksNoTrans, mode,
+      // Resolved source language ('auto' already detected above) — reused
+      // verbatim on Tier-1 hits instead of re-detecting (G10).
+      sourceLang: effSettings.sourceLang,
+    });
+    const t2Key = buildCacheKeyTier2(t1Key, settings);
+    await pageCachePut(t2Key, {
+      translations: blocks.map(b => b.translation || ''),
+      targetLang: settings.targetLang,
+      backend: settings.translationBackend,
+    });
+    // No legacy v1 write: the v1 backfill duplicated the image a third
+    // time and counted as a second image in stats (its key shape differs
+    // from Tier-1's, so the distinct-image collapse missed it). The v1
+    // READ fallback stays, so entries written by older builds still serve.
+  } catch (e) {
+    console.warn('[ct] page-cache write failed:', String((e && e.message) || e).slice(0, 120));
+  }
+}
+
+// ---------------------------------------------------------------- pre-translate the next page (2.2.5)
+// After a run finishes, translate the next page's single picture in the
+// background and write it to the page cache, so opening it is instant.
+// Best-effort only: any failure just means the next page translates
+// normally when visited. Never opens a tab (a 403 picture is skipped);
+// never chains (one page ahead only); only runs when the next page has
+// exactly one picture above the size limit.
+// The job's runs entry carries tabId null on purpose: cancelRunsForTab
+// (new-page navigation drops the tab's old run) must not kill a job for
+// the page the user just opened — joinOrCancelPretranslate decides that
+// instead, by URL.
+let pretranslateJob = null; // {url, runId, done} | null
+const pretranslateDoneUrls = new Set(); // session: URLs already pre-translated
+
+// Extract <img> URLs from a page's HTML: src / data-src / data-original /
+// data-lazy-src, plus the first srcset candidate. Relative URLs resolve
+// against the page. SVGs are UI, not content. Pure (tested).
+function extractNextPageImages(html, baseUrl) {
+  const out = [];
+  const seen = new Set();
+  const tagRe = /<img\b[^>]*>/gi;
+  let m;
+  while ((m = tagRe.exec(html)) !== null) {
+    const tag = m[0];
+    const attr = (name) => {
+      const r = new RegExp(name + '\\s*=\\s*("([^"]*)"|\'([^\']*)\'|([^\\s>]+))', 'i');
+      const a = r.exec(tag);
+      return a ? (a[2] || a[3] || a[4] || '') : '';
+    };
+    let src = attr('data-src') || attr('data-original') || attr('data-lazy-src') || attr('src');
+    if (!src) {
+      const srcset = attr('srcset');
+      if (srcset) src = srcset.split(',')[0].trim().split(/\s+/)[0];
+    }
+    if (!src || /^data:/i.test(src)) continue;
+    let abs;
+    try { abs = new URL(src, baseUrl).href; } catch { continue; }
+    if (/\.svg(\?|#|$)/i.test(abs)) continue;
+    if (seen.has(abs)) continue;
+    seen.add(abs);
+    out.push({ url: abs, w: parseInt(attr('width'), 10) || 0, h: parseInt(attr('height'), 10) || 0 });
+  }
+  return out;
+}
+
+// Same page, ignoring the fragment: the next-page URL vs the tab's URL.
+function samePageUrl(a, b) {
+  try {
+    const ua = new URL(a), ub = new URL(b);
+    ua.hash = ''; ub.hash = '';
+    return ua.href === ub.href;
+  } catch { return a === b; }
+}
+
+// Exactly one qualifying picture -> translate it; zero or more than one
+// -> do nothing. Pure (tested).
+function pickSingleQualifying(withSize, minSize) {
+  const qualifying = withSize.filter(x => Math.max(x.w || 0, x.h || 0) >= minSize);
+  return qualifying.length === 1 ? qualifying[0] : null;
+}
+
+function cancelPretranslate() {
+  const job = pretranslateJob;
+  if (!job) return;
+  const r = runs.get(job.runId);
+  if (r && !r.cancelled) {
+    try { abortRunResources(job.runId, r); } catch { /* already gone */ }
+  }
+  // The job's own finally clears the slot when it settles; a new job
+  // replaces the slot first, so this never clears a newer job.
+}
+
+// Pure decision for joinOrCancelPretranslate (tested): 'join' when a
+// background job is already translating this page, 'cancel' when it is
+// for another page, 'none' when there is no job.
+function joinOrCancelDecision(jobUrl, tabUrl) {
+  if (!jobUrl) return 'none';
+  if (jobUrl && tabUrl && samePageUrl(jobUrl, tabUrl)) return 'join';
+  return 'cancel';
+}
+
+// A normal run starting for the page a background job is already
+// translating: keep the job and wait for it — its cache write makes this
+// run a cache hit. Any other page: cancel the job, the user went elsewhere.
+async function joinOrCancelPretranslate(runId, tabUrl) {
+  const job = pretranslateJob;
+  if (!job) return;
+  if (joinOrCancelDecision(job.url, tabUrl) === 'join') {
+    try { setProgress(runId, 'capture', 0.01); } catch { /* pill is best-effort */ }
+    try { await job.done; } catch { /* a failed job just means this run does the work */ }
+    return;
+  }
+  cancelPretranslate();
+}
+
+// Fire-and-forget entry: called after a run finishes. Starts a background
+// job for the next page, or does nothing (setting off, no next page,
+// incognito, already done).
+async function pretranslateNextPage(sourceTabId, sourceUrl, settings) {
+  if (!settings || settings.pretranslateNextPage === false) return;
+  try { if (await isIncognitoTab(sourceTabId)) return; } catch { /* proceed */ }
+  cancelPretranslate();
+  let nextUrl = null;
+  try {
+    const r = await chrome.tabs.sendMessage(sourceTabId, { type: MSG.NEXT_PAGE_URL });
+    nextUrl = r && r.url;
+  } catch { return; /* tab gone / no content script */ }
+  if (!nextUrl || pretranslateDoneUrls.has(nextUrl)) return;
+  const runId = 'pre-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  const job = { url: nextUrl, runId, done: null };
+  pretranslateJob = job;
+  const abortController = new AbortController();
+  runs.set(runId, { cancelled: false, tabId: null, stage: 'pretranslate', abortController });
+  keepAliveStart(runId);
+  job.done = (async () => {
+    try {
+      await runPretranslate(job, sourceTabId, settings);
+      pretranslateDoneUrls.add(nextUrl);
+      if (pretranslateDoneUrls.size > 20) pretranslateDoneUrls.delete(pretranslateDoneUrls.values().next().value);
+    } catch (e) {
+      if (e && e.cancelled) diagPush('pre-translate cancelled for ' + nextUrl);
+      else diagPush('pre-translate skipped ' + nextUrl + ': ' + String((e && e.message) || e).slice(0, 120));
+    } finally {
+      runs.delete(runId);
+      keepAliveStop(runId);
+      if (pretranslateJob === job) pretranslateJob = null;
+    }
+  })();
+}
+
+async function runPretranslate(job, sourceTabId, settings) {
+  const runId = job.runId;
+  const nextUrl = job.url;
+  // ---- fetch the next page (15s cap; same-origin cookies ride along).
+  let html;
+  {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 15000);
+    try {
+      const res = await fetch(nextUrl, { credentials: 'same-origin', signal: ctrl.signal, headers: { Accept: 'text/html,*/*' } });
+      if (!res.ok) throw new Error('next page fetch failed: HTTP ' + res.status);
+      const len = Number(res.headers.get('content-length') || 0);
+      if (len > 5 * 1024 * 1024) throw new Error('next page too big');
+      html = await res.text();
+    } finally { clearTimeout(to); }
+  }
+  checkCancelled(runId);
+  // ---- find the one picture. A next link that IS an image counts directly.
+  let candidates = extractNextPageImages(html, nextUrl);
+  if (!candidates.length && /\.(jpe?g|png|webp|avif|gif)(\?|#|$)/i.test(nextUrl)) {
+    candidates = [{ url: nextUrl, w: 0, h: 0 }];
+  }
+  if (!candidates.length) { diagPush('pre-translate: no pictures on ' + nextUrl); return; }
+  // ---- resolve sizes: declared dims first; download the rest (cap 8) until
+  // 2 qualify — then there is no single picture to translate, stop early.
+  const minSize = settings.minImageSize || 500;
+  const withSize = [];
+  let downloads = 0;
+  const ordered = [...candidates].sort((a, b) => Math.max(b.w || 0, b.h || 0) - Math.max(a.w || 0, a.h || 0));
+  for (const c of ordered) {
+    let w = c.w || 0, h = c.h || 0;
+    if ((!w || !h) && downloads < 8) {
+      // No declared size: download to learn it. A 403 here just skips
+      // this picture (pre-translation never opens a fallback tab).
+      try {
+        const px = await fetchImagePixels(c.url, nextUrl);
+        downloads++;
+        w = px.w; h = px.h;
+      } catch { continue; }
+      checkCancelled(runId);
+    }
+    withSize.push({ url: c.url, w, h });
+    if (withSize.filter(x => Math.max(x.w, x.h) >= minSize).length >= 2) break;
+  }
+  const target = pickSingleQualifying(withSize, minSize);
+  if (!target) {
+    diagPush(`pre-translate: ${withSize.filter(x => Math.max(x.w, x.h) >= minSize).length} qualifying pictures on ${nextUrl} (need exactly 1) — skipping`);
+    return;
+  }
+  await pretranslateImage(job, target.url, nextUrl, sourceTabId, settings);
+}
+
+// Translate one picture headlessly into the page cache: no tab, no pill,
+// no render. Mirrors runOneImage's stages (capture -> cache -> detect ->
+// blocks -> OCR -> translate + mask/inpaint -> cache write) with the
+// tab-bound steps removed.
+async function pretranslateImage(job, imageUrl, pageUrl, sourceTabId, settings) {
+  const runId = job.runId;
+  const pxKeys = [];
+  try {
+    // ---- capture: worker-fetch only. A 403 skips the picture.
+    let rgba, w, h;
+    try {
+      ({ rgba, w, h } = await fetchImagePixels(imageUrl, pageUrl));
+    } catch (e) {
+      diagPush('pre-translate: picture download failed, skipping: ' + String((e && e.message) || e).slice(0, 120));
+      return;
+    }
+    checkCancelled(runId);
+    if (meanBrightness(rgba) < 0.004) { diagPush('pre-translate: blank picture, skipping'); return; }
+    {
+      const cs = renderScale(w, h);
+      if (cs < 1) {
+        const sw = Math.max(1, Math.round(w * cs)), sh = Math.max(1, Math.round(h * cs));
+        rgba = resizeBilinearRGBA(rgba, w, h, sw, sh);
+        w = sw; h = sh;
+      }
+    }
+    // ---- cache lookup: a hit means there is nothing to do.
+    const cacheHit = await lookupPageCache(rgba, w, h, settings, sourceTabId, 'pretranslate');
+    if (cacheHit) {
+      if (cacheHit.tier1Only) await pretranslateTier1Only(job, cacheHit.entry, cacheHit.tier2Key, settings);
+      diagPush('pre-translate: already cached ' + imageUrl.slice(0, 80));
+      return;
+    }
+    checkCancelled(runId);
+    // ---- detection (+ tall-image slicing)
+    let detections;
+    if (h / w > 3.5) {
+      detections = await detectSliced(rgba, w, h, settings.detectionThreshold, runId, pxKeys);
+    } else {
+      const pxKey = `detect:${runId}`;
+      pxKeys.push(pxKey);
+      await pixelPut(pxKey, rgba.buffer);
+      const r = await callMlChecked(runId, { type: MSG.ML_DETECT, key: pxKey, width: w, height: h, threshold: settings.detectionThreshold, runId });
+      detections = r.boxes;
+    }
+    checkCancelled(runId);
+    // ---- text blocks
+    const blocks = buildBlocks(detections, w, h, rgba, settings);
+    // ---- OCR
+    const crops = [];
+    for (const [i, b] of blocks.entries()) {
+      const c = cropForBlock(rgba, w, h, b.xyxy, b.bubble_xyxy);
+      if (!c) continue;
+      const pxKey = `ocr:${runId}:${i}`;
+      pxKeys.push(pxKey);
+      await pixelPut(pxKey, c.data.buffer);
+      crops.push({ id: i, key: pxKey, width: c.w, height: c.h });
+    }
+    if (crops.length) {
+      const r = await callMlChecked(runId, {
+        type: MSG.ML_OCR, runId, sourceLang: settings.sourceLang,
+        crops: crops.map(({ id, key, width, height }) => ({ id, key, width, height })),
+      });
+      for (const res of r.results) blocks[res.id].text = res.text;
+    }
+    checkCancelled(runId);
+    // ---- source language
+    let effSettings = settings;
+    if (settings.sourceLang === 'auto') {
+      const detected = detectPageLang(blocks.map(b => b.text));
+      effSettings = { ...settings, sourceLang: detected || 'ja' };
+      for (const b of blocks) b.source_lang = effSettings.sourceLang;
+    }
+    // ---- translate + mask/inpaint in parallel; render waits for both.
+    const entry = runs.get(runId);
+    const abortController = (entry && entry.abortController) || new AbortController();
+    const runTranslate = async () => {
+      const TRANSLATE_TIMEOUT_MS = 30000;
+      const TRANSLATE_BACKSTOP_MS = 60000;
+      let timeoutId = null, backstopId = null;
+      timeoutId = setTimeout(() => { try { abortController.abort(); } catch {} }, TRANSLATE_TIMEOUT_MS);
+      const backstopP = new Promise((_, reject) => {
+        backstopId = setTimeout(() => {
+          reject(new Error('translate timed out — the translation backend may be stuck'));
+        }, TRANSLATE_BACKSTOP_MS);
+      });
+      let translated;
+      try {
+        translated = await Promise.race([
+          translateBlocks(blocks, effSettings, () => {}, abortController.signal, 30000, () => runs.get(runId)?.cancelled === true),
+          backstopP,
+        ]);
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (backstopId) clearTimeout(backstopId);
+      }
+      checkCancelled(runId);
+      blocks.forEach((b, i) => { b.translation = translated[i]; });
+    };
+    const runMaskInpaint = async () => {
+      checkCancelled(runId);
+      const pageGray = toGrayU8(rgba, w, h);
+      const { mask: fullMask, entries } = generateMask(rgba, w, h, pageGray, blocks, 5);
+      const spreadMap = await readInpaintSpread();
+      const mergeKey = directHandlers() ? 'wasm1' : 'gpu';
+      const mergeSpread = spreadMap[mergeKey] || INPAINT_COST_SPREAD;
+      const { boxes: patchBoxes } = mergeBoxesByCost(entries, {
+        tileMax: directHandlers() ? TILE_MAX : 1024,
+        ...(directHandlers() ? INPAINT_COST.wasm1 : INPAINT_COST.gpu),
+        spread: mergeSpread,
+      });
+      const patches = [];
+      for (const [i, pb] of patchBoxes.entries()) {
+        checkCancelled(runId);
+        const [x1, y1, x2, y2] = pb.map(Math.round);
+        const pxKey = `inpaint:${runId}:${i}`;
+        const maskKey = `inpaint-mask:${runId}:${i}`;
+        pxKeys.push(pxKey, maskKey);
+        await pixelPut(pxKey, cropRGBA(rgba, w, x1, y1, x2, y2).data.buffer);
+        const maskData = cropMask1(fullMask, w, x1, y1, x2, y2);
+        await pixelPut(maskKey, maskData.buffer);
+        patches.push({ id: i, x: x1, y: y1, key: pxKey, maskKey, maskData, width: x2 - x1, height: y2 - y1 });
+      }
+      const inpainted = new Uint8ClampedArray(rgba);
+      if (patches.length) {
+        const wirePatches = patches.map(({ id, key, maskKey, width, height }) => ({ id, key, maskKey, width, height }));
+        let r;
+        let gpuDowngraded = false;
+        if (directHandlers() && !gpuDowngraded && typeof navigator !== 'undefined' && navigator.gpu) {
+          try {
+            r = await runGpuInpaint({
+              runId, patches: wirePatches,
+              onProgress: () => {},
+              diag: diagPush,
+              isCancelled: () => runs.get(runId)?.cancelled === true,
+            });
+          } catch (e) {
+            checkCancelled(runId);
+            gpuDowngraded = true;
+            diagPush('pre-translate inpaint gpu failed, downgrading to WASM: ' + String((e && e.message) || e));
+            r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
+          }
+        } else if (!directHandlers() && !gpuDowngraded) {
+          try {
+            r = await runChromeGpuInpaint({
+              runId, patches: wirePatches,
+              onProgress: () => {},
+              diag: diagPush,
+              isCancelled: () => runs.get(runId)?.cancelled === true,
+            });
+          } catch (e) {
+            checkCancelled(runId);
+            if (e && e.gpuSkipped) {
+              diagPush('pre-translate inpaint gpu skipped: ' + String((e && e.message) || e));
+              r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
+            } else {
+              gpuDowngraded = true;
+              diagPush('pre-translate inpaint gpu failed, downgrading to WASM: ' + String((e && e.message) || e));
+              r = await callMlChecked(runId, { type: MSG.ML_INPAINT, runId, patches: wirePatches });
+            }
+          }
+        } else {
+          r = await callMlChecked(runId, {
+            type: MSG.ML_INPAINT, runId,
+            patches: wirePatches,
+          });
+        }
+        for (const res of r.results) {
+          const p = patches[res.id];
+          pxKeys.push(res.key);
+          const buf = await pixelTake(res.key);
+          pasteMaskedRGBA(inpainted, w,
+            { data: new Uint8ClampedArray(buf), w: p.width, h: p.height },
+            { data: p.maskData, w: p.width, h: p.height },
+            p.x, p.y);
+        }
+      }
+      return inpainted;
+    };
+    const [, inpainted] = await Promise.all([runTranslate(), runMaskInpaint()]);
+    checkCancelled(runId);
+    // ---- cache write (no render — the next visit renders from this entry).
+    const finalDataUrl = await rgbaToDataURL(inpainted, w, h, Math.max(w, h));
+    await writePageCache(rgba, w, h, finalDataUrl, blocks, effSettings, settings, sourceTabId, 'replace');
+    diagPush('pre-translate: done ' + imageUrl.slice(0, 80));
+  } finally {
+    for (const k of pxKeys.splice(0)) await pixelDrop(k);
+  }
+}
+
+// Tier-1 hit, Tier-2 miss: translate the OCR'd blocks only, store Tier-2.
+async function pretranslateTier1Only(job, tier1Entry, tier2Key, settings) {
+  const runId = job.runId;
+  checkCancelled(runId);
+  const blocks = tier1Entry.blocks.map(b => ({ ...b }));
+  let effSettings = settings;
+  if (settings.sourceLang === 'auto') {
+    const resolved = tier1Entry.sourceLang || detectPageLang(blocks.map(b => b.text));
+    effSettings = { ...settings, sourceLang: resolved || 'ja' };
+  }
+  const entry = runs.get(runId);
+  const abortController = (entry && entry.abortController) || new AbortController();
+  const timeoutId = setTimeout(() => { try { abortController.abort(); } catch {} }, 30000);
+  let translated;
+  try {
+    translated = await translateBlocks(blocks, effSettings, () => {}, abortController.signal, 30000, () => runs.get(runId)?.cancelled === true);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+  checkCancelled(runId);
+  try {
+    await pageCachePut(tier2Key, {
+      translations: translated,
+      targetLang: settings.targetLang,
+      backend: settings.translationBackend,
+    });
+  } catch (e) {
+    console.warn('[ct] pre-translate tier-2 cache write failed:', String((e && e.message) || e).slice(0, 120));
+  }
+}
+
 async function runPipeline(tabId, opts = {}) {
   const manualSrc = opts.srcUrl || null;
   const runId = 'run-' + Date.now().toString(36) + '-' + (runSeq++) + '-' + Math.random().toString(36).slice(2, 8);
@@ -1383,6 +1866,10 @@ async function runPipeline(tabId, opts = {}) {
         ? new Error('"Allow all sites" is on, but the extension no longer has access to all sites (the permission may have been revoked) — reopen Settings → Site access and turn it back on.')
         : hostAccessError(tabHost);
     }
+    // Pre-translation join-or-cancel: if a background job is already
+    // translating THIS page, wait for it (its cache write makes this run
+    // a cache hit); a job for another page is cancelled instead.
+    await joinOrCancelPretranslate(runId, tabUrl);
     try {
       await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
     } catch (e) {
@@ -1589,48 +2076,7 @@ async function runPipeline(tabId, opts = {}) {
       // An early return inside try still runs the finally below (runs.delete +
       // dropping staged pixel payloads), so cleanup is unchanged.
       checkCancelled(runId);
-      let cacheHit = null;
-      let tier1Key = null, tier1Entry = null;
-      try {
-        if (!(await isIncognitoTab(tabId))) {
-          // Two-tier lookup: Tier 1 (target-independent) first, then Tier 2
-          // (targetLang + backend). A Tier-1 hit with a new targetLang
-          // translates only — skipping detect/OCR/inpaint.
-          tier1Key = await buildCacheKeyTier1(rgba, w, h, settings);
-          tier1Entry = await pageCacheGet(tier1Key);
-          // Dimension guard: the entry must match the CURRENT (scaled) capture
-          // dims. A mismatch means the entry was stored at different dims
-          // (e.g. before the R3 normalization) — treat as miss and overwrite.
-          if (tier1Entry && (tier1Entry.width !== w || tier1Entry.height !== h)) {
-            diagPush(`page-cache MISS tier1 ${tier1Key.split('~')[1]?.slice(0, 12)} dims ${tier1Entry.width}x${tier1Entry.height} != ${w}x${h} (tier ${tier})`);
-            tier1Entry = null;
-          }
-          if (tier1Entry) {
-            const tier2Key = buildCacheKeyTier2(tier1Key, settings);
-            const tier2Entry = await pageCacheGet(tier2Key);
-            if (tier2Entry && tier2Entry.translations) {
-              // Full hit: apply cached translations to the Tier-1 blocks.
-              diagPush(`page-cache HIT tier1+2 ${tier1Key.split('~')[1]?.slice(0, 12)} image ${w}x${h} (tier ${tier})`);
-              const blocks = tier1Entry.blocks.map((b, i) => ({
-                ...b, translation: tier2Entry.translations[i] || '',
-              }));
-              cacheHit = { ...tier1Entry, blocks };
-            } else {
-              // Tier-1 hit, Tier-2 miss: translate the OCR'd blocks only.
-              // (Falls through to the translate-only path below.)
-              diagPush(`page-cache HIT tier1 only ${tier1Key.split('~')[1]?.slice(0, 12)} image ${w}x${h} (tier ${tier})`);
-              cacheHit = { tier1Only: true, entry: tier1Entry, tier2Key };
-            }
-          } else {
-            // No Tier 1: try the legacy v1 key for backward compatibility.
-            diagPush(`page-cache MISS tier1 ${tier1Key.split('~')[1]?.slice(0, 12)} image ${w}x${h} (tier ${tier})`);
-            cacheHit = await pageCacheGet(await buildCacheKey(rgba, w, h, settings));
-            if (cacheHit) diagPush(`page-cache HIT legacy v1 image ${w}x${h} (tier ${tier})`);
-          }
-        }
-      } catch (e) {
-        console.warn('[ct] page-cache lookup failed:', String((e && e.message) || e).slice(0, 120));
-      }
+      const cacheHit = await lookupPageCache(rgba, w, h, settings, tabId, tier);
       if (cacheHit) {
         if (cacheHit.tier1Only) {
           // Translate-only path: Tier-1 gave us inpainted base + OCR blocks.
@@ -2227,37 +2673,7 @@ async function runPipeline(tabId, opts = {}) {
       // ---- 9. page cache: remember this translated page for instant revisits.
       // Best-effort — a cache failure must never fail the run. Skipped in
       // incognito; a cancelled run never reaches this point (it throws above).
-      try {
-        if (!(await isIncognitoTab(tabId))) {
-          // Two-tier write: Tier 1 (target-independent) stores the inpainted
-          // base + OCR'd blocks (translations stripped). Tier 2 stores the
-          // translations for this targetLang/backend.
-          const t1Key = await buildCacheKeyTier1(rgba, w, h, settings);
-          const blocksNoTrans = blocks.map(b => {
-            const { translation, ...rest } = b;
-            return rest;
-          });
-          await pageCachePut(t1Key, {
-            imageDataUrl: finalDataUrl, width: w, height: h,
-            blocks: blocksNoTrans, mode,
-            // Resolved source language ('auto' already detected above) — reused
-            // verbatim on Tier-1 hits instead of re-detecting (G10).
-            sourceLang: effSettings.sourceLang,
-          });
-          const t2Key = buildCacheKeyTier2(t1Key, settings);
-          await pageCachePut(t2Key, {
-            translations: blocks.map(b => b.translation || ''),
-            targetLang: settings.targetLang,
-            backend: settings.translationBackend,
-          });
-          // No legacy v1 write: the v1 backfill duplicated the image a third
-          // time and counted as a second image in stats (its key shape differs
-          // from Tier-1's, so the distinct-image collapse missed it). The v1
-          // READ fallback stays, so entries written by older builds still serve.
-        }
-      } catch (e) {
-        console.warn('[ct] page-cache write failed:', String((e && e.message) || e).slice(0, 120));
-      }
+      await writePageCache(rgba, w, h, finalDataUrl, blocks, effSettings, settings, tabId, mode);
       // Fresh path done: report this image's backend for the final pill.
       return { ok: true, doneExtra: { backendLabel: BACKEND_SHORT_LABEL[blocks?.[0]?.backendUsed || settings.translationBackend] || settings.translationBackend } };
     }
@@ -2341,6 +2757,9 @@ async function runPipeline(tabId, opts = {}) {
     // One-time support popup (best-effort — a failure here must never fail
     // the run, which already succeeded).
     try { await maybeShowSupportPopup(tabId, doneImgs.length); } catch {}
+    // Pre-translate the next page (best-effort, fire-and-forget — the job
+    // handles its own errors and never touches this run's result).
+    try { pretranslateNextPage(tabId, tabUrl, settings); } catch {}
     if (settings.debugMode) await sendDiagLog(tabId, runId);
     result = { runId, ok: true, images: doneImgs.length, failed: failedImgs, ...(opts.resume ? { resumed: true, alreadyDone } : {}) };
   } catch (e) {

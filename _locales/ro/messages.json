@@ -343,6 +343,12 @@
   "feedback_email": {
     "message": "✉️ Feedback prin e-mail"
   },
+  "pretranslate_next": {
+    "message": "Pretradu pagina următoare"
+  },
+  "pretranslate_next_hint": {
+    "message": "În timp ce citești această pagină, pagina următoare este tradusă în fundal, așa că e gata când o deschizi."
+  },
   "rate_store": {
     "message": "⭐ 5 stele în magazin"
   },

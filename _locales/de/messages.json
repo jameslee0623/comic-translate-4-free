@@ -343,6 +343,12 @@
   "feedback_email": {
     "message": "✉️ Feedback per E-Mail"
   },
+  "pretranslate_next": {
+    "message": "Nächste Seite vorab übersetzen"
+  },
+  "pretranslate_next_hint": {
+    "message": "Während du diese Seite liest, wird die nächste Seite im Hintergrund übersetzt und ist bereit, wenn du sie öffnest."
+  },
   "rate_store": {
     "message": "⭐ 5 Sterne im Store"
   },

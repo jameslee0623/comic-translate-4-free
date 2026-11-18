@@ -343,6 +343,12 @@
   "feedback_email": {
     "message": "✉️ Góp ý qua email"
   },
+  "pretranslate_next": {
+    "message": "Dịch trước trang tiếp theo"
+  },
+  "pretranslate_next_hint": {
+    "message": "Trong khi bạn đọc trang này, trang tiếp theo được dịch trong nền nên đã sẵn sàng khi bạn mở nó."
+  },
   "rate_store": {
     "message": "⭐ Đánh giá 5 sao trên cửa hàng"
   },

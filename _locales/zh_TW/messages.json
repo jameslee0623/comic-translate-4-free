@@ -343,6 +343,12 @@
   "feedback_email": {
     "message": "✉️ 透過電子郵件提供意見回饋"
   },
+  "pretranslate_next": {
+    "message": "預先翻譯下一頁"
+  },
+  "pretranslate_next_hint": {
+    "message": "在您閱讀本頁時，下一頁會在背景翻譯好，打開時即可直接查看。"
+  },
   "rate_store": {
     "message": "⭐ 在商店給 5 星好評"
   },

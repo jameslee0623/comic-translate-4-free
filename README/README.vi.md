@@ -44,6 +44,7 @@ comic-translate-4-free tự động dịch manga và truyện tranh khi bạn du
 
 - Dịch tự động — mở một trang manga trên một trang web được phép và bản dịch sẽ xuất hiện ngay tại chỗ, không cần bấm nút.
 - Mỗi hình ảnh trên trang — dịch tự động xử lý tất cả hình ảnh trên một trang (tối đa 50 hình mỗi lần chạy), không chỉ hình ảnh chính.
+- Dịch trước trang tiếp theo — trong khi bạn đọc trang hiện tại, hình ảnh của trang tiếp theo được dịch trong nền nên đã sẵn sàng ngay khi bạn mở nó (chỉ một hình; bật theo mặc định, tắt được trong Cài đặt).
 - Nhấp chuột phải vào bất kỳ hình ảnh nào — chọn "Gửi đến comic-translate-4-free" để dịch một hình ảnh cụ thể, ngay cả khi nó nhỏ hơn kích thước tối thiểu.
 - 114 ngôn ngữ đích qua Google Translate, Azure Translator, hoặc máy chủ LM Studio cục bộ của riêng bạn.
 - Tự động phát hiện ngôn ngữ nguồn — tiếng Nhật, tiếng Anh, tiếng Trung giản thể/phồn thể được xác định tự động từ văn bản đã OCR.

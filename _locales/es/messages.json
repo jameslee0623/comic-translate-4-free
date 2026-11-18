@@ -382,6 +382,12 @@
   "feedback_email": {
     "message": "✉️ Comentarios por correo electrónico"
   },
+  "pretranslate_next": {
+    "message": "Pretraducir la página siguiente"
+  },
+  "pretranslate_next_hint": {
+    "message": "Mientras lees esta página, la página siguiente se traduce en segundo plano, así está lista cuando la abres."
+  },
   "rate_store": {
     "message": "⭐ 5 estrellas en la tienda"
   },

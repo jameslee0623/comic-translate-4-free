@@ -44,6 +44,7 @@ comic-translate-4-free traduz mangá e quadrinhos automaticamente enquanto você
 
 - Tradução automática — abra uma página de mangá em um site permitido e a versão traduzida aparece no lugar, sem precisar clicar em nenhum botão.
 - Cada imagem na página — a tradução automática cuida de todas as imagens da página (até 50 por execução), não apenas a imagem principal.
+- Pré-traduzir a próxima página — enquanto você lê a página atual, a imagem da próxima página é traduzida em segundo plano, então já está pronta quando você a abre (apenas uma imagem; ativado por padrão, pode ser desativado nas Configurações).
 - Clique com o botão direito em qualquer imagem — escolha "Enviar para comic-translate-4-free" para traduzir uma imagem específica, mesmo que seja menor que o tamanho mínimo.
 - 114 idiomas de destino via Google Translate, Azure Translator ou o seu próprio servidor local LM Studio.
 - Detecção automática do idioma de origem — japonês, inglês, chinês simplificado/tradicional identificados automaticamente a partir do texto lido por OCR.

@@ -899,6 +899,68 @@
     document.documentElement.appendChild(wrap);
     supportModal = wrap;
   }
+  // ------------------------------------------------------------ next-page discovery (pre-translation)
+  // The site's Next link first, then +1 on the page number in the URL.
+  // Pure helpers (tested by pretranslate-test.mjs); findNextPageUrl() is
+  // the thin DOM wrapper. Same site only — pre-translation fetches the
+  // page itself, and the extension only has host permission for sites
+  // the user allowed.
+  const NEXT_LINK_TEXT = /^\s*(next(\s+page|\s+chapter)?|下一页|次へ|다음)\s*[»›→]?\s*$/i;
+  const NEXT_LINK_ARROW = /^\s*[»›→]+\s*$/;
+  function nextUrlFromAnchors(anchors) {
+    // anchors: [{href, texts:[...], rel}] in document order.
+    for (const a of anchors) {
+      if (a.rel && String(a.rel).toLowerCase().split(/\s+/).includes('next')) return a.href;
+    }
+    for (const a of anchors) {
+      for (const t of (a.texts || [])) {
+        const s = String(t || '').trim();
+        if (s && (NEXT_LINK_TEXT.test(s) || NEXT_LINK_ARROW.test(s))) return a.href;
+      }
+    }
+    return null;
+  }
+  function incrementPageUrl(url) {
+    let u;
+    try { u = new URL(url); } catch { return null; }
+    // +1 the last all-digit path segment (/g/681857/2/ -> /3/).
+    const segs = u.pathname.split('/');
+    for (let i = segs.length - 1; i >= 0; i--) {
+      if (/^\d+$/.test(segs[i])) {
+        segs[i] = String(parseInt(segs[i], 10) + 1);
+        u.pathname = segs.join('/');
+        return u.href;
+      }
+    }
+    // Else +1 ?page= / ?p=.
+    for (const key of ['page', 'p']) {
+      if (u.searchParams.has(key) && /^\d+$/.test(u.searchParams.get(key))) {
+        u.searchParams.set(key, String(parseInt(u.searchParams.get(key), 10) + 1));
+        return u.href;
+      }
+    }
+    return null;
+  }
+  function findNextPageUrl() {
+    let fromLink = null;
+    try {
+      const anchors = [];
+      document.querySelectorAll('a[href]').forEach(a => {
+        anchors.push({
+          href: a.href,
+          texts: [a.textContent || '', a.getAttribute('aria-label') || '', a.getAttribute('title') || ''],
+          rel: a.getAttribute('rel') || '',
+        });
+      });
+      fromLink = nextUrlFromAnchors(anchors);
+    } catch { /* fall through to the URL increment */ }
+    const cand = fromLink || incrementPageUrl(location.href);
+    if (!cand || cand === location.href) return null;
+    try {
+      if (new URL(cand).origin !== location.origin) return null;
+    } catch { return null; }
+    return cand;
+  }
   function pillProgress(stage, progress) {
     // Sticky for the whole run: the old non-sticky call armed a 4s auto-hide
     // on every update, so long stages (inpaint, translate) left the page with
@@ -1296,6 +1358,11 @@
       // One-time support popup (SW counted 30 translated pictures).
       try { showSupportModal(); } catch { /* never break the run */ }
       sendResponse({ ok: true });
+      return false;
+    }
+    if (msg.type === 'ct/next-page-url') {
+      // Pre-translation: what is the next page from here?
+      try { sendResponse({ url: findNextPageUrl() }); } catch { sendResponse({ url: null }); }
       return false;
     }
     if (msg.type === 'ct/run-progress') {

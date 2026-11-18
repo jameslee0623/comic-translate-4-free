@@ -343,6 +343,12 @@
   "feedback_email": {
     "message": "✉️ 通过电子邮件反馈"
   },
+  "pretranslate_next": {
+    "message": "预先翻译下一页"
+  },
+  "pretranslate_next_hint": {
+    "message": "在您阅读本页时，下一页会在后台翻译好，打开时即可直接查看。"
+  },
   "rate_store": {
     "message": "⭐ 在商店给 5 星好评"
   },

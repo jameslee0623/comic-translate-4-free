@@ -45,6 +45,7 @@ comic-translate-4-free translates manga and comic pages automatically as you bro
 
 - Automatic translation — open a manga page on an allowed site and the translated version appears in place, no button click needed.
 - Every picture on the page — auto-translate handles all pictures on a page (up to 50 per run), not just the main image.
+- Pre-translate the next page — while you read the current page, the next page's picture is translated in the background, so it is ready the moment you open it (one picture only; on by default, turn it off in Settings).
 - Right-click any image — choose "Send to comic-translate-4-free" to translate a specific picture, even one smaller than the minimum size.
 - 114 target languages via Google Translate, Azure Translator, or your own local LM Studio server.
 - Source language auto-detect — Japanese, English, Simplified/Traditional Chinese identified automatically from the OCR'd text.

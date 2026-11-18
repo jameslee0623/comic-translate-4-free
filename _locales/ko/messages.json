@@ -343,6 +343,12 @@
   "feedback_email": {
     "message": "✉️ 이메일로 피드백 보내기"
   },
+  "pretranslate_next": {
+    "message": "다음 페이지를 미리 번역"
+  },
+  "pretranslate_next_hint": {
+    "message": "이 페이지를 읽는 동안 다음 페이지가 백그라운드에서 번역되어, 열면 바로 준비되어 있습니다."
+  },
   "rate_store": {
     "message": "⭐ 스토어에서 별 5개 주기"
   },

@@ -343,6 +343,12 @@
   "feedback_email": {
     "message": "✉️ Commentaires par e-mail"
   },
+  "pretranslate_next": {
+    "message": "Prétraduire la page suivante"
+  },
+  "pretranslate_next_hint": {
+    "message": "Pendant que vous lisez cette page, la page suivante est traduite en arrière-plan, elle est donc prête quand vous l’ouvrez."
+  },
   "rate_store": {
     "message": "⭐ 5 étoiles sur la boutique"
   },

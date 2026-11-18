@@ -343,6 +343,12 @@
   "feedback_email": {
     "message": "✉️ Umpan balik melalui email"
   },
+  "pretranslate_next": {
+    "message": "Terjemahkan halaman berikutnya terlebih dahulu"
+  },
+  "pretranslate_next_hint": {
+    "message": "Saat Anda membaca halaman ini, halaman berikutnya diterjemahkan di latar belakang, jadi sudah siap saat Anda membukanya."
+  },
   "rate_store": {
     "message": "⭐ Beri 5 bintang di toko"
   },

@@ -44,6 +44,7 @@ comic-translate-4-free traduit mangas et BD automatiquement. Il lit japonais, an
 
 - Traduction automatique — ouvrez une page de manga sur un site autorisé et la version traduite apparaît sur place, sans avoir besoin de cliquer sur un bouton.
 - Chaque image sur la page — la traduction automatique gère toutes les images d'une page (jusqu'à 50 par exécution), pas seulement l'image principale.
+- Prétraduire la page suivante — pendant que vous lisez la page actuelle, l’image de la page suivante est traduite en arrière-plan, elle est donc prête dès que vous l’ouvrez (une seule image ; activé par défaut, désactivable dans les Réglages).
 - Clic droit sur n'importe quelle image — choisissez « Envoyer vers comic-translate-4-free » pour traduire une image précise, même si elle est plus petite que la taille minimale.
 - 114 langues cibles via Google Translate, Azure Translator ou votre propre serveur local LM Studio.
 - Détection automatique de la langue source — le japonais, l'anglais, le chinois simplifié/traditionnel sont identifiés automatiquement à partir du texte lu par OCR.

@@ -44,6 +44,7 @@ comic-translate-4-free traduce automat manga și benzi desenate în timp ce navi
 
 - Traducere automată — deschide o pagină de manga pe un site permis, iar versiunea tradusă apare chiar acolo, fără să fie nevoie să apeși vreun buton.
 - Fiecare imagine de pe pagină — traducerea automată gestionează toate imaginile de pe o pagină (până la 50 pe rulare), nu doar imaginea principală.
+- Pretradu pagina următoare — în timp ce citești pagina curentă, imaginea paginii următoare este tradusă în fundal, așa că e gata în momentul în care o deschizi (o singură imagine; activat implicit, se poate opri din Setări).
 - Clic dreapta pe orice imagine — alege „Trimite la comic-translate-4-free” pentru a traduce o anumită imagine, chiar și una mai mică decât dimensiunea minimă.
 - 114 limbi țintă prin Google Translate, Azure Translator sau propriul tău server local LM Studio.
 - Detectare automată a limbii sursă — japoneza, engleza, chineza simplificată/tradițională sunt identificate automat din textul recunoscut prin OCR.

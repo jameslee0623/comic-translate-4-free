@@ -343,6 +343,12 @@
   "feedback_email": {
     "message": "✉️ メールでフィードバック"
   },
+  "pretranslate_next": {
+    "message": "次のページを事前に翻訳する"
+  },
+  "pretranslate_next_hint": {
+    "message": "このページを読んでいる間に、次のページがバックグラウンドで翻訳され、開いたときには準備ができています。"
+  },
   "rate_store": {
     "message": "⭐ ストアで5つ星をつける"
   },
