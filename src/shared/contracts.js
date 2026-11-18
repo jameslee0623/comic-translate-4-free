@@ -44,7 +44,7 @@ export const MSG = {
   RENDER: 'ct/render',                   // {runId, mode, imageDataUrl, width, height, blocks, timings, debug, srcUrl?}
   DEBUG_STAGE: 'ct/debug-stage',          // {runId, stage, payload, debug}
   PILL_NOTICE: 'ct/pill-notice',         // {text, sticky} (custom pill message, e.g. fallback status)
-  SHOW_SUPPORT: 'ct/show-support',       // {} -> {ok} (one-time support popup after 30 translated pictures)
+  SHOW_SUPPORT: 'ct/show-support',       // {} -> {ok} (one-time support popup after 50 translated pictures)
   NEXT_PAGE_URL: 'ct/next-page-url',     // {learnedTexts?} -> {url|null, learnedText?} (pre-translation: what is the next page?)
   LINK_CLICKED: 'ct/link-clicked',       // {text, href} (content -> SW: a link was clicked; feeds learned next-page link text)
   // content -> SW
@@ -65,7 +65,7 @@ export function storeUrlForFirefox(isFirefox) {
 }
 // One-time support popup: show once the extension has translated this many
 // pictures in total (across runs and pages). Never shown twice.
-export const SUPPORT_POPUP_THRESHOLD = 30;
+export const SUPPORT_POPUP_THRESHOLD = 50;
 
 // IndexedDB: db 'ct-db', store 'models' (keyPath 'id').
 // Record: {id, data:ArrayBuffer, bytes, downloadedAt}
