@@ -932,6 +932,17 @@
         return u.href;
       }
     }
+    // +1 the page number after a dash (e-hentai image pages:
+    // /s/<hash>/1234567-2 -> /s/<hash>/1234567-3). Exactly one dash,
+    // so a date like 2026-11-17 never matches.
+    for (let i = segs.length - 1; i >= 0; i--) {
+      const dm = /^(\d+)-(\d+)$/.exec(segs[i]);
+      if (dm) {
+        segs[i] = dm[1] + '-' + String(parseInt(dm[2], 10) + 1);
+        u.pathname = segs.join('/');
+        return u.href;
+      }
+    }
     // Else +1 ?page= / ?p=.
     for (const key of ['page', 'p']) {
       if (u.searchParams.has(key) && /^\d+$/.test(u.searchParams.get(key))) {

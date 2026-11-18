@@ -1479,8 +1479,17 @@ async function pretranslateNextPage(sourceTabId, sourceUrl, settings) {
   try {
     const r = await chrome.tabs.sendMessage(sourceTabId, { type: MSG.NEXT_PAGE_URL });
     nextUrl = r && r.url;
-  } catch { return; /* tab gone / no content script */ }
-  if (!nextUrl || pretranslateDoneUrls.has(nextUrl)) return;
+  } catch {
+    diagPush('pre-translate: tab gone, cannot ask for the next page');
+    return; /* tab gone / no content script */
+  }
+  // Log the miss: a silent return here left no trace in the diag log,
+  // so a "pre-translate does not work" report had nothing to check.
+  if (!nextUrl) {
+    diagPush('pre-translate: no next page found from ' + (sourceUrl || ''));
+    return;
+  }
+  if (pretranslateDoneUrls.has(nextUrl)) return;
   const runId = 'pre-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
   const job = { url: nextUrl, runId, done: null };
   pretranslateJob = job;
