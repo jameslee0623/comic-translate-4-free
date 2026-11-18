@@ -952,10 +952,70 @@
     }
     return null;
   }
+  function findLearnedNextLink(learnedTexts) {
+    // Learned "next" wording for this site (e.g. Romanian "următorul"):
+    // a link whose normalized text matches a learned text, in document order.
+    if (!learnedTexts || !learnedTexts.length) return null;
+    try {
+      const want = learnedTexts.map(t => String(t || '').trim().toLowerCase()).filter(Boolean);
+      if (!want.length) return null;
+      const anchors = document.querySelectorAll('a[href]');
+      for (const a of anchors) {
+        const texts = [a.textContent || '', a.getAttribute('aria-label') || '', a.getAttribute('title') || ''];
+        for (const t of texts) {
+          const s = String(t || '').replace(/\s+/g, ' ').trim().toLowerCase();
+          if (s && want.includes(s)) return { url: a.href, text: s };
+        }
+      }
+    } catch {}
+    return null;
+  }
+  function nextUrlFromLinkHrefs(anchors, currentUrl) {
+    // A link to the same series, next page number — the page itself, read
+    // from its href. This is the only way for token URLs (e-hentai image
+    // pages: /s/<token>/<gid>-<page> — the token changes per image, so the
+    // URL alone can never predict the next page; the link carries it).
+    // Dash form: the last segment keeps its first number (the series id)
+    // and the page number goes up by 1; earlier segments may differ (the
+    // token). Plain form: the last segment is the page number, so the
+    // parent path must be identical (it is the series id).
+    let cur;
+    try { cur = new URL(currentUrl); } catch { return null; }
+    // Last non-empty segment (URLs may end with '/').
+    const splitPath = (p) => { const s = p.split('/'); while (s.length && s[s.length - 1] === '') s.pop(); return s; };
+    const curSegs = splitPath(cur.pathname);
+    const curLast = curSegs[curSegs.length - 1] || '';
+    const curDash = /^(\d+)-(\d+)$/.exec(curLast);
+    const curPlain = /^\d+$/.test(curLast);
+    for (const a of anchors) {
+      let u;
+      try { u = new URL(a.href); } catch { continue; }
+      if (u.origin !== cur.origin) continue;
+      if (!curDash && !curPlain) {
+        if (u.pathname !== cur.pathname) continue;
+        for (const key of ['page', 'p']) {
+          if (cur.searchParams.has(key) && /^\d+$/.test(cur.searchParams.get(key)) &&
+              u.searchParams.get(key) === String(parseInt(cur.searchParams.get(key), 10) + 1)) return a.href;
+        }
+        continue;
+      }
+      const segs = splitPath(u.pathname);
+      const last = segs[segs.length - 1] || '';
+      if (curDash) {
+        const m = /^(\d+)-(\d+)$/.exec(last);
+        if (m && m[1] === curDash[1] && parseInt(m[2], 10) === parseInt(curDash[2], 10) + 1) return a.href;
+      } else {
+        if (!/^\d+$/.test(last) || parseInt(last, 10) !== parseInt(curLast, 10) + 1) continue;
+        if (segs.slice(0, -1).join('/') !== curSegs.slice(0, -1).join('/')) continue;
+        return a.href;
+      }
+    }
+    return null;
+  }
   function findNextPageUrl() {
     let fromLink = null;
+    let anchors = [];
     try {
-      const anchors = [];
       document.querySelectorAll('a[href]').forEach(a => {
         anchors.push({
           href: a.href,
@@ -965,6 +1025,10 @@
       });
       fromLink = nextUrlFromAnchors(anchors);
     } catch { /* fall through to the URL increment */ }
+    // Same series, next page number, read from a link's href (see above).
+    if (!fromLink) {
+      try { fromLink = nextUrlFromLinkHrefs(anchors, location.href); } catch {}
+    }
     const cand = fromLink || incrementPageUrl(location.href);
     if (!cand || cand === location.href) return null;
     try {
@@ -1245,6 +1309,18 @@
   }
 
   // ------------------------------------------------------------ messages
+  // Learned next-page link text: report link clicks to the background, so
+  // it can learn the site's own "next" wording (e.g. Romanian "următorul").
+  // Capture phase, fire-and-forget — never blocks the click.
+  document.addEventListener('click', (ev) => {
+    try {
+      const a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
+      if (!a || !a.href) return;
+      const text = (a.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!text || text.length > 40) return;
+      chrome.runtime.sendMessage({ type: 'ct/link-clicked', text, href: a.href });
+    } catch {}
+  }, true);
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!msg || typeof msg.type !== 'string' || !msg.type.startsWith('ct/')) return false;
     // Fresh image scan per message ("run"): the DOM may have changed since
@@ -1372,8 +1448,13 @@
       return false;
     }
     if (msg.type === 'ct/next-page-url') {
-      // Pre-translation: what is the next page from here?
-      try { sendResponse({ url: findNextPageUrl() }); } catch { sendResponse({ url: null }); }
+      // Pre-translation: what is the next page from here? Learned link
+      // text first (this site's own "next" wording), then built-in rules.
+      try {
+        const learned = findLearnedNextLink(msg.learnedTexts || null);
+        if (learned) { sendResponse({ url: learned.url, learnedText: learned.text }); return false; }
+        sendResponse({ url: findNextPageUrl() });
+      } catch { sendResponse({ url: null }); }
       return false;
     }
     if (msg.type === 'ct/run-progress') {

@@ -21,6 +21,7 @@ import {
   pageCacheStats, clearPageCache,
 } from '../shared/page-cache.js';
 import { baseDomain, displayHost, hostOf, isSiteAllowed, imageHostOrigins, originAccessPatterns } from '../shared/site-access.js';
+import { urlShape, applyPattern, patternNumber, observeRules, observeLinkRules, activeRuleFor, activeLinkTexts, noteLearnResult } from '../shared/next-page-learn.js';
 
 // Translated-page cache is session-scoped: initPageCache() wipes the store on
 // every browser startup (via a chrome.storage.session marker) and the
@@ -1387,6 +1388,81 @@ async function writePageCache(rgba, w, h, finalDataUrl, blocks, effSettings, set
 let pretranslateJob = null; // {url, runId, done} | null
 const pretranslateDoneUrls = new Set(); // session: URLs already pre-translated
 
+// Learned next-page rules (URL-only learning, part of pre-translate; no
+// toggle). nextPageRules: { [shape]: { pattern, count, misses } }, kept in
+// chrome.storage.local under NEXT_PAGE_RULES_KEY so it survives restarts.
+// lastTabUrl tracks the previous URL per tab for learning observations;
+// predictedNext remembers what a learned rule predicted for a tab, so the
+// next navigation can score it (opened it = success, jumped forward past
+// it = miss, went back = no signal).
+const NEXT_PAGE_RULES_KEY = 'ctNextPageRules';
+let nextPageRules = null; // null until loaded
+let nextPageRulesLoad = null;
+let lastTabUrl = new Map();
+let predictedNext = new Map();
+let lastLinkClick = new Map(); // tabId -> {text, href, at} (last link click, for learning link text)
+function ensureNextPageRulesLoaded() {
+  if (nextPageRules !== null) return Promise.resolve();
+  if (!nextPageRulesLoad) {
+    nextPageRulesLoad = chrome.storage.local.get(NEXT_PAGE_RULES_KEY).then(saved => {
+      nextPageRules = (saved && saved[NEXT_PAGE_RULES_KEY]) || {};
+    }).catch(() => { nextPageRules = {}; });
+  }
+  return nextPageRulesLoad;
+}
+function saveNextPageRules() {
+  try { chrome.storage.local.set({ [NEXT_PAGE_RULES_KEY]: nextPageRules || {} }); } catch {}
+}
+// Score one outcome for a learned rule (ok = the predicted page exists /
+// the user opened it). A miss streak of 10 drops the rule (see
+// next-page-learn.js); any success resets the streak.
+function noteLearnOutcome(key, ok) {
+  if (!key) return;
+  nextPageRules = noteLearnResult(nextPageRules || {}, key, ok);
+  saveNextPageRules();
+}
+// Learn from one real navigation. Runs on every URL change (changeInfo.url),
+// before the auto-translate handler below.
+async function observeNextPageChange(tabId, oldUrl, newUrl) {
+  try {
+    await ensureNextPageRulesLoaded();
+    const pred = predictedNext.get(tabId);
+    if (pred) {
+      predictedNext.delete(tabId);
+      if (newUrl === pred.url) {
+        noteLearnOutcome(pred.key, true);
+      } else if (pred.pattern.kind === 'link-text') {
+        // A link-text prediction has no number to judge direction by:
+        // any other page on the same site right after it is a miss.
+        try {
+          if (new URL(newUrl).origin === new URL(pred.url).origin) noteLearnOutcome(pred.key, false);
+        } catch {}
+      } else if (urlShape(newUrl) === urlShape(pred.url)) {
+        // Same series, different page: a forward jump past the prediction
+        // is a miss; going back (or staying) is no signal either way.
+        const fromN = patternNumber(pred.pattern, pred.sourceUrl);
+        const toN = patternNumber(pred.pattern, newUrl);
+        if (fromN !== null && toN !== null && toN > fromN) noteLearnOutcome(pred.key, false);
+      }
+    }
+    const before = JSON.stringify(nextPageRules || {});
+    nextPageRules = observeRules(nextPageRules || {}, oldUrl, newUrl);
+    if (JSON.stringify(nextPageRules) !== before) saveNextPageRules();
+    // Learn the site's "next" wording from the click that caused this
+    // navigation (the click must match the new URL and be recent).
+    try {
+      const click = lastLinkClick.get(tabId);
+      lastLinkClick.delete(tabId);
+      if (click && click.href === newUrl && Date.now() - click.at <= 2000) {
+        const origin = new URL(newUrl).origin;
+        const beforeL = JSON.stringify(nextPageRules || {});
+        nextPageRules = observeLinkRules(nextPageRules || {}, origin, click.text, oldUrl, newUrl);
+        if (JSON.stringify(nextPageRules) !== beforeL) saveNextPageRules();
+      }
+    } catch {}
+  } catch {}
+}
+
 // Extract <img> URLs from a page's HTML: src / data-src / data-original /
 // data-lazy-src, plus the first srcset candidate. Relative URLs resolve
 // against the page. SVGs are UI, not content. Pure (tested).
@@ -1475,13 +1551,44 @@ async function pretranslateNextPage(sourceTabId, sourceUrl, settings) {
   if (!settings || settings.pretranslateNextPage === false) return;
   try { if (await isIncognitoTab(sourceTabId)) return; } catch { /* proceed */ }
   cancelPretranslate();
+  // Learned rule first: if this site has an active learned rule, build the
+  // next URL from it directly — no link needed. Otherwise ask the page
+  // (built-in rules: rel=next, link text, +1, dash+1, ?page=).
   let nextUrl = null;
+  let learned = null;
   try {
-    const r = await chrome.tabs.sendMessage(sourceTabId, { type: MSG.NEXT_PAGE_URL });
-    nextUrl = r && r.url;
-  } catch {
-    diagPush('pre-translate: tab gone, cannot ask for the next page');
-    return; /* tab gone / no content script */
+    await ensureNextPageRulesLoaded();
+    const active = activeRuleFor(nextPageRules || {}, sourceUrl || '');
+    if (active) {
+      const cand = applyPattern(active.pattern, sourceUrl);
+      if (cand && cand !== sourceUrl) { nextUrl = cand; learned = active; }
+    }
+  } catch {}
+  if (!nextUrl) {
+    try {
+      // Learned link text for this site (its own "next" wording, e.g.
+      // Romanian "următorul") goes to the page first; the page falls back
+      // to the built-in rules when nothing matches.
+      let linkRules = [];
+      try {
+        const origin = new URL(sourceUrl || '').origin;
+        linkRules = activeLinkTexts(nextPageRules || {}, origin);
+      } catch {}
+      const r = await chrome.tabs.sendMessage(sourceTabId, { type: MSG.NEXT_PAGE_URL, learnedTexts: linkRules.map(x => x.text) });
+      nextUrl = r && r.url;
+      if (r && r.learnedText) {
+        const hit = linkRules.find(x => x.text === r.learnedText);
+        if (hit) {
+          try {
+            const origin = new URL(sourceUrl || '').origin;
+            learned = { pattern: { kind: 'link-text', origin, text: r.learnedText }, key: hit.key };
+          } catch {}
+        }
+      }
+    } catch {
+      diagPush('pre-translate: tab gone, cannot ask for the next page');
+      return; /* tab gone / no content script */
+    }
   }
   // Log the miss: a silent return here left no trace in the diag log,
   // so a "pre-translate does not work" report had nothing to check.
@@ -1490,8 +1597,10 @@ async function pretranslateNextPage(sourceTabId, sourceUrl, settings) {
     return;
   }
   if (pretranslateDoneUrls.has(nextUrl)) return;
+  // Remember the prediction so the next navigation can score it.
+  if (learned) predictedNext.set(sourceTabId, { url: nextUrl, key: learned.key, sourceUrl, pattern: learned.pattern });
   const runId = 'pre-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-  const job = { url: nextUrl, runId, done: null };
+  const job = { url: nextUrl, runId, done: null, learnedKey: learned ? learned.key : null };
   pretranslateJob = job;
   const abortController = new AbortController();
   runs.set(runId, { cancelled: false, tabId: null, stage: 'pretranslate', abortController });
@@ -1526,6 +1635,14 @@ async function runPretranslate(job, sourceTabId, settings) {
       const len = Number(res.headers.get('content-length') || 0);
       if (len > 5 * 1024 * 1024) throw new Error('next page too big');
       html = await res.text();
+      // NOTE: a successful fetch is NOT scored — the URL merely exists,
+      // which says nothing about whether it is the right next page. Only
+      // the user's next navigation scores success (they opened the
+      // predicted page); a fetch failure scores a miss below.
+    } catch (e) {
+      // The predicted page failed to load: the learned rule missed.
+      if (job.learnedKey) noteLearnOutcome(job.learnedKey, false);
+      throw e;
     } finally { clearTimeout(to); }
   }
   checkCancelled(runId);
@@ -2969,7 +3086,7 @@ async function detectSliced(rgba, w, h, threshold, runId, pxKeys) {
 // Fires the pipeline automatically when an allowed page finishes loading —
 // no button click needed. One run per page load; only for the active tab.
 const autoFired = new Map(); // tabId -> {url, at}
-chrome.tabs.onRemoved.addListener(tabId => autoFired.delete(tabId));
+chrome.tabs.onRemoved.addListener(tabId => { autoFired.delete(tabId); lastTabUrl.delete(tabId); predictedNext.delete(tabId); });
 
 // Auto-download on install (2.2.2): start fetching missing models in the
 // background right after install, so the first run usually finds them
@@ -3023,6 +3140,17 @@ chrome.runtime.onInstalled.addListener(details => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Learned next-page rules: watch URL changes (URL-only learning). Runs
+  // on the 'loading' event, which carries changeInfo.url — the 'complete'
+  // event below usually does not.
+  try {
+    if (changeInfo && changeInfo.url) {
+      const oldUrl = lastTabUrl.get(tabId);
+      const newUrl = changeInfo.url;
+      if (oldUrl && oldUrl !== newUrl) observeNextPageChange(tabId, oldUrl, newUrl);
+      lastTabUrl.set(tabId, newUrl);
+    }
+  } catch {}
   // DIAGNOSTIC (temporary): log every document change for a tab with a
   // run in flight, so the log proves or refutes a mid-run navigation
   // without asking the user.
@@ -3361,6 +3489,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
 refreshContextMenu().catch(() => {});
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  // Learned next-page link text: remember the last link click per tab
+  // (one-way, no reply). The click must match a navigation that follows
+  // within 2s to teach anything — see observeNextPageChange.
+  if (msg && msg.type === MSG.LINK_CLICKED) {
+    try {
+      const tabId = sender && sender.tab && sender.tab.id;
+      if (tabId !== undefined && tabId !== null && msg.href) {
+        lastLinkClick.set(tabId, { text: String(msg.text || ''), href: String(msg.href), at: Date.now() });
+      }
+    } catch {}
+    return false;
+  }
   // Inpaint progress from the Chrome offscreen document (one-way, no reply).
   // Routes into the run's progress bar, so the pill keeps moving during long
   // inpaints instead of looking stalled. Each message is also a worker event,

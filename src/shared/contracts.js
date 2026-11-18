@@ -45,7 +45,8 @@ export const MSG = {
   DEBUG_STAGE: 'ct/debug-stage',          // {runId, stage, payload, debug}
   PILL_NOTICE: 'ct/pill-notice',         // {text, sticky} (custom pill message, e.g. fallback status)
   SHOW_SUPPORT: 'ct/show-support',       // {} -> {ok} (one-time support popup after 30 translated pictures)
-  NEXT_PAGE_URL: 'ct/next-page-url',     // {} -> {url|null} (pre-translation: what is the next page?)
+  NEXT_PAGE_URL: 'ct/next-page-url',     // {learnedTexts?} -> {url|null, learnedText?} (pre-translation: what is the next page?)
+  LINK_CLICKED: 'ct/link-clicked',       // {text, href} (content -> SW: a link was clicked; feeds learned next-page link text)
   // content -> SW
   OPEN_LINK: 'ct/open-link',             // {url} -> {ok} (support popup buttons; SW allowlists the URL and opens a tab)
 };
