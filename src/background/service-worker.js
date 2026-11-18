@@ -21,7 +21,7 @@ import {
   pageCacheStats, clearPageCache,
 } from '../shared/page-cache.js';
 import { baseDomain, displayHost, hostOf, isSiteAllowed, imageHostOrigins, originAccessPatterns } from '../shared/site-access.js';
-import { urlShape, applyPattern, patternNumber, observeRules, observeLinkRules, activeRuleFor, activeLinkTexts, noteLearnResult } from '../shared/next-page-learn.js';
+import { urlShape, applyPattern, patternNumber, observeRules, observeLinkRules, observePicLinkRules, activeRuleFor, activeLinkTexts, activePicLinkRule, noteLearnResult } from '../shared/next-page-learn.js';
 
 // Translated-page cache is session-scoped: initPageCache() wipes the store on
 // every browser startup (via a chrome.storage.session marker) and the
@@ -1431,9 +1431,9 @@ async function observeNextPageChange(tabId, oldUrl, newUrl) {
       predictedNext.delete(tabId);
       if (newUrl === pred.url) {
         noteLearnOutcome(pred.key, true);
-      } else if (pred.pattern.kind === 'link-text') {
-        // A link-text prediction has no number to judge direction by:
-        // any other page on the same site right after it is a miss.
+      } else if (pred.pattern.kind === 'link-text' || pred.pattern.kind === 'pic-link') {
+        // A text or picture prediction has no number to judge direction
+        // by: any other page on the same site right after it is a miss.
         try {
           if (new URL(newUrl).origin === new URL(pred.url).origin) noteLearnOutcome(pred.key, false);
         } catch {}
@@ -1457,6 +1457,11 @@ async function observeNextPageChange(tabId, oldUrl, newUrl) {
         const origin = new URL(newUrl).origin;
         const beforeL = JSON.stringify(nextPageRules || {});
         nextPageRules = observeLinkRules(nextPageRules || {}, origin, click.text, oldUrl, newUrl);
+        // A picture click (no text needed) teaches the picture-link rule:
+        // on this site, the link around the main picture goes next.
+        if (click.hasImage) {
+          nextPageRules = observePicLinkRules(nextPageRules || {}, origin, oldUrl, newUrl);
+        }
         if (JSON.stringify(nextPageRules) !== beforeL) saveNextPageRules();
       }
     } catch {}
@@ -1568,13 +1573,16 @@ async function pretranslateNextPage(sourceTabId, sourceUrl, settings) {
     try {
       // Learned link text for this site (its own "next" wording, e.g.
       // Romanian "următorul") goes to the page first; the page falls back
-      // to the built-in rules when nothing matches.
+      // to the built-in rules when nothing matches. picLinkActive tells
+      // the page whether the learned picture-link rule applies here.
       let linkRules = [];
+      let picLinkActive = false;
       try {
         const origin = new URL(sourceUrl || '').origin;
         linkRules = activeLinkTexts(nextPageRules || {}, origin);
+        picLinkActive = activePicLinkRule(nextPageRules || {}, origin) !== null;
       } catch {}
-      const r = await chrome.tabs.sendMessage(sourceTabId, { type: MSG.NEXT_PAGE_URL, learnedTexts: linkRules.map(x => x.text) });
+      const r = await chrome.tabs.sendMessage(sourceTabId, { type: MSG.NEXT_PAGE_URL, learnedTexts: linkRules.map(x => x.text), picLinkActive });
       nextUrl = r && r.url;
       if (r && r.learnedText) {
         const hit = linkRules.find(x => x.text === r.learnedText);
@@ -1584,6 +1592,12 @@ async function pretranslateNextPage(sourceTabId, sourceUrl, settings) {
             learned = { pattern: { kind: 'link-text', origin, text: r.learnedText }, key: hit.key };
           } catch {}
         }
+      } else if (r && r.picLink) {
+        try {
+          const origin = new URL(sourceUrl || '').origin;
+          const pic = activePicLinkRule(nextPageRules || {}, origin);
+          if (pic) learned = pic;
+        } catch {}
       }
     } catch {
       diagPush('pre-translate: tab gone, cannot ask for the next page');
@@ -3496,7 +3510,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     try {
       const tabId = sender && sender.tab && sender.tab.id;
       if (tabId !== undefined && tabId !== null && msg.href) {
-        lastLinkClick.set(tabId, { text: String(msg.text || ''), href: String(msg.href), at: Date.now() });
+        lastLinkClick.set(tabId, { text: String(msg.text || ''), href: String(msg.href), hasImage: !!msg.hasImage, at: Date.now() });
       }
     } catch {}
     return false;

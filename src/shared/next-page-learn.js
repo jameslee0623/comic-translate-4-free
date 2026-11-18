@@ -189,6 +189,38 @@ export function activeLinkTexts(rules, origin) {
   return out;
 }
 
+// --- Learned picture link ("the picture IS the next link") ---
+// Learned per origin from clicks on picture links: the user clicks the
+// picture and the page advances. Same 2-repeat / 10-miss bars. Keyed
+// 'piclink:<origin>'. The rule carries no text or URL — the prediction is
+// "the link around the biggest picture on the page" (see findPictureLink).
+export function picLinkKey(origin) { return 'piclink:' + origin; }
+export function observePicLinkRules(rules, origin, oldUrl, newUrl) {
+  const next = { ...(rules || {}) };
+  // Same-section move only (same first path segment); the click itself is
+  // the evidence — the URL carries no number to check.
+  let same = false;
+  try {
+    const a = new URL(oldUrl), b = new URL(newUrl);
+    const fa = a.pathname.split('/')[1], fb = b.pathname.split('/')[1];
+    same = a.origin === b.origin && !!fa && fa === fb;
+  } catch {}
+  if (!same) return next;
+  const key = picLinkKey(origin);
+  const cur = next[key];
+  if (cur && cur.pattern.kind === 'pic-link') {
+    next[key] = { ...cur, count: cur.count + 1 };
+  } else {
+    next[key] = { pattern: { kind: 'pic-link', origin }, count: 1, misses: 0 };
+  }
+  return next;
+}
+export function activePicLinkRule(rules, origin) {
+  const r = (rules || {})[picLinkKey(origin)];
+  if (!r || r.pattern.kind !== 'pic-link' || r.count < LEARN_REPEATS) return null;
+  return { pattern: r.pattern, key: picLinkKey(origin) };
+}
+
 // Fold one observed navigation into the rules. Same pattern again counts up;
 // a different pattern for the same shape restarts that shape from 1.
 export function observeRules(rules, oldUrl, newUrl) {

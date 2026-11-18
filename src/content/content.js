@@ -1012,7 +1012,25 @@
     }
     return null;
   }
-  function findNextPageUrl() {
+  function findPictureLink() {
+    // The link around the biggest picture on the page. On many readers
+    // the picture IS the next-page link (no text, no page number in the
+    // URL) — the learned picture-link rule uses this. Biggest by
+    // displayed size; a link around a tiny thumbnail never counts.
+    let best = null, bestArea = 0;
+    try {
+      document.querySelectorAll('a[href]').forEach(a => {
+        const img = a.querySelector ? a.querySelector('img') : null;
+        if (!img || !img.complete || !img.naturalWidth) return;
+        const r = img.getBoundingClientRect();
+        if (Math.max(r.width || 0, r.height || 0) < 120) return;
+        const area = (r.width || 0) * (r.height || 0);
+        if (area > bestArea) { bestArea = area; best = a.href; }
+      });
+    } catch {}
+    return best;
+  }
+  function findNextPageUrl(picLinkActive) {
     let fromLink = null;
     let anchors = [];
     try {
@@ -1029,12 +1047,22 @@
     if (!fromLink) {
       try { fromLink = nextUrlFromLinkHrefs(anchors, location.href); } catch {}
     }
-    const cand = fromLink || incrementPageUrl(location.href);
+    if (fromLink) return { url: fromLink, picLink: false };
+    // Learned picture-link rule (active for this site): the link around
+    // the biggest picture. A real link beats a guessed +1 URL, so it
+    // comes before the increment.
+    if (picLinkActive) {
+      try {
+        const pic = findPictureLink();
+        if (pic) return { url: pic, picLink: true };
+      } catch {}
+    }
+    const cand = incrementPageUrl(location.href);
     if (!cand || cand === location.href) return null;
     try {
       if (new URL(cand).origin !== location.origin) return null;
     } catch { return null; }
-    return cand;
+    return { url: cand, picLink: false };
   }
   function pillProgress(stage, progress) {
     // Sticky for the whole run: the old non-sticky call armed a 4s auto-hide
@@ -1310,15 +1338,18 @@
 
   // ------------------------------------------------------------ messages
   // Learned next-page link text: report link clicks to the background, so
-  // it can learn the site's own "next" wording (e.g. Romanian "următorul").
+  // it can learn the site's own "next" wording (e.g. Romanian "următorul")
+  // — and picture links (hasImage), so it can learn "the picture goes
+  // next" on sites where the next link has no text at all.
   // Capture phase, fire-and-forget — never blocks the click.
   document.addEventListener('click', (ev) => {
     try {
       const a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
       if (!a || !a.href) return;
       const text = (a.textContent || '').replace(/\s+/g, ' ').trim();
-      if (!text || text.length > 40) return;
-      chrome.runtime.sendMessage({ type: 'ct/link-clicked', text, href: a.href });
+      const hasImage = !!(a.querySelector && a.querySelector('img'));
+      if ((!text || text.length > 40) && !hasImage) return;
+      chrome.runtime.sendMessage({ type: 'ct/link-clicked', text, href: a.href, hasImage });
     } catch {}
   }, true);
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -1449,11 +1480,18 @@
     }
     if (msg.type === 'ct/next-page-url') {
       // Pre-translation: what is the next page from here? Learned link
-      // text first (this site's own "next" wording), then built-in rules.
+      // text first, then built-in rules, then the learned picture link
+      // (the link around the biggest picture), then the +1 increment.
       try {
         const learned = findLearnedNextLink(msg.learnedTexts || null);
         if (learned) { sendResponse({ url: learned.url, learnedText: learned.text }); return false; }
-        sendResponse({ url: findNextPageUrl() });
+        const found = findNextPageUrl(msg.picLinkActive === true);
+        if (found) {
+          if (found.picLink) sendResponse({ url: found.url, picLink: true });
+          else sendResponse({ url: found.url });
+          return false;
+        }
+        sendResponse({ url: null });
       } catch { sendResponse({ url: null }); }
       return false;
     }
