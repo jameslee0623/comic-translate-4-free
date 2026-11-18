@@ -104,17 +104,30 @@ async function readDiagTrace() {
 }
 // Replay the persisted pre-restart log into the in-memory buffer (direct
 // buffer push, NOT diagPush, so the replayed lines are not persisted
-// again). Returns how many lines were replayed. Used by orphan/alarm
-// recovery only — a normal run start never replays old lines.
+// again). Returns how many lines were replayed.
+// 2.2.11: also runs once on background load (below), not only in
+// orphan/alarm recovery. The diag log is global across tabs (2.2.10), so
+// a background restart must not wipe it — the buffer starts empty on
+// load, and without this replay the Copy button only shows the lines
+// since the restart. Idempotent per background lifetime: once lines were
+// restored, later calls return that count without adding duplicates, so
+// orphan recovery still gets the right count for its message.
+let diagTraceReplayedCount = 0;
 async function replayDiagTrace() {
   try {
+    if (diagTraceReplayedCount > 0) return diagTraceReplayedCount;
     const recovered = await readDiagTrace();
     if (!recovered.length) return 0;
     diagLogBuf.push('[ct-diag] --- log from before the restart (recovered) ---');
     for (const l of recovered) diagLogBuf.push(l);
+    diagTraceReplayedCount = recovered.length;
     return recovered.length;
   } catch { return 0; }
 }
+// Restore the pre-restart log on load so the global log survives a
+// background restart. Fire-and-forget: the buffer fills asynchronously
+// and is ready well before the next run's sendDiagLog.
+replayDiagTrace().catch(() => {});
 
 // 2.1.29: retired bench lines. 2.1.25 removed these from live code, but
 // they live on in the persisted benchTrace and replay into every run's
