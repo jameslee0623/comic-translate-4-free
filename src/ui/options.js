@@ -1,5 +1,6 @@
 // Settings page: read/write settings + model management + connection checks.
 import { BUILD } from '../shared/version.js';
+import { storeUrlForFirefox } from '../shared/contracts.js';
 import { DEFAULT_SETTINGS, NATIVE_LANGS as LANGS, TARGET_LANGS, readSettingsRaw, updateSettings } from '../shared/settings.js';
 const $ = id => document.getElementById(id);
 // Defaults live in shared/settings.js — single source of truth.
@@ -464,6 +465,13 @@ async function refreshModels() {
 
 load();
 ctApplyI18n();
+// About this project: the "5 stars" button goes to this browser's store
+// (Chrome Web Store on Chrome, AMO on Firefox). The HTML default is the
+// Chrome URL, so a missed detection still lands somewhere useful.
+try {
+  const rate = document.getElementById('rateStore');
+  if (rate) rate.href = storeUrlForFirefox(navigator.userAgent.includes('Firefox'));
+} catch { /* link keeps its HTML default */ }
 // Deep link: #models or #models-download scrolls to the models section.
 // The download variant (first run) also pulses the "Download all" button.
 if (location.hash === '#models' || location.hash === '#models-download') {
