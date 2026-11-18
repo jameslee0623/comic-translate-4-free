@@ -177,20 +177,10 @@ async function saveInpaintSpread(map) {
   try { await chrome.storage.sync.set({ [INPAINT_SPREAD_KEY]: { ...map, updatedAt: new Date().toISOString() } }); } catch {}
 }
 // 1.4.0 (m6): each run's (and each recovery's) panel log is its own.
-// Called at run start and at recovery start, before any diagPush for
-// that run/recovery, so a sent log never carries the tail of older runs.
-// EXCEPTION (2.0.17): keep 'threads bench' lines. The benchmark runs
-// after a run ends, so its lines land in the buffer AFTER that run's log
-// was already sent to the panel — wiping them here deleted the only
-// panel copy, and the numbers never appeared anywhere James looks.
-// Kept lines ride into the next run's log instead.
-function clearDiagLog() {
-  try {
-    const keep = diagLogBuf.filter((l) => l.includes('threads bench'));
-    diagLogBuf.length = 0;
-    for (const l of keep) diagLogBuf.push(l);
-  } catch {}
-}
+// 2.2.10: the diag log is now global across tabs and runs — it is never
+// cleared at run/recovery start, so the debug panel shows content from
+// all tabs (including pre-translate jobs) instead of only this run's
+// lines. diagLogBuf caps at 2000 lines (shift), so it stays bounded.
 initPageCache();
 
 // DIAGNOSTIC (temporary): proves this build loaded, so a paste without
@@ -1923,7 +1913,6 @@ async function runPipeline(tabId, opts = {}) {
   // a 50-block translate doesn't keep burning quota after the user cancelled.
   const abortController = new AbortController();
   runs.set(runId, { cancelled: false, tabId, abortController });
-  clearDiagLog(); // 1.4.0 (m6): this run's panel log is its own, not the tail of older runs.
   // 2.1.20: show the persisted bench trace at the top of this run's log,
   // so one paste shows the full bench history (trigger, start, saves)
   // even after a worker restart wiped the in-memory lines.
@@ -3789,11 +3778,8 @@ async function recoverOrphanedRuns() {
             continue;
           }
         }
-        // 2.1.57: clear the log BEFORE the auto-resume check, not after it —
-        // the check's decision lines (why it resumed or skipped) were wiped
-        // by the clear in the fail path below, so a skipped resume left no
-        // reason in the log at all.
-        clearDiagLog(); // 1.4.0 (m6): each recovery's log is its own.
+        // 2.2.10: no log clear here — the log is global across tabs/runs,
+        // so the auto-resume decision lines are kept.
         // Auto-resume (2.1.56): a run the background killed mid-way restarts
         // by itself on the same tab, skipping the pictures it already
         // finished, instead of only showing an error. Limits: at most 2
@@ -3889,7 +3875,6 @@ setMlAlarmRecoveryHook(async (entry, msg) => {
         return;
       }
     } catch {}
-    clearDiagLog(); // 1.4.0 (m6): alarm recovery log is its own.
     // 2.1.55: replay the persisted pre-restart log, same as orphan recovery.
     await replayDiagTrace();
     diagPush('alarm recovery run ' + entry.runId + ' type ' + entry.type + ' tab ' + entry.tabId);
