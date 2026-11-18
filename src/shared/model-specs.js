@@ -56,18 +56,36 @@ export const ALL_FILES = MODEL_GROUPS.flatMap(g =>
 
 export async function getModelStatus() {
   const db = await openDb();
+  const keys = await idbKeys(db).catch(() => []);
+  const chunkCount = (fileId) => {
+    let n = 0;
+    for (const k of keys) {
+      if (typeof k === 'string' && k.startsWith(fileId + '#')) n++;
+    }
+    return n;
+  };
   const out = [];
   for (const g of MODEL_GROUPS) {
     const files = [];
     let done = true, sizeMismatch = false;
     for (const f of g.files) {
       const rec = await idbGet(db, f.id);
+      // 2.2.12: "downloaded" requires the chunks to actually be present —
+      // a manifest with correct bytes but missing chunks is an orphaned
+      // manifest, not a usable model. Without this the UI shows "✓
+      // downloaded" for a model that fails at run time.
+      let downloaded = false;
       const bytesOk = !!rec && rec.bytes === f.bytes;
+      if (rec && bytesOk) {
+        if (rec.data) downloaded = true;
+        else if (typeof rec.chunks === 'number') downloaded = chunkCount(f.id) >= rec.chunks;
+        else downloaded = false;
+      }
       files.push({
         id: f.id, file: f.file, bytes: rec ? rec.bytes : 0,
-        expectedBytes: f.bytes, downloaded: !!rec, bytesOk,
+        expectedBytes: f.bytes, downloaded, bytesOk,
       });
-      if (!rec) { done = false; continue; }
+      if (!downloaded) { done = false; continue; }
       if (!bytesOk) { done = false; sizeMismatch = true; }
     }
     out.push({ id: g.id, label: g.label, labelKey: g.labelKey, required: !!g.required, downloaded: done, sizeMismatch, files });
@@ -81,21 +99,46 @@ export async function getModelStatus() {
 // 8MB chunk count, capped at the expected size. A manifest with the wrong
 // byte count is stale (a newer file version), not done — it needs a full
 // re-download, so loaded is 0 for it.
+// 2.2.12: totalBytes/loadedBytes cover ALL files, not just the missing
+// ones — the old missing-only sums made the pill percent go BACKWARDS
+// each time a file completed (a finished file dropped out of both sums).
+// 2.2.12: a manifest claiming "done" is only trusted when its chunks are
+// actually present — an orphaned manifest (correct bytes, missing chunks)
+// is treated as not done so it re-downloads instead of failing at run
+// time with "missing chunk".
 export async function getModelDownloadState() {
   const db = await openDb();
   const keys = await idbKeys(db).catch(() => []);
+  const chunkCount = (fileId) => {
+    let n = 0;
+    for (const k of keys) {
+      if (typeof k === 'string' && k.startsWith(fileId + '#')) n++;
+    }
+    return n;
+  };
   const files = [];
   for (const f of ALL_FILES) {
     const rec = await idbGet(db, f.id).catch(() => null);
-    const done = !!rec && rec.bytes === f.bytes;
-    let loaded = 0, started = false;
-    if (done) {
-      loaded = f.bytes;
-    } else {
-      let n = 0;
-      for (const k of keys) {
-        if (typeof k === 'string' && k.startsWith(f.id + '#')) n++;
+    let done = false, loaded = 0, started = false;
+    if (rec && rec.bytes === f.bytes) {
+      if (rec.data) {
+        done = true; // legacy single-record format: the data is the file
+        loaded = f.bytes;
+      } else if (typeof rec.chunks === 'number') {
+        // Chunked format: trust "done" only when every chunk is present.
+        if (chunkCount(f.id) >= rec.chunks) {
+          done = true;
+          loaded = f.bytes;
+        } else {
+          started = true;
+          loaded = Math.min(chunkCount(f.id) * IDB_CHUNK, f.bytes);
+        }
+      } else {
+        // Manifest with no chunk count and no data: cannot verify — re-download.
+        started = true;
       }
+    } else {
+      const n = chunkCount(f.id);
       if (n > 0) {
         started = true;
         loaded = Math.min(n * IDB_CHUNK, f.bytes);
@@ -107,8 +150,8 @@ export async function getModelDownloadState() {
   return {
     files,
     missing,
-    totalBytes: missing.reduce((a, f) => a + f.bytes, 0),
-    loadedBytes: missing.reduce((a, f) => a + f.loaded, 0),
+    totalBytes: files.reduce((a, f) => a + f.bytes, 0),
+    loadedBytes: files.reduce((a, f) => a + f.loaded, 0),
   };
 }
 
@@ -117,8 +160,10 @@ export async function deleteModelGroup(groupId) {
   const g = MODEL_GROUPS.find(x => x.id === groupId);
   if (!g) return;
   for (const f of g.files) {
-    const rec = await idbGet(db, f.id).catch(() => null);
-    if (rec && rec.chunks) await deleteChunks(db, f.id, rec.chunks);
+    // 2.2.12: delete chunks by key prefix even when there is no manifest
+    // (a mid-download file has chunks but no manifest — the old code left
+    // them behind forever).
+    await deleteChunksByPrefix(db, f.id);
     await idbDel(db, f.id);
   }
 }
@@ -141,15 +186,17 @@ export { PRUNED_MODEL_IDS };
 // onInstalled handler to lead the user to the models section only when
 // an update actually makes a download necessary.
 export function computeModelFingerprint() {
-  return JSON.stringify(MODEL_GROUPS.map(g => [g.id, g.files.map(f => [f.id, f.bytes])]));
+  return JSON.stringify(MODEL_GROUPS.map(g => [g.id, g.files.map(f => [f.id, f.file, f.bytes])]));
 }
 export async function pruneModelIds(ids) {
   const db = await openDb();
   for (const id of ids) {
     try {
-      const rec = await idbGet(db, id).catch(() => null);
-      if (!rec) continue;
-      if (rec.chunks) await deleteChunks(db, id, rec.chunks);
+      // 2.2.12: delete the chunks by key prefix even when there is no
+      // manifest — a mid-download file has chunk records but no manifest
+      // (it is written last), and the old `if (!rec) continue` deleted
+      // zero chunks, so the stall "prune and restart" was a no-op.
+      await deleteChunksByPrefix(db, id);
       await idbDel(db, id);
     } catch { /* best effort */ }
   }
@@ -169,6 +216,20 @@ const chunkKey = (fileId, i) => `${fileId}#${i}`;
 async function deleteChunks(db, fileId, n) {
   for (let i = 0; i < n; i++) {
     try { await idbDel(db, chunkKey(fileId, i)); } catch { /* already gone */ }
+  }
+}
+
+// Delete every chunk record for a file by key prefix, whether or not a
+// manifest exists. Used by prune/delete so a mid-download file (chunks
+// but no manifest) is actually cleaned up.
+async function deleteChunksByPrefix(db, fileId) {
+  let keys = [];
+  try { keys = await idbKeys(db); } catch { /* best effort */ }
+  const prefix = fileId + '#';
+  for (const k of keys) {
+    if (typeof k === 'string' && k.startsWith(prefix)) {
+      try { await idbDel(db, k); } catch { /* already gone */ }
+    }
   }
 }
 
@@ -199,16 +260,67 @@ export async function readChunked(db, fileId, manifest) {
 export async function downloadFileToIdb(fileId, url, onProgress) {
   const spec = ALL_FILES.find(f => f.id === fileId);
   const db = await openDb();
-  // Already cached (either storage format) with the right size? Skip.
+  // Already cached (either storage format) with the right size? Skip —
+  // but only when the chunks are actually present. An orphaned manifest
+  // (correct bytes, missing chunks) must NOT short-circuit: it would
+  // report success while the model still fails at load time (2.2.12).
   const existing = await idbGet(db, fileId);
-  if (existing && spec && spec.bytes && existing.bytes === spec.bytes) return existing.bytes;
+  if (existing && spec && spec.bytes && existing.bytes === spec.bytes) {
+    let intact = true;
+    if (existing.data) {
+      intact = true; // legacy single-record: the data is the file
+    } else if (typeof existing.chunks === 'number') {
+      const keys = await idbKeys(db).catch(() => []);
+      let n = 0;
+      for (const k of keys) {
+        if (typeof k === 'string' && k.startsWith(fileId + '#')) n++;
+      }
+      intact = n >= existing.chunks;
+    } else {
+      intact = false; // manifest with no chunk count and no data: unverifiable
+    }
+    if (intact) return existing.bytes;
+    // Orphaned/stale manifest: fall through and re-download (the stale
+    // records are cleared below).
+  }
   // Clear any stale or partial records before writing.
   if (existing) {
     if (existing.chunks) await deleteChunks(db, fileId, existing.chunks);
+    await deleteChunksByPrefix(db, fileId);
     await idbDel(db, fileId);
   }
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`download failed (${resp.status}) for ${fileId}`);
+  // 2.2.12: fetch with an inactivity timeout. A server that accepts the
+  // connection but never sends data (or stalls mid-stream) used to hang
+  // the download forever — the 90s callMl timeout only rejects the
+  // service-worker side while the host-side fetch keeps running. Abort
+  // after 60s with no bytes received; a slow-but-progressing download
+  // keeps resetting the timer, so it is never cut off for being slow.
+  const DOWNLOAD_INACTIVITY_MS = 60000;
+  const ctrl = new AbortController();
+  let inactivityTimer = null;
+  const armInactivity = () => {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+      try { ctrl.abort(); } catch { /* already settled */ }
+    }, DOWNLOAD_INACTIVITY_MS);
+  };
+  let resp;
+  try {
+    armInactivity();
+    resp = await fetch(url, { signal: ctrl.signal });
+  } catch (e) {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    if (e && e.name === 'AbortError') throw new Error(`download timed out (no data for ${DOWNLOAD_INACTIVITY_MS / 1000}s) for ${fileId}`);
+    throw e;
+  }
+  if (!resp.ok) {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    throw new Error(`download failed (${resp.status}) for ${fileId}`);
+  }
+  if (!resp.body) {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    throw new Error(`download failed (empty response body) for ${fileId}`);
+  }
   const total = parseInt(resp.headers.get('content-length') || '0', 10);
   const reader = resp.body.getReader();
   let idx = 0, loaded = 0;
@@ -222,8 +334,17 @@ export async function downloadFileToIdb(fileId, url, onProgress) {
     await idbPut(db, { id: chunkKey(fileId, idx++), data: buf.buffer });
   };
   for (;;) {
-    const { done, value } = await reader.read();
+    let readResult;
+    try {
+      readResult = await reader.read();
+    } catch (e) {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      if (e && e.name === 'AbortError') throw new Error(`download timed out (no data for ${DOWNLOAD_INACTIVITY_MS / 1000}s) for ${fileId}`);
+      throw e;
+    }
+    const { done, value } = readResult;
     if (done) break;
+    armInactivity(); // bytes arrived — the connection is alive, reset the timer
     pending.push(value);
     pendingLen += value.length;
     loaded += value.length;
@@ -236,6 +357,7 @@ export async function downloadFileToIdb(fileId, url, onProgress) {
     // yield so progress messages flush
     await new Promise(r => setTimeout(r, 0));
   }
+  if (inactivityTimer) clearTimeout(inactivityTimer);
   try { await reader.cancel(); } catch { /* stream already closed */ }
   await flushChunk();
   if (spec && spec.bytes && loaded !== spec.bytes) {

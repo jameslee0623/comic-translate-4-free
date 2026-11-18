@@ -96,7 +96,7 @@
     "message": "Ambang keyakinan deteksi"
   },
   "detection_hint": {
-    "message": "Halaman yang lebih kecil dari ukuran gambar minimum dilewati. Ukuran font render diperkirakan otomatis dari teks asli di halaman (dibatasi oleh maksimum di atas)."
+    "message": "Halaman yang lebih kecil dari ukuran gambar minimum dilewati. Ukuran font render diperkirakan otomatis dari teks asli di halaman."
   },
   "detection_rendering": {
     "message": "Deteksi & rendering"

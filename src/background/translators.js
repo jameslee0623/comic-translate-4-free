@@ -182,7 +182,11 @@ async function googleOne(t, src, dst, signal) {
       `Google is rate-limiting right now; wait a few minutes or switch to Azure / LM Studio)`);
   }
   const data = await resp.json();
-  return (((data && data[0]) || []).map(seg => (seg && seg[0]) || '').join(''));
+  // 2.2.12: a valid JSON non-array (e.g. an error object) used to yield
+  // '' silently — an empty translation with no error and no failover.
+  // Throw so the caller fails over to the next backend instead.
+  if (!Array.isArray(data)) throw new Error('google translate: unexpected response (not an array) — ' + JSON.stringify(data).slice(0, 120));
+  return ((data[0] || []).map(seg => (seg && seg[0]) || '').join(''));
 }
 
 function azureLang(code) {
@@ -285,6 +289,12 @@ async function azure(texts, settings, signal) {
       throw new Error(`azure translator: HTTP ${resp.status} after retries ${body.slice(0, 160)}`);
     }
     const data = await resp.json();
+    // 2.2.12: validate the reply length matches the batch. The old code
+    // built `r` from whatever Azure returned — if Azure returned fewer
+    // translations than the batch, the tail blocks silently got ''.
+    if (!Array.isArray(data) || data.length !== batch.length) {
+      throw new Error(`azure translator: reply has ${Array.isArray(data) ? data.length : 'non-array'} translations for a batch of ${batch.length}`);
+    }
     const r = [];
     for (const d of data) r.push((d.translations && d.translations[0] && d.translations[0].text) || '');
     return r;
@@ -634,7 +644,13 @@ export async function checkLmStudio(settings) {
   const ep = lmStudioEndpoints(settings);
   let resp;
   try {
-    resp = await fetch(ep.models);
+    // 2.2.12: 10s timeout — the old plain fetch hung forever if the server
+    // accepted the connection but never responded, leaving the Settings
+    // button stuck on "checking…".
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => { try { ctrl.abort(); } catch {} }, 10000);
+    try { resp = await fetch(ep.models, { signal: ctrl.signal }); }
+    finally { clearTimeout(timer); }
   } catch (e) {
     return { ok: false, error: 'cannot reach ' + ep.models + ' (' + ep.label + ') — start the LM Studio server first' };
   }
@@ -666,17 +682,24 @@ export async function checkAzure(settings) {
   if (!region) return { ok: false, error: 'region not set' };
   try {
     // Minimal real call: translate one word. A 200 proves key+region+network.
+    // 2.2.12: 10s timeout — same hang as checkLmStudio (see above).
     const url = `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=en`;
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Ocp-Apim-Subscription-Key': key,
-        'Ocp-Apim-Subscription-Region': region,
-        'Content-type': 'application/json',
-        'X-ClientTraceId': crypto.randomUUID(),
-      },
-      body: JSON.stringify([{ text: 'test' }]),
-    });
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => { try { ctrl.abort(); } catch {} }, 10000);
+    let resp;
+    try {
+      resp = await fetch(url, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: {
+          'Ocp-Apim-Subscription-Key': key,
+          'Ocp-Apim-Subscription-Region': region,
+          'Content-type': 'application/json',
+          'X-ClientTraceId': crypto.randomUUID(),
+        },
+        body: JSON.stringify([{ text: 'test' }]),
+      });
+    } finally { clearTimeout(timer); }
     if (!resp.ok) {
       const body = await resp.text().catch(() => '');
       return { ok: false, error: `HTTP ${resp.status} ${body.slice(0, 120)}` };
@@ -701,6 +724,14 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
   if (!texts.length) return translated;
   const backend = settings.translationBackend || 'google';
   const translateStart = performance.now();
+  // Reserve for Azure: if Azure is configured and still to come, a
+  // non-Azure attempt must leave it enough time for one attempt plus
+  // one retry — a batch fetch is ~2s and Azure's first retry delay is
+  // 1.5s, so 8s covers attempt + delay + attempt with lane overhead.
+  // Without this, a slow LM Studio — or a Google retry cycle, which has
+  // no per-attempt cap — could burn the whole budget and Azure would
+  // never get its turn. Applies to the primary call and to failover.
+  const AZURE_RESERVE_MS = 8000;
   const runBackend = async (b, attemptDeadlineMs, sig = signal) => {
     if (b === 'azure') return await azure(texts, settings, sig);
     if (b === 'lmstudio') return await lmStudio(texts, settings, sig, attemptDeadlineMs ?? deadlineMs);
@@ -711,9 +742,34 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
   let lastErr = null;
   let backendUsed = backend;
   let azureConsumed = false;
+  // 2.2.12: cap the PRIMARY call too. The old code ran the primary with
+  // no deadline — a slow Google primary could eat the whole 30s budget,
+  // so `remaining` was <= 0 at the first loop-top check and failover never
+  // ran. When Azure is configured and failover is on, the primary leaves
+  // the 8s Azure reserve (same rule as failover attempts); otherwise it
+  // gets the full deadline. Google gets a per-attempt abort timer (it has
+  // no deadline parameter); LM Studio takes the cap as its deadline.
+  const azureConfigured = !!(settings.azureKey || '').trim();
+  const azureStillToCome = settings.backendFailover && azureConfigured && backend !== 'azure';
+  const primaryCapMs = azureStillToCome ? Math.max(0, deadlineMs - AZURE_RESERVE_MS) : deadlineMs;
+  let primarySig = signal;
+  let primaryTimer = null;
+  if (backend !== 'azure' && primaryCapMs > 0 && primaryCapMs < deadlineMs) {
+    if (backend === 'lmstudio') {
+      // LM Studio takes the cap as its attempt deadline (passed below).
+    } else {
+      const ac = new AbortController();
+      primaryTimer = setTimeout(() => ac.abort(), primaryCapMs);
+      if (signal?.aborted) ac.abort();
+      else signal?.addEventListener('abort', () => ac.abort(), { once: true });
+      primarySig = ac.signal;
+    }
+  }
+  const primaryLmCap = backend === 'lmstudio' ? Math.min(primaryCapMs, 15000) : undefined;
   try {
-    results = await runBackend(backend);
+    results = await runBackend(backend, primaryLmCap, primarySig);
   } catch (e) {
+    if (primaryTimer) clearTimeout(primaryTimer);
     // Only a real user cancel skips failover. A timeout-abort is also
     // marked 'cancelled' by the backend helpers, but it must still fail
     // over — otherwise a stalled backend never switches to Azure.
@@ -722,7 +778,6 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
     // Opt-in failover: try the next backend. Never silently fail over to
     // paid Azure without the opt-in — the setting gates it.
     if (settings.backendFailover) {
-      const azureConfigured = !!(settings.azureKey || '').trim();
       // Failover order: prefer free/local backends first, then Azure if configured.
       const candidates = [];
       if (backend !== 'google') candidates.push('google');
@@ -751,15 +806,6 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
       // failover attempt at 15s and stop when the budget is gone, so Azure
       // always gets its turn inside the 30s translate budget.
       const FAILOVER_LM_DEADLINE_MS = 15000;
-      // Reserve for Azure: if Azure is configured and still to come, a
-      // non-Azure attempt must leave it enough time for one attempt plus
-      // one retry — a batch fetch is ~2s and Azure's first retry delay is
-      // 1.5s, so 8s covers attempt + delay + attempt with lane overhead.
-      // Without this, a slow LM Studio — or, in rescue mode, a Google retry
-      // cycle, which has no per-attempt cap — could burn the whole budget
-      // and Azure would never get its turn.
-      const AZURE_RESERVE_MS = 8000;
-      const azureStillToCome = azureConfigured && backend !== 'azure';
       for (const fb of candidates) {
         const remaining = failoverBudgetMs - (performance.now() - budgetStart);
         if (remaining <= 0) break;

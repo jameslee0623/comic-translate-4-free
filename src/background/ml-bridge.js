@@ -108,6 +108,11 @@ const ML_TIMEOUT_MS = {
   [MSG.ML_OCR]: 120 * 1000,
   [MSG.ML_INPAINT]: 120 * 1000,
   [MSG.ML_DIAG]: 10 * 1000,
+  // 2.2.12: downloads are not compute — a 206 MB model on a slow
+  // connection takes far longer than the 90s default, and the old default
+  // made the manual download path report a spurious failure for a download
+  // that was still progressing. 15 min matches the run's download wait cap.
+  [MSG.ML_DOWNLOAD]: 15 * 60 * 1000,
 };
 const ML_TIMEOUT_DEFAULT_MS = 90 * 1000;
 
@@ -155,6 +160,7 @@ function nextAttempt(msg) {
 let mlWorker = null;
 let mlWorkerReady = null; // Promise<Worker> once 'ml-ready' arrives
 let mlCallSeq = 0;
+let mlAlarmSeq = 0; // alarm-name uniqueness (see callMl)
 const mlPending = new Map(); // callId -> {resolve, reject, runId}
 const ML_WORKER_FALLBACK = 'ML worker unavailable — falling back to in-process';
 
@@ -173,6 +179,17 @@ function failMlPending(errFactory) {
   mlPending.clear();
   for (const p of pend) {
     try { p.reject(errFactory()); } catch {}
+  }
+}
+
+// Fail only the pending calls belonging to one run. A timeout/OOM in one
+// run must not fail an unrelated concurrent run on the shared worker.
+function failMlPendingForRun(runId, errFactory) {
+  for (const [callId, p] of [...mlPending.entries()]) {
+    if (p.runId === runId) {
+      mlPending.delete(callId);
+      try { p.reject(errFactory()); } catch {}
+    }
   }
 }
 
@@ -291,11 +308,16 @@ export async function restartMlHost() {
 function cancelMlRun(runId) {
   if (!runId) return;
   if (mlWorker && [...mlPending.values()].some(p => p.runId === runId)) {
-    // A stuck worker must die — a cancel message would queue behind the
-    // blocked WASM run and never be processed. Pending runs on the shared
-    // worker fail fast with a message (they can retry on a fresh worker).
-    killMlWorker();
-    failMlPending(() => new Error('ML worker stopped'));
+    // 2.2.12: fail ONLY this run's pending calls, and terminate the worker
+    // ONLY when this run is its only pending caller (same rule as
+    // cancelMlForRun). The old code killed the shared worker and failed
+    // EVERY pending call, so one run's timeout failed unrelated concurrent
+    // runs in other tabs with "ML worker stopped". A stuck worker that is
+    // shared is left alive — the other runs' calls either complete or hit
+    // their own timeouts.
+    const onlyCaller = [...mlPending.values()].every(p => p.runId === runId);
+    if (onlyCaller) killMlWorker();
+    failMlPendingForRun(runId, () => new Error('ML worker stopped'));
   }
   restartMlHost().catch(() => {});
   try {
@@ -376,8 +398,11 @@ export async function callMl(msg, opts = {}) {
   // 30s timeouts the backup fires later than the timer — late is fine,
   // never is not. Cancel calls need none (they are fast, and a dead worker
   // means the run is dead anyway).
+  // 2.2.12: a sequence counter suffixes the alarm name — two callMls for
+  // the same run+type in the same millisecond used to share an alarm name
+  // (and storage key), so the second overwrote the first's entry.
   const alarmName = (typeof chrome !== 'undefined' && chrome.alarms && msg.runId && msg.type !== MSG.ML_CANCEL)
-    ? `ct-ml:${msg.runId}:${msg.type}:${Date.now()}`
+    ? `ct-ml:${msg.runId}:${msg.type}:${Date.now()}:${++mlAlarmSeq}`
     : null;
   const storageKey = alarmName ? `ct-ml-pending:${alarmName}` : null;
   if (alarmName) {
@@ -485,7 +510,10 @@ async function callMlInner(msg) {
     // thread, so it is never used for a timed-out or cancelled call.
     try {
       const res = await runMlViaWorker(msg);
-      if (!res || res.ok === false) throw new Error('ML worker did not respond');
+      // 2.2.12: the worker DID respond — it replied ok:false. Say so, and
+      // include its error when present, instead of "did not respond".
+      if (!res) throw new Error('ML worker did not respond');
+      if (res.ok === false) throw new Error('ML worker failed: ' + String((res && (res.error || res.message)) || 'unknown error').slice(0, 120));
       return res;
     } catch (e) {
       if (e && e.mlWorkerFallback) {

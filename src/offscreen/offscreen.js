@@ -478,6 +478,12 @@ const detector = new Detector();
 const baberu = new BaberuOCR();
 const inpainter = new Inpainter();
 
+// Groups whose model file was re-downloaded while a run was using the
+// session. The reset is deferred to the next ensureModel (see below) —
+// resetting in the download handler would dispose a live run's session
+// and kill its inference (2.2.12).
+const staleGroups = new Set();
+
 // Drop loaded ORT sessions so the next inference re-reads model files from
 // IndexedDB. group: 'detector' | 'ocr-baberu' | 'inpaint' | '*'.
 async function resetGroup(group) {
@@ -579,6 +585,15 @@ async function ensureModel(kind) {
   // Await any in-flight load so inference never runs on a null session.
   if (loading[kind]) { await loading[kind]; return; }
   const p = (async () => {
+    // 2.2.12: if the model file was re-downloaded while a run was using
+    // it, the group is marked stale — dispose the old session here so the
+    // load below re-reads the fresh bytes. Deferring the reset to the
+    // next ensureModel (instead of resetting in the download handler) is
+    // what keeps a live run's in-flight inference from being killed.
+    if (staleGroups.has(kind)) {
+      staleGroups.delete(kind);
+      await resetGroup(kind);
+    }
     // 2.0.13: apply a measured thread count before creating any session.
     await threadsReady();
     if (kind === 'detector' && !detector.loaded) {
@@ -806,8 +821,13 @@ const handlers = {
           loaded, total: totalBytes,
         }).catch(() => {});
       });
-      // Drop any session built from the old bytes so the fresh file is used.
-      await resetGroup(spec.group);
+      // 2.2.12: mark the group stale instead of resetting it here. The
+      // old unconditional resetGroup disposed a live run's session when
+      // a download completed mid-run, killing its inference. The next
+      // ensureModel for this group disposes the old session and reloads
+      // from the fresh bytes (see ensureModel) — the in-flight call
+      // finishes on the old session undisturbed.
+      staleGroups.add(spec.group);
       announce({ done: true });
       return { ok: true, bytes: total };
     } catch (e) {
@@ -1120,7 +1140,7 @@ const handlers = {
     } catch { totalTiles = 0; }
     // DIAGNOSTIC (temporary): total work, so the log shows how many
     // patches the run had (not a guessed count).
-    console.error('[ct-diag] inpaint start run ' + runId + ' patches ' + patches.length);
+    console.log('[ct-diag] inpaint start run ' + runId + ' patches ' + patches.length);
     // Long inpaints report progress: the Firefox background page sets
     // globalThis.__ctInpaintProgress (same module scope there — see
     // background-ff.js/service-worker.js). The Chrome offscreen document sets

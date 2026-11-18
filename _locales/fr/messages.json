@@ -96,7 +96,7 @@
     "message": "Seuil de confiance de détection"
   },
   "detection_hint": {
-    "message": "Les pages plus petites que la taille d'image minimale sont ignorées. La taille de police du rendu est estimée automatiquement à partir du texte original de la page (plafonnée au maximum ci-dessus)."
+    "message": "Les pages plus petites que la taille d'image minimale sont ignorées. La taille de police du rendu est estimée automatiquement à partir du texte original de la page."
   },
   "detection_rendering": {
     "message": "Détection et rendu"

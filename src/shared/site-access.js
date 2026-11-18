@@ -49,7 +49,13 @@ export function imageHostOrigins(host) {
   const h = bracketIPv6(String(host || '').toLowerCase().trim());
   if (!h) return [];
   const base = baseDomain(h);
-  const out = [`*://${base}/*`, `*://*.${base}/*`];
+  // 2.2.12: no subdomain wildcard for IP literals — `*://*.192.168.1.5/*`
+  // is not a valid pattern (subdomains of an IP cannot exist), and if
+  // Chrome rejects the whole permissions.request over it, the grant fails
+  // entirely for that page.
+  const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(h.replace(/^\[|\]$/g, '')) || h.includes(':');
+  const out = [`*://${base}/*`];
+  if (!isIp) out.push(`*://*.${base}/*`);
   if (base !== h) out.push(`*://${h}/*`);
   return [...new Set(out)];
 }

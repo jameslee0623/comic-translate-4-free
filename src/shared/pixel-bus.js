@@ -45,6 +45,18 @@ export async function pixelPut(key, buffer) {
   } else {
     throw new Error('pixelPut expects an ArrayBuffer or typed-array view');
   }
+  // 2.2.12: clear any previous payload for this key first. Re-putting the
+  // same key with a smaller payload used to leave the old trailing chunk
+  // records behind (pixelDrop only deletes per the CURRENT manifest's
+  // count), leaking them permanently.
+  try {
+    const prev = await idbGet(d, prefix(key));
+    if (prev && typeof prev.chunks === 'number') {
+      for (let i = 0; i < prev.chunks; i++) {
+        try { await idbDel(d, chunkId(key, i)); } catch { /* already gone */ }
+      }
+    }
+  } catch { /* best effort — a failed clear just leaves the old chunks */ }
   if (ab.byteLength <= CHUNK_BYTES) {
     await idbPut(d, { id: prefix(key), data: ab });
     return;

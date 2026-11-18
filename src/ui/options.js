@@ -264,22 +264,35 @@ function setCheckResult(el, r) {
 function checkingText() { return ctMsg('checking') || 'checking…'; }
 
 // Save first so the check uses the latest values, then check.
+// 2.2.12: race the background reply against a 15s timeout — the old plain
+// await hung forever (button stuck on "checking…") when the background was
+// blocked, the exact hazard the popup's bgMessage guards against with its
+// own 2.5s timeout. The button is re-enabled in a finally so it never
+// sticks disabled.
 $('checkAzure').onclick = async () => {
   const btn = $('checkAzure'), out = $('azureResult');
   btn.disabled = true; out.className = 'check-result'; out.textContent = checkingText();
-  await persistSettings(collect());
-  const r = await chrome.runtime.sendMessage({ type: 'ct/check-azure' }).catch(e => ({ ok: false, error: String(e) }));
-  setCheckResult(out, r);
-  btn.disabled = false;
+  try {
+    await persistSettings(collect());
+    const r = await Promise.race([
+      chrome.runtime.sendMessage({ type: 'ct/check-azure' }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('check timed out after 15s — the background may be busy; try again')), 15000)),
+    ]).catch(e => ({ ok: false, error: String((e && e.message) || e) }));
+    setCheckResult(out, r);
+  } finally { btn.disabled = false; }
 };
 
 $('checkLmStudio').onclick = async () => {
   const btn = $('checkLmStudio'), out = $('lmStudioResult');
   btn.disabled = true; out.className = 'check-result'; out.textContent = checkingText();
-  await persistSettings(collect());
-  const r = await chrome.runtime.sendMessage({ type: 'ct/check-lmstudio' }).catch(e => ({ ok: false, error: String(e) }));
-  setCheckResult(out, r);
-  btn.disabled = false;
+  try {
+    await persistSettings(collect());
+    const r = await Promise.race([
+      chrome.runtime.sendMessage({ type: 'ct/check-lmstudio' }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('check timed out after 15s — the background may be busy; try again')), 15000)),
+    ]).catch(e => ({ ok: false, error: String((e && e.message) || e) }));
+    setCheckResult(out, r);
+  } finally { btn.disabled = false; }
 };
 
 // Grant host access for a non-localhost LM Studio URL (e.g. 192.168.x.x).
@@ -465,7 +478,15 @@ async function refreshModels() {
   }
 }
 
-load();
+// 2.2.12: surface a load failure instead of leaving a blank form — the
+// old bare call rejected silently when storage was unavailable, so the
+// form never populated, formLoaded stayed false, and the Clear-cache
+// button (bound inside load()) did nothing.
+load().catch(e => {
+  const err = document.getElementById('error');
+  if (err) err.textContent = 'Could not load settings: ' + String((e && e.message) || e).slice(0, 120);
+  console.error('[ct] options load failed:', e);
+});
 ctApplyI18n();
 // About this project: the "5 stars" button goes to this browser's store
 // (Chrome Web Store on Chrome, AMO on Firefox). The HTML default is the

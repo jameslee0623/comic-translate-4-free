@@ -96,7 +96,7 @@
     "message": "Ngưỡng tin cậy phát hiện"
   },
   "detection_hint": {
-    "message": "Các trang nhỏ hơn kích thước ảnh tối thiểu sẽ bị bỏ qua. Cỡ chữ hiển thị được ước tính tự động từ chữ gốc trên trang (giới hạn bởi mức tối đa ở trên)."
+    "message": "Các trang nhỏ hơn kích thước ảnh tối thiểu sẽ bị bỏ qua. Cỡ chữ hiển thị được ước tính tự động từ chữ gốc trên trang."
   },
   "detection_rendering": {
     "message": "Phát hiện & hiển thị"

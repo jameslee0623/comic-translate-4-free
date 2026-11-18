@@ -117,7 +117,7 @@
     "message": "Umbral de confianza de detección"
   },
   "detection_hint": {
-    "message": "Las páginas con imágenes más pequeñas que el tamaño mínimo se omiten. El tamaño de fuente de renderizado se estima automáticamente a partir del texto original de la página (limitado por el máximo indicado arriba)."
+    "message": "Las páginas con imágenes más pequeñas que el tamaño mínimo se omiten. El tamaño de fuente de renderizado se estima automáticamente a partir del texto original de la página."
   },
   "detection_rendering": {
     "message": "Detección y renderizado"

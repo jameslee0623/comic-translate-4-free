@@ -40,8 +40,13 @@ export function initPageCache() {
           await chrome.storage.session.set({ [SESSION_MARKER]: 1 });
         }
       } catch (e) {
+        // 2.2.12: fail closed — wipe defensively. The old code logged and
+        // continued without wiping, so a previous session's entries
+        // persisted and could be served, silently breaking the
+        // session-scoping (and its privacy premise).
         console.warn('[ct] page-cache startup check failed:',
           String((e && e.message) || e).slice(0, 120));
+        try { await clearStore(); } catch { /* best effort */ }
       }
       // Prune dead entries (best-effort hygiene, never fails init): the
       // old v2t1 keys carried the build stamp, so they can never be served

@@ -96,7 +96,7 @@
     "message": "Detection confidence threshold"
   },
   "detection_hint": {
-    "message": "Pages smaller than the minimum image size are skipped. The render font size is auto-estimated from the original text on the page (capped by the maximum above)."
+    "message": "Pages smaller than the minimum image size are skipped. The render font size is auto-estimated from the original text on the page."
   },
   "detection_rendering": {
     "message": "Detection & rendering"

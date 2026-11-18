@@ -96,7 +96,7 @@
     "message": "Prag de încredere pentru detectare"
   },
   "detection_hint": {
-    "message": "Paginile mai mici decât dimensiunea minimă a imaginii sunt ignorate. Dimensiunea fontului de redare este estimată automat din textul original de pe pagină (limitată de valoarea maximă de mai sus)."
+    "message": "Paginile mai mici decât dimensiunea minimă a imaginii sunt ignorate. Dimensiunea fontului de redare este estimată automat din textul original de pe pagină."
   },
   "detection_rendering": {
     "message": "Detectare și redare"

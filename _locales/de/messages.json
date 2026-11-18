@@ -96,7 +96,7 @@
     "message": "Schwellenwert für Erkennungsgenauigkeit"
   },
   "detection_hint": {
-    "message": "Seiten, die kleiner als die Mindestbildgröße sind, werden übersprungen. Die Render-Schriftgröße wird anhand des Originaltextes auf der Seite automatisch geschätzt (begrenzt durch das Maximum oben)."
+    "message": "Seiten, die kleiner als die Mindestbildgröße sind, werden übersprungen. Die Render-Schriftgröße wird anhand des Originaltextes auf der Seite automatisch geschätzt."
   },
   "detection_rendering": {
     "message": "Erkennung & Rendering"

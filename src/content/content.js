@@ -283,9 +283,14 @@
 
   // Placeholder test matches only the path/filename — never the query
   // string (a legit URL like /img.png?placeholder=0 is not a placeholder).
+  // 2.2.12: a data: URI as an <img> src is a placeholder (the standard
+  // 1x1 transparent GIF, the most common lazy placeholder) — the real URL
+  // is in data-src. `pixel.gif` is another common blank name.
   function isPlaceholderUrl(url) {
-    const path = String(url || '').split(/[?#]/)[0];
-    return /placeholder|blank|1x1|spacer/i.test(path);
+    const s = String(url || '');
+    if (/^data:/i.test(s)) return true;
+    const path = s.split(/[?#]/)[0];
+    return /placeholder|blank|1x1|spacer|pixel/i.test(path);
   }
 
   // Lazy-load fallback: if the <img> src is a placeholder, try data-src /
@@ -534,8 +539,13 @@
         if (isBig) {
           nBig++;
           if (inList) nBigIn++;
-          const src = im.currentSrc || im.src || '';
-          lastBigSrcs.push(src);
+          // 2.2.12: use realSrc, not currentSrc — for an already-translated
+          // picture currentSrc is the rendered data URL (multi-MB), and
+          // pushing it into bigSrcs can break tabs.sendMessage. realSrc
+          // returns the ORIGINAL url (via dataset.ctOriginal). Skip data:
+          // URLs entirely — they are not a host to check permission for.
+          const src = realSrc(im);
+          if (src && !/^data:/i.test(src)) lastBigSrcs.push(src);
           let loading = '';
           try { loading = (typeof im.getAttribute === 'function' && im.getAttribute('loading')) || ''; } catch { /* ignore */ }
           bigLines.push(`big nat ${im.naturalWidth || 0}x${im.naturalHeight || 0} attr ${attrW}x${attrH} disp ${Math.round(r.width)}x${Math.round(r.height)} complete ${im.complete} loading ${loading || '-'} in ${inList ? 'Y' : 'N'} ${src.slice(0, 60)}`);
@@ -570,14 +580,21 @@
   // the real URL is what the fetch tiers download, and the page-canvas tier
   // refuses unloaded/placeholder elements (see captureElementPixels), so the
   // run falls through to the network tiers instead of translating a blank.
+  // 2.2.12: match by realSrc (data-src) first — the real URL is unique per
+  // image. A live-src match is only trusted when it is unique: lazy
+  // libraries share one placeholder live src across many images, so the
+  // first match by live src could be the wrong picture (right-clicking
+  // image 5 would translate image 1). If several images share the live
+  // src there is no way to tell which was clicked from the URL alone —
+  // return null instead of guessing.
   function findImageBySrc(srcUrl) {
     if (!srcUrl) return null;
-    const im = allImages().find(im => {
-      if (!im.isConnected) return false;
-      const cur = realSrc(im);
-      const live = im.currentSrc || im.src || '';
-      return cur === srcUrl || live === srcUrl || im.dataset.ctOriginal === srcUrl;
-    });
+    const imgs = allImages().filter(im => im.isConnected);
+    let im = imgs.find(im => realSrc(im) === srcUrl || im.dataset.ctOriginal === srcUrl);
+    if (!im) {
+      const liveMatches = imgs.filter(im => (im.currentSrc || im.src || '') === srcUrl);
+      if (liveMatches.length === 1) im = liveMatches[0];
+    }
     if (!im) return null;
     const cur = realSrc(im);
     const wasTranslated = !!im.dataset.ctOriginal && /^data:/i.test(cur);
@@ -635,17 +652,30 @@
     if (srcUrl) {
       im = allImages().find(im => {
         if (!im.isConnected || !im.complete || !im.naturalWidth) return false;
+        // 2.2.12: match by realSrc too — for a lazy image the manual-send
+        // path resolves the real URL (data-src), and the old live-src-only
+        // match failed to find it, so the page-canvas tier was silently
+        // unavailable for lazy images.
         const cur = im.currentSrc || im.src || '';
-        return cur === srcUrl || im.dataset.ctOriginal === srcUrl;
+        return realSrc(im) === srcUrl || cur === srcUrl || im.dataset.ctOriginal === srcUrl;
       });
       // Background-tab fallback: the tab IS the image (a single <img>).
       // If the image URL redirected, the exact match above fails even
       // though the picture is right there — use the only picture on the
       // page. Only when there is exactly one, so a normal multi-picture
       // page never picks the wrong one.
+      // 2.2.12: verify the single image relates to srcUrl (same origin) —
+      // the old code captured any lone loaded image, even an unrelated one,
+      // when right-clicking a failed-to-load image.
       if (!im) {
         const all = allImages().filter(x => x.isConnected && x.complete && x.naturalWidth);
-        if (all.length === 1) im = all[0];
+        if (all.length === 1) {
+          let sameOrigin = false;
+          try {
+            sameOrigin = new URL(realSrc(all[0]) || all[0].src || '', location.href).origin === new URL(srcUrl, location.href).origin;
+          } catch { sameOrigin = false; }
+          if (sameOrigin) im = all[0];
+        }
       }
     } else {
       im = mainImgEl && mainImgEl.isConnected ? mainImgEl : null;
@@ -830,10 +860,11 @@
     return PILL_MSG_FALLBACK[key] || key;
   }
   // ------------------------------------------------------------ one-time support popup
-  // Shown once, after the extension has translated 30 pictures in total
+  // Shown once, after the extension has translated 50 pictures in total
   // (the SW counts and sends 'ct/show-support'). Centered over a dimmed
-  // page, X top right, three buttons. Closing it — X or any button — never
-  // shows it again: the SW marks it shown when the message is delivered.
+  // page, X top right, three buttons. Closing it — X, backdrop click,
+  // Escape, or any button — never shows it again: the SW marks it shown
+  // only when the content script confirms the modal actually rendered.
   let supportModal = null;
   function supportStoreUrl() {
     // Same two URLs as STORE_URLS in shared/contracts.js (classic script,
@@ -856,12 +887,22 @@
   function closeSupportModal() {
     try { if (supportModal) supportModal.remove(); } catch { /* already gone */ }
     supportModal = null;
+    // 2.2.12: remove the Escape listener added by showSupportModal.
+    if (supportModalKeyHandler) {
+      try { document.removeEventListener('keydown', supportModalKeyHandler); } catch {}
+      supportModalKeyHandler = null;
+    }
   }
+  let supportModalKeyHandler = null;
   function showSupportModal() {
-    if (supportModal) return;
+    if (supportModal) return false; // already showing
     const wrap = document.createElement('div');
     wrap.id = 'ct-support-modal';
     wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;';
+    // 2.2.12: backdrop click and Escape close the modal (was X only).
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) closeSupportModal(); });
+    supportModalKeyHandler = (e) => { if (e.key === 'Escape') closeSupportModal(); };
+    document.addEventListener('keydown', supportModalKeyHandler);
     const card = document.createElement('div');
     card.style.cssText = 'position:relative;width:340px;max-width:calc(100vw - 32px);background:#1c1c22;color:#eee;' +
       'font:14px/1.4 sans-serif;padding:24px 20px 20px;border-radius:12px;border:1px solid #3a3a40;' +
@@ -898,6 +939,7 @@
     wrap.appendChild(card);
     document.documentElement.appendChild(wrap);
     supportModal = wrap;
+    return true;
   }
   // ------------------------------------------------------------ next-page discovery (pre-translation)
   // The site's Next link first, then +1 on the page number in the URL.
@@ -935,9 +977,14 @@
     // +1 the page number after a dash (e-hentai image pages:
     // /s/<hash>/1234567-2 -> /s/<hash>/1234567-3). Exactly one dash,
     // so a date like 2026-11-17 never matches.
+    // 2.2.12: a year-month (2026-11) has exactly one dash too and used to
+    // match, turning /2026-11/ into /2026-12/. Skip a 4-digit year +
+    // month (01-12) — that is a date, not a page number.
     for (let i = segs.length - 1; i >= 0; i--) {
       const dm = /^(\d+)-(\d+)$/.exec(segs[i]);
       if (dm) {
+        const y = parseInt(dm[1], 10), m = parseInt(dm[2], 10);
+        if (dm[1].length === 4 && y >= 1900 && y <= 2100 && m >= 1 && m <= 12) continue;
         segs[i] = dm[1] + '-' + String(parseInt(dm[2], 10) + 1);
         u.pathname = segs.join('/');
         return u.href;
@@ -1473,9 +1520,13 @@
       return false;
     }
     if (msg.type === 'ct/show-support') {
-      // One-time support popup (SW counted 30 translated pictures).
-      try { showSupportModal(); } catch { /* never break the run */ }
-      sendResponse({ ok: true });
+      // One-time support popup (SW counted 50 translated pictures).
+      // 2.2.12: report whether the modal actually rendered — the old code
+      // sent ok:true even when showSupportModal threw, so the SW marked it
+      // shown on delivery and a render failure lost the one-time popup.
+      let shown = false;
+      try { shown = showSupportModal() === true; } catch { shown = false; }
+      sendResponse({ ok: shown });
       return false;
     }
     if (msg.type === 'ct/next-page-url') {
@@ -1500,6 +1551,11 @@
       const st = msg.stage;
       // FIX3: terminal progress ends the run — release the tab-held keep-alive.
       if (st === 'error' || st === 'done' || st === 'cancelled') closeTabKeepAlive(msg.runId);
+      // 2.2.12: ignore progress from a stale run — a stale run's
+      // done/error/cancelled used to overwrite the pill (and fire the
+      // ding) after a newer run started. The keep-alive close above still
+      // runs so a stale run's port is not leaked.
+      if (msg.runId && latestRunId && msg.runId !== latestRunId) return false;
       if (st === 'error') showPillError(msg.error || stageLabel('error'),
         msg.grantHost ? { host: msg.grantHost, label: msg.grantLabel } : null);
       else if (st === 'done') { showPill('comic-translate-4-free — ' + esc(stageLabel('done')) + ' ✓' + (msg.cached ? ' (from cache)' : msg.backendLabel ? ' (' + esc(msg.backendLabel) + ')' : '')); maybeDing(); }

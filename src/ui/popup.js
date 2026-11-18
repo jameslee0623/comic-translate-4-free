@@ -354,8 +354,12 @@ async function refreshSite(settings) {  const [tab] = await chrome.tabs.query({ 
   };
 }
 
-$('cancelBtn').onclick = () => {
-  chrome.runtime.sendMessage({ type: 'ct/cancel-run' });
+$('cancelBtn').onclick = async () => {
+  // 2.2.12: send the active tab's id so the worker cancels only that tab's
+  // run — the old message had no tab, so the worker cancelled every tab's
+  // run (and the background pre-translate job too).
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => [null]);
+  chrome.runtime.sendMessage({ type: 'ct/cancel-run', tabId: tab ? tab.id : undefined });
 };
 
 $('translateBtn').onclick = async () => {

@@ -96,7 +96,7 @@
     "message": "Limite de confiança da detecção"
   },
   "detection_hint": {
-    "message": "Páginas menores que o tamanho mínimo de imagem são ignoradas. O tamanho da fonte de renderização é estimado automaticamente a partir do texto original da página (limitado pelo máximo acima)."
+    "message": "Páginas menores que o tamanho mínimo de imagem são ignoradas. O tamanho da fonte de renderização é estimado automaticamente a partir do texto original da página."
   },
   "detection_rendering": {
     "message": "Detecção e renderização"

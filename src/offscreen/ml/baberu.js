@@ -283,6 +283,10 @@ export class BaberuOCR {
       input_ids: tBos,
     });
     let preOut;
+    // 2.2.12: capture seqLen BEFORE disposing visEmbeds — the old code
+    // read visEmbeds.dims[1] after the dispose below, which only works
+    // because ORT keeps dims metadata after dispose().
+    const seqLen = visEmbeds.dims[1];
     try {
       preOut = await this.pre.run(preIn);
     } finally {
@@ -298,12 +302,15 @@ export class BaberuOCR {
     let present = preNames.slice(1).map(n => preOut[n]);
 
     const pastNames = this._pastNames();
-    const seqLen = visEmbeds.dims[1];
     let pos = seqLen + 1;
     const seq = [BOS], toks = [];
     const vocabSize = this.id2ch.size + 4;
     let stopped = 'limit';
 
+    // 2.2.12: the step loop is wrapped in try/finally so the KV cache
+    // (`present`, 12 tensors) is disposed on ANY exit — the old code only
+    // disposed it after the loop, so a cancel abort mid-loop leaked it.
+    try {
     for (let step = 0; step < MAX_NEW_TOKENS; step++) {
       // Bail every few steps when the run was cancelled — the 256-step loop
       // is seconds of WASM per crop that would otherwise burn after a page
@@ -372,7 +379,9 @@ export class BaberuOCR {
       present = names.slice(1).map(nm => out[nm]);
       pos++;
     }
-    for (const t of present) t.dispose(); // last step's KV cache, no longer needed
+    } finally {
+      for (const t of present) { try { t.dispose(); } catch {} }
+    }
     let text = '';
     for (const id of toks) {
       const ch = this.id2ch.get(id);

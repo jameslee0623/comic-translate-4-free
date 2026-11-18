@@ -83,6 +83,13 @@ export function learnPattern(oldUrl, newUrl) {
   return null;
 }
 
+// Increment a digit string, preserving leading-zero width (007 -> 008,
+// not 8). Sites using zero-padded page numbers get wrong predictions
+// otherwise, which are then scored as misses (2.2.12).
+function incPreserveWidth(s) {
+  return String(parseInt(s, 10) + 1).padStart(s.length, '0');
+}
+
 // Build the next URL from a learned pattern, or null when the URL does not
 // match the pattern's shape.
 export function applyPattern(pattern, url) {
@@ -94,11 +101,11 @@ export function applyPattern(pattern, url) {
     const s = segs[pattern.index];
     if (pattern.kind === 'seg') {
       if (!/^\d+$/.test(s || '')) return null;
-      segs[pattern.index] = String(parseInt(s, 10) + 1);
+      segs[pattern.index] = incPreserveWidth(s);
     } else {
       const m = /^(\d+)-(\d+)$/.exec(s || '');
       if (!m) return null;
-      segs[pattern.index] = m[1] + '-' + String(parseInt(m[2], 10) + 1);
+      segs[pattern.index] = m[1] + '-' + incPreserveWidth(m[2]);
     }
     u.pathname = segs.join('/');
     return u.href;
@@ -107,8 +114,14 @@ export function applyPattern(pattern, url) {
     const q = new URLSearchParams(u.search);
     const v = q.get(pattern.name);
     if (!/^\d+$/.test(v || '')) return null;
-    q.set(pattern.name, String(parseInt(v, 10) + 1));
-    u.search = q.toString();
+    // 2.2.12: replace just this param's value in the raw search string.
+    // The old `q.toString()` re-encoded the whole query (%20 -> +), and
+    // the service worker's same-page check is a strict string comparison,
+    // so a re-encoded prediction never matched the page the user opened
+    // and the join failed.
+    const next = incPreserveWidth(v);
+    const re = new RegExp('([?&]' + pattern.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '=)\\d+');
+    u.search = u.search.replace(re, '$1' + next);
     return u.href;
   }
   return null;

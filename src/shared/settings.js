@@ -232,5 +232,10 @@ export async function getSettings() {
   const clamp = (v, lo, hi, fb) => Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fb;
   s.detectionThreshold = clamp(+s.detectionThreshold, 0.05, 0.9, DEFAULT_SETTINGS.detectionThreshold);
   s.minImageSize = Math.round(clamp(+s.minImageSize, 100, 4000, DEFAULT_SETTINGS.minImageSize));
+  // 2.2.12: validate the backend too — a corrupt/retired stored value used
+  // to pass through, leaving the popup's backend dropdown blank and the
+  // pipeline with an unknown backend string.
+  const VALID_BACKENDS = ['google', 'azure', 'lmstudio', 'local-llm'];
+  if (!VALID_BACKENDS.includes(s.translationBackend)) s.translationBackend = DEFAULT_SETTINGS.translationBackend;
   return s;
 }

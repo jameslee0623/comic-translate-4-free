@@ -380,11 +380,23 @@ async function fetchImagePixels(url, referrer) {
   };
   const tries = [{ ...base, referrerPolicy: 'no-referrer' }];
   if (referrer) tries.push({ ...base, referrer, referrerPolicy: 'strict-origin-when-cross-origin' });
+  // 2.2.12: each attempt has a 30s timeout. A server that accepts the
+  // connection but never responds used to hang the run at "capture"
+  // forever — and user Cancel could not interrupt it, because the hung
+  // `await fetch` never resolves and `checkCancelled` is never reached.
+  const CAPTURE_FETCH_TIMEOUT_MS = 30000;
   let lastErr = new Error('image download failed');
   for (const init of tries) {
     let res;
-    try { res = await fetch(url, init); }
-    catch (e) { lastErr = e; break; }
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => { try { ctrl.abort(); } catch {} }, CAPTURE_FETCH_TIMEOUT_MS);
+    try { res = await fetch(url, { ...init, signal: ctrl.signal }); }
+    catch (e) {
+      clearTimeout(timer);
+      if (e && e.name === 'AbortError') { lastErr = new Error('image download timed out after 30s'); break; }
+      lastErr = e; break;
+    }
+    clearTimeout(timer);
     if (res.ok) {
       const blob = await res.blob();
       return { ...bitmapToRGBA(await createImageBitmap(blob)), bytes: blob.size };
@@ -496,8 +508,13 @@ async function loadPipelineImagePixels(tabId, info, settings, tabUrl, opts = {})
   if (!info.translated) {
     const a0 = performance.now();
     try {
-      const p = await chrome.tabs.sendMessage(tabId,
-        info.uid ? { type: 'ct/get-image-pixels-by-uid', uid: info.uid } : { type: 'ct/get-image-pixels', srcUrl: info.src });
+      // 2.2.12: race the content-script round trip against a 30s timeout
+      // — a hung content script used to hang the run at "capture" forever.
+      const p = await Promise.race([
+        chrome.tabs.sendMessage(tabId,
+          info.uid ? { type: 'ct/get-image-pixels-by-uid', uid: info.uid } : { type: 'ct/get-image-pixels', srcUrl: info.src }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('page canvas timed out after 30s')), 30000)),
+      ]);
       if (p && p.ok && typeof p.dataUrl === 'string') {
         const { rgba, w, h } = await dataUrlToRGBA(p.dataUrl);
         // A blank (all-black) capture fed to the detector yields 2 bogus
@@ -517,7 +534,11 @@ async function loadPipelineImagePixels(tabId, info, settings, tabUrl, opts = {})
   }
   const b0 = performance.now();
   try {
-    const f = await chrome.tabs.sendMessage(tabId, { type: 'ct/fetch-image-bytes', srcUrl: info.src });
+    // 2.2.12: race the content-script round trip against a 30s timeout.
+    const f = await Promise.race([
+      chrome.tabs.sendMessage(tabId, { type: 'ct/fetch-image-bytes', srcUrl: info.src }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('page download timed out after 30s')), 30000)),
+    ]);
     if (f && f.ok && typeof f.dataUrl === 'string' && f.dataUrl.startsWith('data:')) {
       const { rgba, w, h } = await dataUrlToRGBA(f.dataUrl);
       const b64 = f.dataUrl.split(',')[1] || '';
@@ -1224,7 +1245,12 @@ async function autoDownloadMissingModels() {
 async function waitForModels(runId) {
   await autoDownloadMissingModels();
   const t0 = Date.now();
-  let lastLoaded = -1, lastProgressAt = Date.now();
+  // 2.2.12: stall is tracked PER FILE, not on the aggregate byte sum.
+  // The old aggregate check false-fired on a healthy slow file (its own
+  // bytes grew, but slower than the 3-min window) and masked a genuinely
+  // stalled file when another file was still progressing. A file is
+  // stalled only when its OWN loaded bytes have not changed for 3 min.
+  const perFileProgress = new Map(); // fileId -> { loaded, at }
   for (;;) {
     if (runs.get(runId)?.cancelled) throw new Error('cancelled');
     let state;
@@ -1242,21 +1268,30 @@ async function waitForModels(runId) {
     }
     const frac = state.totalBytes ? state.loadedBytes / state.totalBytes : 0;
     setProgress(runId, 'downloading', frac);
-    if (state.loadedBytes !== lastLoaded) {
-      lastLoaded = state.loadedBytes;
-      lastProgressAt = Date.now();
-    } else if (Date.now() - lastProgressAt > MODEL_DOWNLOAD_STALL_MS) {
+    const now = Date.now();
+    const stalled = [];
+    for (const f of state.missing) {
+      if (!f.started) continue;
+      const prev = perFileProgress.get(f.id);
+      if (!prev || prev.loaded !== f.loaded) {
+        perFileProgress.set(f.id, { loaded: f.loaded, at: now });
+      } else if (now - prev.at > MODEL_DOWNLOAD_STALL_MS) {
+        stalled.push(f);
+      }
+    }
+    if (stalled.length) {
       // Stalled: a partial file whose bytes stopped growing belongs to a
       // dead download (host died, network dropped). Clear it and start
-      // over so the wait can make progress instead of hanging.
-      diagPush('model download stalled, restarting: ' + state.missing.filter(f => f.started).map(f => f.id).join(', '));
-      for (const f of state.missing) {
-        if (!f.started) { triggerModelDownload(f.id); continue; }
+      // over so the wait can make progress instead of hanging. Only the
+      // files that are actually stalled are restarted — a slow file that
+      // is still progressing is left alone.
+      diagPush('model download stalled, restarting: ' + stalled.map(f => f.id).join(', '));
+      for (const f of stalled) {
         try { await pruneModelIds([f.id]); } catch {}
         modelDownloadInflight.delete(f.id);
+        perFileProgress.delete(f.id);
         triggerModelDownload(f.id);
       }
-      lastProgressAt = Date.now();
     }
     if (Date.now() - t0 > MODEL_DOWNLOAD_WAIT_MS) {
       throw new Error('model download timed out after 15 minutes — check the connection, or open Settings → Models and tap "Download all models".');
@@ -1265,7 +1300,7 @@ async function waitForModels(runId) {
   }
 }
 
-// One-time support popup: after 30 translated pictures in total, offer the
+// One-time support popup: after 50 translated pictures in total, offer the
 // store rating / support / feedback once, in the middle of the page.
 // Pure decision (extracted by support-popup-test.mjs): total counts every
 // picture a run finished, including cache hits and resumed runs; show is
@@ -1290,8 +1325,11 @@ async function maybeShowSupportPopup(tabId, translatedCount) {
       // Resolves only if the tab's content script is listening. If the tab
       // is gone, shown stays false and the next run tries again — the user
       // must actually see the popup once.
-      await chrome.tabs.sendMessage(tabId, { type: MSG.SHOW_SUPPORT });
-      shown = true;
+      // 2.2.12: only mark shown when the content script confirms the modal
+      // actually rendered (it returns ok:true). The old code marked it on
+      // delivery, so a render failure lost the one-time popup forever.
+      const resp = await chrome.tabs.sendMessage(tabId, { type: MSG.SHOW_SUPPORT });
+      if (resp && resp.ok) shown = true;
     } catch { /* tab gone / no content script — retry after the next run */ }
   }
   try { await chrome.storage.local.set({ [SUPPORT_POPUP_KEY]: { translatedTotal: total, shown } }); } catch {}
@@ -1530,25 +1568,35 @@ function cancelPretranslate() {
 }
 
 // Pure decision for joinOrCancelPretranslate (tested): 'join' when a
-// background job is already translating this page, 'cancel' when it is
-// for another page, 'none' when there is no job.
-function joinOrCancelDecision(jobUrl, tabUrl) {
+// background job is already translating this page, 'cancel' when an AUTO
+// run starts for another page (the user navigated away), 'keep' when a
+// MANUAL run starts for another page (right-click / popup on the source
+// page — the user never navigated, so the job keeps running), 'none'
+// when there is no job. isAuto defaults to true for old callers.
+function joinOrCancelDecision(jobUrl, tabUrl, isAuto = true) {
   if (!jobUrl) return 'none';
   if (jobUrl && tabUrl && samePageUrl(jobUrl, tabUrl)) return 'join';
+  if (isAuto === false) return 'keep';
   return 'cancel';
 }
 
 // A normal run starting for the page a background job is already
 // translating: keep the job and wait for it — its cache write makes this
-// run a cache hit. Any other page: cancel the job, the user went elsewhere.
-async function joinOrCancelPretranslate(runId, tabUrl) {
+// run a cache hit. An auto run for another page cancels the job (the user
+// went elsewhere); a manual run for another page leaves it alone.
+async function joinOrCancelPretranslate(runId, tabUrl, isAuto = true) {
   const job = pretranslateJob;
   if (!job) return;
-  if (joinOrCancelDecision(job.url, tabUrl) === 'join') {
+  const decision = joinOrCancelDecision(job.url, tabUrl, isAuto);
+  if (decision === 'join') {
     try { setProgress(runId, 'capture', 0.01); } catch { /* pill is best-effort */ }
     try { await job.done; } catch { /* a failed job just means this run does the work */ }
+    // 2.2.12: a run cancelled while waiting for the job must stop here,
+    // not do the injection + inventory work and abort later.
+    checkCancelled(runId);
     return;
   }
+  if (decision === 'keep') return; // manual run on the source page: job keeps running
   cancelPretranslate();
 }
 
@@ -1641,13 +1689,15 @@ async function pretranslateNextPage(sourceTabId, sourceUrl, settings) {
 async function runPretranslate(job, sourceTabId, settings) {
   const runId = job.runId;
   const nextUrl = job.url;
-  // ---- fetch the next page (15s cap; same-origin cookies ride along).
+  // ---- fetch the next page (15s cap; credentials 'include' so the
+  // site's cookies ride along — the fetch runs from the extension origin,
+  // so 'same-origin' would send none cross-origin).
   let html;
   {
     const ctrl = new AbortController();
     const to = setTimeout(() => ctrl.abort(), 15000);
     try {
-      const res = await fetch(nextUrl, { credentials: 'same-origin', signal: ctrl.signal, headers: { Accept: 'text/html,*/*' } });
+      const res = await fetch(nextUrl, { credentials: 'include', signal: ctrl.signal, headers: { Accept: 'text/html,*/*' } });
       if (!res.ok) throw new Error('next page fetch failed: HTTP ' + res.status);
       const len = Number(res.headers.get('content-length') || 0);
       if (len > 5 * 1024 * 1024) throw new Error('next page too big');
@@ -1950,7 +2000,6 @@ async function runPipeline(tabId, opts = {}) {
     resumes: opts.resume ? (opts.resumeCount || 0) + 1 : 0,
     url: runTabUrl,
   }); // FIX1: see helpers above.
-  const settings = await getSettings();
   const timings = {};
   const pipelineT0 = performance.now(); // overall wall-clock for this run
   // Firefox: pre-load the 206MB LaMa first, before detector/OCR fragment the
@@ -1961,6 +2010,11 @@ async function runPipeline(tabId, opts = {}) {
   const pxKeys = []; // IDB pixel-bus keys created this run; dropped in finally
   let result;
   try {
+    // 2.2.12: getSettings() lives inside the try now. It used to run before
+    // the try, so a throw leaked the run record (persisted above) and the
+    // runs-map entry — orphan recovery could later auto-resume a run that
+    // never started.
+    const settings = await getSettings();
     keepAliveStart(runId); // FIX2: hold the background alive for this run only; released in finally.
     // Auto-download (2.2.2): if the models are not here yet (install
     // download still going, or it never ran), fetch them now and wait,
@@ -2010,8 +2064,9 @@ async function runPipeline(tabId, opts = {}) {
     }
     // Pre-translation join-or-cancel: if a background job is already
     // translating THIS page, wait for it (its cache write makes this run
-    // a cache hit); a job for another page is cancelled instead.
-    await joinOrCancelPretranslate(runId, tabUrl);
+    // a cache hit); an auto run for another page cancels the job (the user
+    // went elsewhere); a manual run for another page leaves it alone.
+    await joinOrCancelPretranslate(runId, tabUrl, !!opts.auto);
     try {
       await chrome.scripting.executeScript({ target: { tabId }, files: CONTENT_SCRIPT_FILES });
     } catch (e) {
@@ -2777,20 +2832,25 @@ async function runPipeline(tabId, opts = {}) {
         const maskP = runMask();
         const inpaintP = maskP.then(runInpaint);
         const translateP = runTranslate();
-        // If either branch fails, cancel the run so the other branch aborts
-        // at its next checkCancelled instead of burning CPU/network on a dead run.
-        // Record the first REAL branch failure: without it, the run catch below
-        // sees the abort flag and reports quiet 'cancelled', swallowing the
-        // actual error (inpaint/timeout failures showed no notification at all).
-        // Not recorded for user cancels (their errors must stay quiet) or for
-        // cancel-marked errors (those are the abort itself, not a failure).
+        // If either branch fails, stop the other branch of THIS image so
+        // it does not burn CPU/network on a dead image. Record the first
+        // REAL branch failure: without it, the run catch below sees the
+        // abort flag and reports quiet 'cancelled', swallowing the actual
+        // error (inpaint/timeout failures showed no notification at all).
+        // Not recorded for user cancels (their errors must stay quiet) or
+        // for cancel-marked errors (those are the abort itself, not a
+        // failure).
+        // 2.2.12: do NOT set the run-level `cancelled` flag here. That
+        // made one image's branch failure abort the whole multi-pic run
+        // (the per-image loop treats `isCancelled` as fatal), defeating
+        // per-image fault isolation. The other branch is stopped by its
+        // own timeout (translate 30s, inpaint ML timeout) and its result
+        // is discarded; the run continues to the next image.
         const cancelOnFail = p => p.catch(e => {
           const r = runs.get(runId);
           if (r) {
-            r.cancelled = true;
             if (!r.userCancelled && !e.cancelled && !r.branchError) r.branchError = e;
           }
-          callMl({ type: MSG.ML_CANCEL, runId }).catch(() => {});
           throw e;
         });
         [translateOut, inpaintOut] = await Promise.all([cancelOnFail(translateP), cancelOnFail(inpaintP)]);
@@ -2832,9 +2892,12 @@ async function runPipeline(tabId, opts = {}) {
         doneImgs.push(imgIdx + 1);
         if (r && r.doneExtra) lastDoneExtra = r.doneExtra;
       } catch (e) {
-        // Cancel and out-of-memory abort the whole run; any other per-image
-        // failure is recorded and the next picture runs.
-        if (e && (e.cancelled || isCancelled(runId))) throw e;
+        // Only a USER cancel aborts the whole run. A per-image failure —
+        // even one that throws 'cancelled' (e.g. a translate timeout-abort)
+        // — is recorded and the next picture runs. The old check
+        // (`e.cancelled || isCancelled`) rethrew on any branch failure,
+        // so one bad picture killed a 50-image run (2.2.12).
+        if (e && runs.get(runId)?.userCancelled) throw e;
         if (/Out of memory/i.test(String((e && e.message) || ''))) throw e;
         // 403 auto fallback (auto path only — manual send has its own
         // fallback in the handler, so it must not double-attempt): the
@@ -3404,7 +3467,6 @@ async function fallbackCaptureViaTab(origTabId, imageUrl) {
       // resolves, an error page (about:neterror) rejects at once with the
       // real address, and about:blank keeps waiting for the real load.
       await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('timed out waiting for the image tab to load')), 30000);
         let done = false;
         const finishOk = () => {
           if (done) return;
@@ -3420,6 +3482,10 @@ async function fallbackCaptureViaTab(origTabId, imageUrl) {
           chrome.tabs.onUpdated.removeListener(listener);
           reject(err);
         };
+        // 2.2.12: the timeout goes through finishErr, not a bare reject —
+        // the old bare reject never removed the onUpdated listener and
+        // never set done, leaking one listener per timed-out attempt.
+        const timeout = setTimeout(() => finishErr(new Error('timed out waiting for the image tab to load')), 30000);
         const checkLoaded = async () => {
           if (done) return;
           let t = null;
@@ -3657,9 +3723,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
         case MSG.CANCEL_RUN: {
-          for (const [id, r] of runs) abortRunResources(id, r);
-          for (const [id] of runs) {
-            try { await callMl({ type: MSG.ML_CANCEL, runId: id }); } catch { /* host may be down */ }
+          // 2.2.12: cancel only the requesting tab's runs. The old code
+          // cancelled every tab's run (and the background pre-translate
+          // job, whose tabId is null). When no tabId is given (old
+          // popup), fall back to cancelling all — the popup always sends
+          // one now.
+          const targetTab = (msg && typeof msg.tabId === 'number') ? msg.tabId : null;
+          for (const [id, r] of runs) {
+            if (targetTab === null || r.tabId === targetTab) abortRunResources(id, r);
+          }
+          for (const [id, r] of runs) {
+            if (targetTab === null || r.tabId === targetTab) {
+              try { await callMl({ type: MSG.ML_CANCEL, runId: id }); } catch { /* host may be down */ }
+            }
           }
           sendResponse({ ok: true });
           break;
