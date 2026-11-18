@@ -382,6 +382,15 @@
   "feedback_email": {
     "message": "✉️ Comentarios por correo electrónico"
   },
+  "rate_store": {
+    "message": "⭐ 5 estrellas en la tienda"
+  },
+  "support_modal_title": {
+    "message": "¿Te gusta comic-translate-4-free?"
+  },
+  "support_modal_text": {
+    "message": "Si te gusta, apóyala por favor — ayuda mucho."
+  },
   "target_lang": {
     "message": "Idioma de destino"
   },

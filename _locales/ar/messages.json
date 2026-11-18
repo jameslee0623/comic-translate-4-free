@@ -382,6 +382,15 @@
   "feedback_email": {
     "message": "✉️ ملاحظات عبر البريد الإلكتروني"
   },
+  "rate_store": {
+    "message": "⭐ قيّم بـ 5 نجوم في المتجر"
+  },
+  "support_modal_title": {
+    "message": "هل يعجبك comic-translate-4-free؟"
+  },
+  "support_modal_text": {
+    "message": "إذا أعجبك، فادعمه من فضلك — هذا يساعد كثيرًا."
+  },
   "target_lang": {
     "message": "اللغة الهدف"
   },

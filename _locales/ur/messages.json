@@ -382,6 +382,15 @@
   "feedback_email": {
     "message": "✉️ ای میل کے ذریعے رائے"
   },
+  "rate_store": {
+    "message": "⭐ اسٹور میں 5 اسٹار دیں"
+  },
+  "support_modal_title": {
+    "message": "comic-translate-4-free پسند آ رہا ہے؟"
+  },
+  "support_modal_text": {
+    "message": "اگر پسند ہے تو براہ کرم اس کی حمایت کریں — اس سے بہت مدد ملتی ہے۔"
+  },
   "target_lang": {
     "message": "ہدف زبان"
   },

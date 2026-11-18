@@ -343,6 +343,15 @@
   "feedback_email": {
     "message": "✉️ 透過電子郵件提供意見回饋"
   },
+  "rate_store": {
+    "message": "⭐ 在商店給 5 星好評"
+  },
+  "support_modal_title": {
+    "message": "喜歡 comic-translate-4-free 嗎？"
+  },
+  "support_modal_text": {
+    "message": "如果你喜歡它，請支持一下——這很有幫助。"
+  },
   "support_hint": {
     "message": "本擴充功能免費開源。如果你喜歡這個擴充功能，歡迎支持它的持續開發。"
   },

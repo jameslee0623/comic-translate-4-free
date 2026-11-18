@@ -1,7 +1,7 @@
 // Background service worker: pipeline orchestration, model management,
 // translation APIs, capture, debug emission. ML inference itself lives in
 // the offscreen document; pure-JS stages (blocks, mask) run here.
-import { MSG } from '../shared/contracts.js';
+import { MSG, STORE_URLS, KOFI_URL, FEEDBACK_MAILTO, SUPPORT_POPUP_THRESHOLD } from '../shared/contracts.js';
 import { MODEL_GROUPS, getModelStatus, getModelDownloadState, deleteModelGroup, pruneModelIds, computeModelFingerprint } from '../shared/model-specs.js';
 import { getSettings } from '../shared/settings.js';
 import {
@@ -1261,6 +1261,38 @@ async function waitForModels(runId) {
   }
 }
 
+// One-time support popup: after 30 translated pictures in total, offer the
+// store rating / support / feedback once, in the middle of the page.
+// Pure decision (extracted by support-popup-test.mjs): total counts every
+// picture a run finished, including cache hits and resumed runs; show is
+// true only the first time the total reaches the threshold.
+const SUPPORT_POPUP_KEY = 'ctSupportPopup';
+function supportPopupDecision(state, added) {
+  const total = (state && typeof state.translatedTotal === 'number' ? state.translatedTotal : 0) + (added || 0);
+  const shown = !!(state && state.shown);
+  return { total, show: !shown && total >= SUPPORT_POPUP_THRESHOLD };
+}
+async function maybeShowSupportPopup(tabId, translatedCount) {
+  if (!translatedCount) return;
+  let state = {};
+  try {
+    const saved = await chrome.storage.local.get(SUPPORT_POPUP_KEY);
+    state = (saved && saved[SUPPORT_POPUP_KEY]) || {};
+  } catch { /* storage read failed — try again after the next run */ return; }
+  const { total, show } = supportPopupDecision(state, translatedCount);
+  let shown = !!state.shown;
+  if (show) {
+    try {
+      // Resolves only if the tab's content script is listening. If the tab
+      // is gone, shown stays false and the next run tries again — the user
+      // must actually see the popup once.
+      await chrome.tabs.sendMessage(tabId, { type: MSG.SHOW_SUPPORT });
+      shown = true;
+    } catch { /* tab gone / no content script — retry after the next run */ }
+  }
+  try { await chrome.storage.local.set({ [SUPPORT_POPUP_KEY]: { translatedTotal: total, shown } }); } catch {}
+}
+
 async function runPipeline(tabId, opts = {}) {
   const manualSrc = opts.srcUrl || null;
   const runId = 'run-' + Date.now().toString(36) + '-' + (runSeq++) + '-' + Math.random().toString(36).slice(2, 8);
@@ -2306,6 +2338,9 @@ async function runPipeline(tabId, opts = {}) {
         ...(opts.resume ? { resumed: true, alreadyDone } : {}),
       });
     } catch { /* content script may have been removed mid-run */ }
+    // One-time support popup (best-effort — a failure here must never fail
+    // the run, which already succeeded).
+    try { await maybeShowSupportPopup(tabId, doneImgs.length); } catch {}
     if (settings.debugMode) await sendDiagLog(tabId, runId);
     result = { runId, ok: true, images: doneImgs.length, failed: failedImgs, ...(opts.resume ? { resumed: true, alreadyDone } : {}) };
   } catch (e) {
@@ -2978,6 +3013,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
       sendResponse({ ok: !!granted });
     }, () => sendResponse({ ok: false }));
+    return true;
+  }
+  // Support popup buttons (content script). Only the popup's own links may
+  // be opened this way — anything else is refused, so a compromised page
+  // can never use this channel to open an arbitrary URL.
+  if (msg && msg.type === MSG.OPEN_LINK && typeof msg.url === 'string') {
+    const ok = msg.url === STORE_URLS.chrome || msg.url === STORE_URLS.firefox ||
+      msg.url === KOFI_URL || msg.url === FEEDBACK_MAILTO;
+    if (!ok) { sendResponse({ ok: false, error: 'not an allowed link' }); return false; }
+    (async () => {
+      try { await chrome.tabs.create({ url: msg.url, active: true }); sendResponse({ ok: true }); }
+      catch (e) { sendResponse({ ok: false, error: String((e && e.message) || e).slice(0, 120) }); }
+    })();
     return true;
   }
   (async () => {

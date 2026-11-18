@@ -343,6 +343,15 @@
   "feedback_email": {
     "message": "✉️ Góp ý qua email"
   },
+  "rate_store": {
+    "message": "⭐ Đánh giá 5 sao trên cửa hàng"
+  },
+  "support_modal_title": {
+    "message": "Bạn có thích comic-translate-4-free không?"
+  },
+  "support_modal_text": {
+    "message": "Nếu bạn thích, hãy ủng hộ — điều đó giúp ích rất nhiều."
+  },
   "support_hint": {
     "message": "Tiện ích này miễn phí và mã nguồn mở. Nếu bạn thích tiện ích này, bạn có thể hỗ trợ phát triển tiếp."
   },

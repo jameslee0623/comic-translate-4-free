@@ -343,6 +343,15 @@
   "feedback_email": {
     "message": "✉️ 이메일로 피드백 보내기"
   },
+  "rate_store": {
+    "message": "⭐ 스토어에서 별 5개 주기"
+  },
+  "support_modal_title": {
+    "message": "comic-translate-4-free가 마음에 드시나요?"
+  },
+  "support_modal_text": {
+    "message": "마음에 드신다면 후원해 주세요 — 큰 도움이 됩니다."
+  },
   "support_hint": {
     "message": "이 확장 프로그램은 무료이며 오픈 소스입니다. 이 확장 프로그램이 마음에 드신다면 개발을 후원해 주세요."
   },

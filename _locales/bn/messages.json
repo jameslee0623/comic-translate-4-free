@@ -343,6 +343,15 @@
   "feedback_email": {
     "message": "✉️ ইমেইলে মতামত"
   },
+  "rate_store": {
+    "message": "⭐ স্টোরে ৫ স্টার দিন"
+  },
+  "support_modal_title": {
+    "message": "comic-translate-4-free কি ভালো লাগছে?"
+  },
+  "support_modal_text": {
+    "message": "ভালো লাগলে, অনুগ্রহ করে সহায়তা করুন — এতে অনেক সাহায্য হয়।"
+  },
   "support_hint": {
     "message": "এই এক্সটেনশনটি ফ্রি ও ওপেন সোর্স। এই এক্সটেনশনটি আপনার ভালো লাগলে, এর চলমান উন্নয়নে সহায়তা করতে পারেন।"
   },

@@ -343,6 +343,15 @@
   "feedback_email": {
     "message": "✉️ 通过电子邮件反馈"
   },
+  "rate_store": {
+    "message": "⭐ 在商店给 5 星好评"
+  },
+  "support_modal_title": {
+    "message": "喜欢 comic-translate-4-free 吗？"
+  },
+  "support_modal_text": {
+    "message": "如果你喜欢它，请支持一下——这很有帮助。"
+  },
   "support_hint": {
     "message": "本扩展程序免费开源。如果你喜欢这个扩展，欢迎支持它的持续开发。"
   },

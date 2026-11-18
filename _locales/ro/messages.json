@@ -343,6 +343,15 @@
   "feedback_email": {
     "message": "✉️ Feedback prin e-mail"
   },
+  "rate_store": {
+    "message": "⭐ 5 stele în magazin"
+  },
+  "support_modal_title": {
+    "message": "Îți place comic-translate-4-free?"
+  },
+  "support_modal_text": {
+    "message": "Dacă îți place, te rog s-o sprijini — ajută foarte mult."
+  },
   "support_hint": {
     "message": "Această extensie este gratuită și open source. Dacă îți place această extensie, poți sprijini dezvoltarea ei continuă."
   },

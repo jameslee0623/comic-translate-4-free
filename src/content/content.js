@@ -829,6 +829,76 @@
     } catch { /* fall through */ }
     return PILL_MSG_FALLBACK[key] || key;
   }
+  // ------------------------------------------------------------ one-time support popup
+  // Shown once, after the extension has translated 30 pictures in total
+  // (the SW counts and sends 'ct/show-support'). Centered over a dimmed
+  // page, X top right, three buttons. Closing it — X or any button — never
+  // shows it again: the SW marks it shown when the message is delivered.
+  let supportModal = null;
+  function supportStoreUrl() {
+    // Same two URLs as STORE_URLS in shared/contracts.js (classic script,
+    // no imports) — that file is the source of truth.
+    try {
+      return navigator.userAgent.includes('Firefox')
+        ? 'https://addons.mozilla.org/firefox/addon/comic-translate-4-free/'
+        : 'https://chromewebstore.google.com/detail/comic-translate-4-free/pndooikgcenncdohfggodonniihplppj';
+    } catch {
+      return 'https://chromewebstore.google.com/detail/comic-translate-4-free/pndooikgcenncdohfggodonniihplppj';
+    }
+  }
+  function supportMsg(key, fallback) {
+    try {
+      const m = chrome.i18n.getMessage(key);
+      if (m) return m;
+    } catch { /* fall through */ }
+    return fallback;
+  }
+  function closeSupportModal() {
+    try { if (supportModal) supportModal.remove(); } catch { /* already gone */ }
+    supportModal = null;
+  }
+  function showSupportModal() {
+    if (supportModal) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'ct-support-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;';
+    const card = document.createElement('div');
+    card.style.cssText = 'position:relative;width:340px;max-width:calc(100vw - 32px);background:#1c1c22;color:#eee;' +
+      'font:14px/1.4 sans-serif;padding:24px 20px 20px;border-radius:12px;border:1px solid #3a3a40;' +
+      'box-shadow:0 12px 40px rgba(0,0,0,.6);text-align:center;';
+    const x = document.createElement('span');
+    x.textContent = '✕';
+    x.style.cssText = 'position:absolute;top:10px;right:14px;color:#9a9aa0;font-size:18px;cursor:pointer;';
+    x.onclick = () => closeSupportModal();
+    const title = document.createElement('div');
+    title.textContent = supportMsg('support_modal_title', 'Enjoying comic-translate-4-free?');
+    title.style.cssText = 'font-size:16px;color:#fff;margin-bottom:8px;';
+    const text = document.createElement('p');
+    text.textContent = supportMsg('support_modal_text', 'If you like it, please support it — it helps a lot.');
+    text.style.cssText = 'color:#8a8a90;font-size:12px;margin:0 0 16px;';
+    const btns = document.createElement('div');
+    btns.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+    const mkBtn = (labelKey, fallback, url) => {
+      const b = document.createElement('button');
+      b.textContent = supportMsg(labelKey, fallback);
+      b.style.cssText = 'padding:9px 14px;border:1px solid #3a3a40;border-radius:6px;background:#232327;color:#e8e8ea;font-size:13px;cursor:pointer;';
+      b.onclick = () => {
+        try { chrome.runtime.sendMessage({ type: 'ct/open-link', url }); } catch { /* link open failed — still close */ }
+        closeSupportModal();
+      };
+      return b;
+    };
+    btns.appendChild(mkBtn('rate_store', '⭐ 5 stars at store', supportStoreUrl()));
+    btns.appendChild(mkBtn('support_project', '❤️ Support this project', 'https://ko-fi.com/jameslee0623'));
+    btns.appendChild(mkBtn('feedback_email', '✉️ Feedback by email', 'mailto:ucimjuocb@mozmail.com?subject=comic-translate-4-free%20feedback'));
+    card.appendChild(x);
+    card.appendChild(title);
+    card.appendChild(text);
+    card.appendChild(btns);
+    wrap.appendChild(card);
+    document.documentElement.appendChild(wrap);
+    supportModal = wrap;
+  }
   function pillProgress(stage, progress) {
     // Sticky for the whole run: the old non-sticky call armed a 4s auto-hide
     // on every update, so long stages (inpaint, translate) left the page with
@@ -1220,6 +1290,12 @@
       // Custom pill message from the SW (e.g. 403-fallback status). Sticky
       // keeps it visible while the background work runs.
       showPill('comic-translate-4-free — ' + esc(msg.text || ''), !!msg.sticky);
+      return false;
+    }
+    if (msg.type === 'ct/show-support') {
+      // One-time support popup (SW counted 30 translated pictures).
+      try { showSupportModal(); } catch { /* never break the run */ }
+      sendResponse({ ok: true });
       return false;
     }
     if (msg.type === 'ct/run-progress') {

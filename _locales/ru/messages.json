@@ -382,6 +382,15 @@
   "feedback_email": {
     "message": "✉️ Отзыв по электронной почте"
   },
+  "rate_store": {
+    "message": "⭐ 5 звёзд в магазине"
+  },
+  "support_modal_title": {
+    "message": "Нравится comic-translate-4-free?"
+  },
+  "support_modal_text": {
+    "message": "Если вам нравится, пожалуйста, поддержите его — это очень помогает."
+  },
   "target_lang": {
     "message": "Целевой язык"
   },

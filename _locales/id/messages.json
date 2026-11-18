@@ -343,6 +343,15 @@
   "feedback_email": {
     "message": "✉️ Umpan balik melalui email"
   },
+  "rate_store": {
+    "message": "⭐ Beri 5 bintang di toko"
+  },
+  "support_modal_title": {
+    "message": "Menikmati comic-translate-4-free?"
+  },
+  "support_modal_text": {
+    "message": "Jika Anda menyukainya, mohon dukung — itu sangat membantu."
+  },
   "support_hint": {
     "message": "Ekstensi ini gratis dan open source. Jika Anda menyukai ekstensi ini, Anda bisa mendukung pengembangannya."
   },

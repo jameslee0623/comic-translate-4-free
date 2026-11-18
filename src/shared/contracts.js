@@ -44,7 +44,26 @@ export const MSG = {
   RENDER: 'ct/render',                   // {runId, mode, imageDataUrl, width, height, blocks, timings, debug, srcUrl?}
   DEBUG_STAGE: 'ct/debug-stage',          // {runId, stage, payload, debug}
   PILL_NOTICE: 'ct/pill-notice',         // {text, sticky} (custom pill message, e.g. fallback status)
+  SHOW_SUPPORT: 'ct/show-support',       // {} -> {ok} (one-time support popup after 30 translated pictures)
+  // content -> SW
+  OPEN_LINK: 'ct/open-link',             // {url} -> {ok} (support popup buttons; SW allowlists the URL and opens a tab)
 };
+
+// Store pages for the "5 stars" button — the per-browser URL. The content
+// script is a classic script (no imports), so it carries these two literals
+// itself; this is the source of truth.
+export const STORE_URLS = {
+  chrome: 'https://chromewebstore.google.com/detail/comic-translate-4-free/pndooikgcenncdohfggodonniihplppj',
+  firefox: 'https://addons.mozilla.org/firefox/addon/comic-translate-4-free/',
+};
+export const KOFI_URL = 'https://ko-fi.com/jameslee0623';
+export const FEEDBACK_MAILTO = 'mailto:ucimjuocb@mozmail.com?subject=comic-translate-4-free%20feedback';
+export function storeUrlForFirefox(isFirefox) {
+  return isFirefox ? STORE_URLS.firefox : STORE_URLS.chrome;
+}
+// One-time support popup: show once the extension has translated this many
+// pictures in total (across runs and pages). Never shown twice.
+export const SUPPORT_POPUP_THRESHOLD = 30;
 
 // IndexedDB: db 'ct-db', store 'models' (keyPath 'id').
 // Record: {id, data:ArrayBuffer, bytes, downloadedAt}
