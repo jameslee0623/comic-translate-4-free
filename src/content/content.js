@@ -905,8 +905,8 @@
   // the thin DOM wrapper. Same site only — pre-translation fetches the
   // page itself, and the extension only has host permission for sites
   // the user allowed.
-  const NEXT_LINK_TEXT = /^\s*(next(\s+page|\s+chapter)?|下一页|次へ|다음)\s*[»›→]?\s*$/i;
-  const NEXT_LINK_ARROW = /^\s*[»›→]+\s*$/;
+  const NEXT_LINK_TEXT = /^\s*[»›→>]*\s*(next(\s+page|\s+chapter)?|下一页|次へ|다음)\s*[»›→>]*\s*$/i;
+  const NEXT_LINK_ARROW = /^\s*[»›→>]+\s*$/;
   function nextUrlFromAnchors(anchors) {
     // anchors: [{href, texts:[...], rel}] in document order.
     for (const a of anchors) {
