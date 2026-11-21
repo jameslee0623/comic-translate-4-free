@@ -49,7 +49,7 @@
     "message": "Google（免費，無需金鑰）"
   },
   "backend_hint": {
-    "message": "Azure 金鑰/區域僅儲存在此瀏覽器的擴充功能儲存空間中。LM Studio 須啟用 OpenAI 相容伺服器並執行（預設 http://127.0.0.1:1234）。"
+    "message": "Azure 金鑰/區域和 Gemini API 金鑰僅儲存在此瀏覽器的擴充功能儲存空間中。LM Studio 須啟用 OpenAI 相容伺服器並執行（預設 http://127.0.0.1:1234）。"
   },
   "backend_lmstudio": {
     "message": "LM Studio（本機）"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "授予主機存取權限",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini（免費，需要金鑰）"
+  },
+  "backend_gemini": {
+    "message": "Gemini（免費）"
+  },
+  "gemini_key": {
+    "message": "Gemini API 金鑰"
+  },
+  "check_gemini": {
+    "message": "檢查 Gemini 連線"
   }
 }

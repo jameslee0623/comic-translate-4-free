@@ -4,10 +4,11 @@
 export const DEFAULT_SETTINGS = {
   sourceLang: 'auto', // 'auto' = detect from the OCR'd text; or 'ja' | 'en' | 'zh-CN' | 'zh-TW'
   targetLang: 'en',
-  translationBackend: 'google', // 'google' | 'azure' | 'lmstudio' | 'local-llm'
+  translationBackend: 'google', // 'google' | 'azure' | 'gemini' | 'lmstudio' | 'local-llm'
   backendFailover: true, // if the selected backend fails, try another (default on, 2026-10-26)
   azureKey: '',
   azureRegion: '',
+  geminiApiKey: '', // Google AI Studio key for the Gemini backend (gemini-3.5-flash-lite, 500 req/day free)
   lmStudioUrl: 'http://127.0.0.1:1234', // LM Studio server (bare host:port; flavour adds its path)
   lmStudioKey: '',
   lmStudioApi: 'lmstudio-v1', // 'openai' | 'lmstudio-v1' (LM Studio REST)
@@ -235,7 +236,7 @@ export async function getSettings() {
   // 2.2.12: validate the backend too — a corrupt/retired stored value used
   // to pass through, leaving the popup's backend dropdown blank and the
   // pipeline with an unknown backend string.
-  const VALID_BACKENDS = ['google', 'azure', 'lmstudio', 'local-llm'];
+  const VALID_BACKENDS = ['google', 'azure', 'gemini', 'lmstudio', 'local-llm'];
   if (!VALID_BACKENDS.includes(s.translationBackend)) s.translationBackend = DEFAULT_SETTINGS.translationBackend;
   return s;
 }

@@ -49,7 +49,7 @@
     "message": "Google (ফ্রি, কী লাগে না)"
   },
   "backend_hint": {
-    "message": "Azure কী/অঞ্চল শুধুমাত্র এই ব্রাউজারের এক্সটেনশন স্টোরেজে সংরক্ষিত হয়। LM Studio-এর OpenAI-সামঞ্জস্যপূর্ণ সার্ভার চালু থাকতে হবে (ডিফল্ট http://127.0.0.1:1234)।"
+    "message": "Azure কী/অঞ্চল এবং Gemini API কী শুধুমাত্র এই ব্রাউজারের এক্সটেনশন স্টোরেজে সংরক্ষিত হয়। LM Studio-এর OpenAI-সামঞ্জস্যপূর্ণ সার্ভার চালু থাকতে হবে (ডিফল্ট http://127.0.0.1:1234)।"
   },
   "backend_lmstudio": {
     "message": "LM Studio (লোকাল)"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "হোস্ট অ্যাক্সেস মঞ্জুর করুন",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini (ফ্রি, কী আবশ্যক)"
+  },
+  "backend_gemini": {
+    "message": "Gemini (ফ্রি)"
+  },
+  "gemini_key": {
+    "message": "Gemini API কী"
+  },
+  "check_gemini": {
+    "message": "Gemini সংযোগ পরীক্ষা করুন"
   }
 }

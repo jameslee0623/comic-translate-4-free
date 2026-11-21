@@ -49,7 +49,7 @@
     "message": "Google (gratis, tanpa kunci API)"
   },
   "backend_hint": {
-    "message": "Kunci/wilayah Azure hanya disimpan di penyimpanan ekstensi browser ini. LM Studio harus berjalan dengan server yang kompatibel OpenAI diaktifkan (bawaan http://127.0.0.1:1234)."
+    "message": "Kunci/wilayah Azure dan kunci API Gemini hanya disimpan di penyimpanan ekstensi browser ini. LM Studio harus berjalan dengan server yang kompatibel OpenAI diaktifkan (bawaan http://127.0.0.1:1234)."
   },
   "backend_lmstudio": {
     "message": "LM Studio (lokal)"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "Berikan akses host",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini (gratis, perlu kunci API)"
+  },
+  "backend_gemini": {
+    "message": "Gemini (gratis)"
+  },
+  "gemini_key": {
+    "message": "Kunci API Gemini"
+  },
+  "check_gemini": {
+    "message": "Periksa koneksi Gemini"
   }
 }

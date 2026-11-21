@@ -49,7 +49,7 @@
     "message": "Google（無料、キー不要）"
   },
   "backend_hint": {
-    "message": "Azureのキー/リージョンはこのブラウザの拡張機能ストレージにのみ保存されます。LM StudioはOpenAI互換サーバーを有効にして起動してください（デフォルト http://127.0.0.1:1234）。"
+    "message": "Azureのキー/リージョンとGemini APIキーはこのブラウザの拡張機能ストレージにのみ保存されます。LM StudioはOpenAI互換サーバーを有効にして起動してください（デフォルト http://127.0.0.1:1234）。"
   },
   "backend_lmstudio": {
     "message": "LM Studio（ローカル）"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "ホストへのアクセスを許可",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini（無料、キー必須）"
+  },
+  "backend_gemini": {
+    "message": "Gemini（無料）"
+  },
+  "gemini_key": {
+    "message": "Gemini APIキー"
+  },
+  "check_gemini": {
+    "message": "Gemini接続を確認"
   }
 }

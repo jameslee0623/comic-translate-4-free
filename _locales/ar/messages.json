@@ -61,7 +61,7 @@
     "message": "Google (مجاني، بلا مفتاح)"
   },
   "backend_hint": {
-    "message": "يُخزَّن مفتاح Azure والمنطقة في مخزن الإضافة في هذا المتصفح فقط. يجب تشغيل LM Studio مع تفعيل خادم OpenAI المتوافق (الافتراضي http://127.0.0.1:1234)."
+    "message": "يُخزَّن مفتاح Azure والمنطقة ومفتاح Gemini API في مخزن الإضافة في هذا المتصفح فقط. يجب تشغيل LM Studio مع تفعيل خادم OpenAI المتوافق (الافتراضي http://127.0.0.1:1234)."
   },
   "backend_lmstudio": {
     "message": "LM Studio (محلي)"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "منح الوصول إلى المضيف",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini (مجاني، يتطلب مفتاحًا)"
+  },
+  "backend_gemini": {
+    "message": "Gemini (مجاني)"
+  },
+  "gemini_key": {
+    "message": "مفتاح Gemini API"
+  },
+  "check_gemini": {
+    "message": "اختبار اتصال Gemini"
   }
 }

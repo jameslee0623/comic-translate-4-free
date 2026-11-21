@@ -61,7 +61,7 @@
     "message": "Google (бесплатно, без ключа)"
   },
   "backend_hint": {
-    "message": "Ключ и регион Azure хранятся только в хранилище расширения этого браузера. LM Studio должен быть запущен с включённым OpenAI-совместимым сервером (по умолчанию http://127.0.0.1:1234)."
+    "message": "Ключ и регион Azure и ключ API Gemini хранятся только в хранилище расширения этого браузера. LM Studio должен быть запущен с включённым OpenAI-совместимым сервером (по умолчанию http://127.0.0.1:1234)."
   },
   "backend_lmstudio": {
     "message": "LM Studio (локально)"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "Разрешить доступ к хосту",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini (бесплатно, требуется ключ)"
+  },
+  "backend_gemini": {
+    "message": "Gemini (бесплатно)"
+  },
+  "gemini_key": {
+    "message": "Ключ API Gemini"
+  },
+  "check_gemini": {
+    "message": "Проверить соединение с Gemini"
   }
 }

@@ -61,7 +61,7 @@
     "message": "Google (मुफ़्त, बिना की)"
   },
   "backend_hint": {
-    "message": "Azure की/रीजन सिर्फ़ इसी ब्राउज़र के एक्सटेंशन स्टोरेज में रहते हैं। LM Studio चल रहा होना चाहिए और उसका OpenAI-कम्पैटिबल सर्वर चालू होना चाहिए (डिफ़ॉल्ट http://127.0.0.1:1234)।"
+    "message": "Azure की/रीजन और Gemini API की सिर्फ़ इसी ब्राउज़र के एक्सटेंशन स्टोरेज में रहते हैं। LM Studio चल रहा होना चाहिए और उसका OpenAI-कम्पैटिबल सर्वर चालू होना चाहिए (डिफ़ॉल्ट http://127.0.0.1:1234)।"
   },
   "backend_lmstudio": {
     "message": "LM Studio (लोकल)"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "होस्ट एक्सेस प्रदान करें",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini (मुफ़्त, की ज़रूरी)"
+  },
+  "backend_gemini": {
+    "message": "Gemini (मुफ़्त)"
+  },
+  "gemini_key": {
+    "message": "Gemini API की"
+  },
+  "check_gemini": {
+    "message": "Gemini कनेक्शन जांचें"
   }
 }

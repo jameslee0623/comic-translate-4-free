@@ -49,7 +49,7 @@
     "message": "Google (gratuit, fără cheie)"
   },
   "backend_hint": {
-    "message": "Cheia/regiunea Azure sunt stocate doar în spațiul de stocare al extensiei din acest browser. LM Studio trebuie să ruleze cu serverul compatibil OpenAI activat (implicit http://127.0.0.1:1234)."
+    "message": "Cheia/regiunea Azure și cheia API Gemini sunt stocate doar în spațiul de stocare al extensiei din acest browser. LM Studio trebuie să ruleze cu serverul compatibil OpenAI activat (implicit http://127.0.0.1:1234)."
   },
   "backend_lmstudio": {
     "message": "LM Studio (local)"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "Acordă acces la gazdă",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini (gratuit, necesită cheie)"
+  },
+  "backend_gemini": {
+    "message": "Gemini (gratuit)"
+  },
+  "gemini_key": {
+    "message": "Cheie API Gemini"
+  },
+  "check_gemini": {
+    "message": "Verifică conexiunea Gemini"
   }
 }

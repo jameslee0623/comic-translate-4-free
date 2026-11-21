@@ -12,7 +12,7 @@ import {
 import { toGrayU8, meanBrightness, renderScale, resizeBilinearRGBA } from '../shared/image-ops.js';
 import { pixelPut, pixelTake, pixelDrop, pixelPruneRun } from '../shared/pixel-bus.js';
 import { generateMask, detectContentMaskInBbox } from '../shared/mask.js';
-import { translateBlocks, checkAzure, checkLmStudio, BACKEND_LABEL, BACKEND_SHORT_LABEL } from './translators.js';
+import { translateBlocks, checkAzure, checkLmStudio, checkGemini, BACKEND_LABEL, BACKEND_SHORT_LABEL } from './translators.js';
 import { detectPageLang } from '../shared/lang-detect.js';
 import { mlHostAlive, ensureMlHost, callMl, cancelMlForRun, runGpuInpaint, cancelGpuInpaint, runChromeGpuInpaint, cancelChromeGpuInpaint, notifyChromeGpuProgress, makeCanvas, canvasToBlob, directHandlers, WEBP_TYPE, WEBP_QUALITY, setMlAlarmRecoveryHook } from './ml-bridge.js';
 import {
@@ -3710,6 +3710,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case MSG.CHECK_LMSTUDIO: {
           const s = await getSettings();
           sendResponse(await checkLmStudio(s));
+          break;
+        }
+        case MSG.CHECK_GEMINI: {
+          const s = await getSettings();
+          sendResponse(await checkGemini(s));
           break;
         }
         case MSG.PAGE_CACHE_STATS: {

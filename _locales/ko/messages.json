@@ -49,7 +49,7 @@
     "message": "Google(무료, 키 불필요)"
   },
   "backend_hint": {
-    "message": "Azure 키/리전은 이 브라우저의 확장 프로그램 저장소에만 저장됩니다. LM Studio는 OpenAI 호환 서버를 활성화한 상태로 실행해야 합니다(기본값 http://127.0.0.1:1234)."
+    "message": "Azure 키/리전과 Gemini API 키는 이 브라우저의 확장 프로그램 저장소에만 저장됩니다. LM Studio는 OpenAI 호환 서버를 활성화한 상태로 실행해야 합니다(기본값 http://127.0.0.1:1234)."
   },
   "backend_lmstudio": {
     "message": "LM Studio(로컬)"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "호스트 액세스 허용",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini(무료, 키 필요)"
+  },
+  "backend_gemini": {
+    "message": "Gemini(무료)"
+  },
+  "gemini_key": {
+    "message": "Gemini API 키"
+  },
+  "check_gemini": {
+    "message": "Gemini 연결 확인"
   }
 }

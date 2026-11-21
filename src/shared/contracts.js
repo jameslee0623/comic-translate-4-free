@@ -12,6 +12,7 @@ export const MSG = {
   DELETE_MODEL: 'ct/delete-model',       // {id} -> {ok}
   CHECK_AZURE: 'ct/check-azure',         // {} -> {ok, detail} | {ok:false, error}
   CHECK_LMSTUDIO: 'ct/check-lmstudio',   // {} -> {ok, detail} | {ok:false, error}
+  CHECK_GEMINI: 'ct/check-gemini',       // {} -> {ok, detail} | {ok:false, error}
   PAGE_CACHE_STATS: 'ct/page-cache-stats', // {} -> {ok, count, bytes}
   CLEAR_PAGE_CACHE: 'ct/clear-page-cache', // {} -> {ok, count, bytes}
   GRANT_IMAGE_HOST: 'ct/grant-image-host', // {host} -> {ok} | {ok:false} (pill "Allow" button; re-runs the pipeline on grant)

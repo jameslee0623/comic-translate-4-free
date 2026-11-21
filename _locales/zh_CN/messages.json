@@ -49,7 +49,7 @@
     "message": "Google（免费，无需密钥）"
   },
   "backend_hint": {
-    "message": "Azure 密钥/区域仅存储在此浏览器的扩展存储中。LM Studio 须启用 OpenAI 兼容服务器并运行（默认 http://127.0.0.1:1234）。"
+    "message": "Azure 密钥/区域和 Gemini API 密钥仅存储在此浏览器的扩展存储中。LM Studio 须启用 OpenAI 兼容服务器并运行（默认 http://127.0.0.1:1234）。"
   },
   "backend_lmstudio": {
     "message": "LM Studio（本地）"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "授予主机访问权限",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini（免费，需要密钥）"
+  },
+  "backend_gemini": {
+    "message": "Gemini（免费）"
+  },
+  "gemini_key": {
+    "message": "Gemini API 密钥"
+  },
+  "check_gemini": {
+    "message": "检查 Gemini 连接"
   }
 }

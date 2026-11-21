@@ -303,6 +303,165 @@ async function azure(texts, settings, signal) {
   return out.flat();
 }
 
+// Gemini (Google AI Studio, free tier): gemini-3.5-flash-lite, 500 requests
+// a day. One batched request for all texts — the same JSON-array contract as
+// LM Studio, so entries stay aligned. The prompt is the manga-aware one
+// proven in the 2026-11-21 six-line test (3.5-flash-lite: 1 right, 5 half,
+// 0 wrong; it reads sound effects as sounds, never as names). 3.6-flash
+// scored better (3 right, 3 half) but its free tier is 20 requests a day,
+// so it cannot serve the extension.
+const GEMINI_MODEL = 'gemini-3.5-flash-lite';
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+// The prompt, exported so the harness can check it. `texts` ride as a JSON
+// array (OCR text can contain newlines/quotes, so line-based framing would
+// shift entries) and the model must answer with a JSON array of the same
+// length, in the same order.
+export function geminiPrompt(texts, settings) {
+  const n = texts.length;
+  const from = settings.sourceLang && settings.sourceLang !== 'auto'
+    ? ' from ' + langName(settings.sourceLang) : '';
+  const to = langName(settings.targetLang);
+  const srcName = settings.sourceLang && settings.sourceLang !== 'auto'
+    ? langName(settings.sourceLang) : 'source-language';
+  return 'Translate the following ' + n + ' manga text(s)' + from + ' to ' + to +
+    '. These are dialogue and sound effects from a manga. ' +
+    'Translate sound effects as ' + to + ' onomatopoeia that match the sound. ' +
+    'Panting and gasping are heavy breathing, not laughing. ' +
+    'Reply with ONLY a JSON array of ' + n +
+    ' translated strings, in the same order, no explanations, no code fences. ' +
+    'Output entirely in ' + to + '. ' +
+    'Do not leave any ' + srcName + ' characters, kana, or romanization in the output.' +
+    '\n' + JSON.stringify(texts);
+}
+
+// Parse a generateContent reply body into the N translations. The model
+// answer is a string that may itself be JSON, may be code-fenced, or may
+// carry prose — so the array is extracted with the same brace-balance scan
+// as the LM Studio path. A length mismatch is an error, never a zip:
+// silently pairing the wrong strings paints plausible nonsense into
+// speech bubbles.
+export function parseGeminiBody(bodyText, expected) {
+  const text = bodyText === null || bodyText === undefined ? '' : String(bodyText);
+  if (!text.trim()) {
+    throw new Error('Gemini reply was empty.');
+  }
+  let data = null;
+  try { data = JSON.parse(text); } catch { data = null; }
+  if (data !== null) {
+    // A bare JSON array is the answer itself.
+    if (Array.isArray(data)) return geminiNormalizeTranslations(data, expected);
+    // A generateContent envelope: pull the model's text out of it.
+    const parts = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
+    const answer = Array.isArray(parts)
+      ? parts.map(p => (p && typeof p.text === 'string' ? p.text : '')).join('')
+      : null;
+    if (answer === null) {
+      const cand = data.candidates && data.candidates[0];
+      const why = (cand && cand.finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || '';
+      throw new Error('Gemini returned no text' + (why ? ` (${why})` : '') + '.');
+    }
+    try {
+      const parsed = JSON.parse(answer);
+      if (Array.isArray(parsed)) return geminiNormalizeTranslations(parsed, expected);
+    } catch { /* fall through to the scan */ }
+    const found = lmExtractJsonArray(answer, expected);
+    if (found && Array.isArray(found.parsed)) return geminiNormalizeTranslations(found.parsed, expected);
+    throw new Error('Gemini reply was not a JSON array of ' + expected + ' translated strings.');
+  }
+  // Not JSON at all: a raw completion that wrapped the array in prose or a
+  // code fence.
+  const found = lmExtractJsonArray(text, expected);
+  if (found && Array.isArray(found.parsed)) return geminiNormalizeTranslations(found.parsed, expected);
+  throw new Error('Gemini reply was not valid JSON. Expected a JSON array of ' + expected + ' translated strings.');
+}
+
+function geminiNormalizeTranslations(list, expected) {
+  if (!Array.isArray(list)) {
+    throw new Error('Gemini reply has no translations array. Expected a JSON array of ' + expected + ' translated strings.');
+  }
+  if (typeof expected === 'number' && list.length !== expected) {
+    throw new Error('Gemini returned ' + list.length + ' translation(s) for ' + expected +
+      ' source line(s) — refusing to pair them, because shifted entries would paint the wrong text into the wrong bubble.');
+  }
+  return list.map(v => (v === null || v === undefined ? '' : String(v)));
+}
+
+async function gemini(texts, settings, signal) {
+  const key = (settings.geminiApiKey || '').trim();
+  if (!key) throw new Error('gemini: API key not set — add it in Settings');
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: geminiPrompt(texts, settings) }] }],
+    generationConfig: { temperature: 0 },
+  });
+  // Like the Google/Azure paths: one throttled call (429/5xx) must not kill
+  // the whole page. Retry with exponential backoff + jitter. 4xx are client
+  // errors (bad key, unknown model) and are not retried.
+  const delays = [1500, 4000, 10000];
+  let resp = null, lastErr = null;
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      resp = await fetch(GEMINI_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key,
+        },
+        body,
+        ...(signal ? { signal } : {}),
+      });
+    } catch (e) {
+      if (signal && signal.aborted) throw Object.assign(new Error('cancelled'), { cancelled: true });
+      lastErr = e;
+      resp = null;
+    }
+    if (resp && resp.ok) break;
+    const retryable = !resp || resp.status === 429 || resp.status >= 500;
+    if (!retryable || attempt === delays.length) break;
+    await sleepAbortable(delays[attempt] + Math.random() * 800, signal);
+    resp = null;
+  }
+  if (!resp) throw new Error('gemini: network error — ' + String(lastErr).slice(0, 120));
+  if (!resp.ok) {
+    const bodyText = await resp.text().catch(() => '');
+    throw new Error(`gemini: HTTP ${resp.status} after retries ${bodyText.slice(0, 160)}`);
+  }
+  return parseGeminiBody(await resp.text(), texts.length);
+}
+
+export async function checkGemini(settings) {
+  const key = (settings.geminiApiKey || '').trim();
+  if (!key) return { ok: false, error: 'API key not set' };
+  try {
+    // Minimal real call: one tiny generation. A 200 proves key+network.
+    // 2.2.12: 10s timeout — same hang as checkLmStudio (see above).
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => { try { ctrl.abort(); } catch {} }, 10000);
+    let resp;
+    try {
+      resp = await fetch(GEMINI_API_URL, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': key,
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Say OK.' }] }],
+          generationConfig: { temperature: 0 },
+        }),
+      });
+    } finally { clearTimeout(timer); }
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '');
+      return { ok: false, error: `HTTP ${resp.status} ${body.slice(0, 120)}` };
+    }
+    return { ok: true, detail: 'connected — key accepted' };
+  } catch (e) {
+    return { ok: false, error: 'network error — ' + String(e).slice(0, 120) };
+  }
+}
+
 function lmStudioBase(settings) {
   return (settings.lmStudioUrl || 'http://127.0.0.1:1234').replace(/\/+$/, '');
 }
@@ -734,6 +893,7 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
   const AZURE_RESERVE_MS = 8000;
   const runBackend = async (b, attemptDeadlineMs, sig = signal) => {
     if (b === 'azure') return await azure(texts, settings, sig);
+    if (b === 'gemini') return await gemini(texts, settings, sig);
     if (b === 'lmstudio') return await lmStudio(texts, settings, sig, attemptDeadlineMs ?? deadlineMs);
     if (b === 'local-llm') return await localLlm(texts, settings, sig);
     return await googleFree(texts, settings.sourceLang, settings.targetLang, sig);
@@ -779,8 +939,12 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
     // paid Azure without the opt-in — the setting gates it.
     if (settings.backendFailover) {
       // Failover order: prefer free/local backends first, then Azure if configured.
+      // Gemini sits after Google: it is free (500/day) and reads manga sound
+      // effects better than Google, so it is the better next try.
       const candidates = [];
+      const geminiConfigured = !!(settings.geminiApiKey || '').trim();
       if (backend !== 'google') candidates.push('google');
+      if (geminiConfigured && backend !== 'gemini') candidates.push('gemini');
       if (backend !== 'lmstudio') candidates.push('lmstudio');
       if (azureConfigured && backend !== 'azure') candidates.push('azure');
       // If the primary died by timeout-abort, the caller's signal is dead:
@@ -903,6 +1067,6 @@ export async function translateBlocks(blocks, settings, onProgress, signal, dead
   return translated;
 }
 
-export const BACKEND_LABEL = { google: 'Google (free)', azure: 'Azure Translator', lmstudio: 'LM Studio (local)', 'local-llm': 'Local LLM (experimental)' };
+export const BACKEND_LABEL = { google: 'Google (free)', azure: 'Azure Translator', gemini: 'Gemini (3.5 Flash-Lite)', lmstudio: 'LM Studio (local)', 'local-llm': 'Local LLM (experimental)' };
 // Short labels for the status pill (it has room for one word, not a sentence).
-export const BACKEND_SHORT_LABEL = { google: 'Google', azure: 'Azure', lmstudio: 'LM Studio', 'local-llm': 'Local LLM' };
+export const BACKEND_SHORT_LABEL = { google: 'Google', azure: 'Azure', gemini: 'Gemini', lmstudio: 'LM Studio', 'local-llm': 'Local LLM' };

@@ -61,7 +61,7 @@
     "message": "Google (مفت، کوئی کی نہیں)"
   },
   "backend_hint": {
-    "message": "Azure کی/ریجن صرف اس براؤزر کی ایکسٹینشن اسٹوریج میں محفوظ ہوتے ہیں۔ LM Studio کا OpenAI-compatible سرور فعال ہونا چاہیے (ڈیفالٹ http://127.0.0.1:1234)۔"
+    "message": "Azure کی/ریجن اور Gemini API کی صرف اس براؤزر کی ایکسٹینشن اسٹوریج میں محفوظ ہوتے ہیں۔ LM Studio کا OpenAI-compatible سرور فعال ہونا چاہیے (ڈیفالٹ http://127.0.0.1:1234)۔"
   },
   "backend_lmstudio": {
     "message": "LM Studio (مقامی)"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "ہوسٹ تک رسائی دیں",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini (مفت، کی درکار ہے)"
+  },
+  "backend_gemini": {
+    "message": "Gemini (مفت)"
+  },
+  "gemini_key": {
+    "message": "Gemini API کی"
+  },
+  "check_gemini": {
+    "message": "Gemini کنکشن چیک کریں"
   }
 }

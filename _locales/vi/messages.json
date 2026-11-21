@@ -49,7 +49,7 @@
     "message": "Google (miễn phí, không cần khóa)"
   },
   "backend_hint": {
-    "message": "Khóa/vùng Azure chỉ lưu trong bộ nhớ của tiện ích trên trình duyệt này. LM Studio phải đang chạy với máy chủ tương thích OpenAI đã bật (mặc định http://127.0.0.1:1234)."
+    "message": "Khóa/vùng Azure và khóa API Gemini chỉ lưu trong bộ nhớ của tiện ích trên trình duyệt này. LM Studio phải đang chạy với máy chủ tương thích OpenAI đã bật (mặc định http://127.0.0.1:1234)."
   },
   "backend_lmstudio": {
     "message": "LM Studio (cục bộ)"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "Cấp quyền truy cập máy chủ",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini (miễn phí, cần khóa)"
+  },
+  "backend_gemini": {
+    "message": "Gemini (miễn phí)"
+  },
+  "gemini_key": {
+    "message": "Khóa API Gemini"
+  },
+  "check_gemini": {
+    "message": "Kiểm tra kết nối Gemini"
   }
 }

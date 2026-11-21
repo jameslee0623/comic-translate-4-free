@@ -154,6 +154,7 @@ function applyToForm(s) {
   setChecked('backendFailover', s.backendFailover);
   setVal('azureKey', s.azureKey || '');
   setVal('azureRegion', s.azureRegion || '');
+  setVal('geminiKey', s.geminiApiKey || '');
   setVal('lmStudioUrl', s.lmStudioUrl || '');
   setVal('lmStudioApi', s.lmStudioApi || 'lmstudio-v1');
   setVal('lmStudioKey', s.lmStudioKey || '');
@@ -203,7 +204,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 $('threshold').oninput = e => { $('thresholdVal').textContent = Number(e.target.value).toFixed(2); autoSave(); };
 
 // Every control auto-saves; no Save button.
-for (const id of ['sourceLang', 'targetLang', 'backend', 'backendFailover', 'azureKey', 'azureRegion',
+for (const id of ['sourceLang', 'targetLang', 'backend', 'backendFailover', 'azureKey', 'azureRegion', 'geminiKey',
     'lmStudioUrl', 'lmStudioApi', 'lmStudioKey',
     'threshold', 'minImageSize',
     'debugMode', 'autoTranslate', 'pretranslateNext', 'playDing']) {
@@ -242,6 +243,7 @@ function collect() {
     sourceLang: $('sourceLang').value, targetLang: $('targetLang').value,
     translationBackend: $('backend').value,
     azureKey: $('azureKey').value.trim(), azureRegion: $('azureRegion').value.trim(),
+    geminiApiKey: $('geminiKey').value.trim(),
     lmStudioUrl: $('lmStudioUrl').value.trim() || DEFAULTS.lmStudioUrl,
     lmStudioApi: $('lmStudioApi').value,
     lmStudioKey: $('lmStudioKey').value.trim(),
@@ -289,6 +291,19 @@ $('checkLmStudio').onclick = async () => {
     await persistSettings(collect());
     const r = await Promise.race([
       chrome.runtime.sendMessage({ type: 'ct/check-lmstudio' }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('check timed out after 15s — the background may be busy; try again')), 15000)),
+    ]).catch(e => ({ ok: false, error: String((e && e.message) || e) }));
+    setCheckResult(out, r);
+  } finally { btn.disabled = false; }
+};
+
+$('checkGemini').onclick = async () => {
+  const btn = $('checkGemini'), out = $('geminiResult');
+  btn.disabled = true; out.className = 'check-result'; out.textContent = checkingText();
+  try {
+    await persistSettings(collect());
+    const r = await Promise.race([
+      chrome.runtime.sendMessage({ type: 'ct/check-gemini' }),
       new Promise((_, rej) => setTimeout(() => rej(new Error('check timed out after 15s — the background may be busy; try again')), 15000)),
     ]).catch(e => ({ ok: false, error: String((e && e.message) || e) }));
     setCheckResult(out, r);

@@ -21,6 +21,7 @@
     "https://*.hf.co/*",
     "https://translate.googleapis.com/*",
     "https://api.cognitive.microsofttranslator.com/*",
+    "https://generativelanguage.googleapis.com/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],

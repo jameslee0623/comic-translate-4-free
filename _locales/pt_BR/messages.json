@@ -49,7 +49,7 @@
     "message": "Google (grátis, sem chave)"
   },
   "backend_hint": {
-    "message": "A chave/região do Azure ficam armazenadas apenas neste navegador. O LM Studio precisa estar rodando com o servidor compatível com OpenAI ativado (padrão http://127.0.0.1:1234)."
+    "message": "A chave/região do Azure e a chave de API do Gemini ficam armazenadas apenas neste navegador. O LM Studio precisa estar rodando com o servidor compatível com OpenAI ativado (padrão http://127.0.0.1:1234)."
   },
   "backend_lmstudio": {
     "message": "LM Studio (local)"
@@ -435,5 +435,17 @@
   "grant_host": {
     "message": "Conceder acesso ao host",
     "description": "Button to grant host permission for LM Studio server URL"
+  },
+  "backend_gemini_opt": {
+    "message": "Gemini (grátis, requer chave)"
+  },
+  "backend_gemini": {
+    "message": "Gemini (grátis)"
+  },
+  "gemini_key": {
+    "message": "Chave de API do Gemini"
+  },
+  "check_gemini": {
+    "message": "Testar conexão do Gemini"
   }
 }
